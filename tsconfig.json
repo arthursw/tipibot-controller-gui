@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+    	"watch": true,
+    	"rootDir": "ts",
+        "outDir": "js",
+        "noImplicitAny": true,
+        "module": "commonjs",
+        "target": "es5",
+        "sourceMap": false,
+        "allowJs": true
+    },
+    "compileOnSave": true,
+    "exclude": [
+        "node_modules"
+    ]
+}

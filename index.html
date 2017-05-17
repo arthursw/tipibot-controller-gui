@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Tipibot controller</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+		<style>
+			body {
+				background-color: #f0f0f0;
+				overflow: hidden;
+				margin: 0;
+			}
+			.noselect {
+			  -webkit-touch-callout: none; /* iOS Safari */
+			    -webkit-user-select: none; /* Safari */
+			     -khtml-user-select: none; /* Konqueror HTML */
+			       -moz-user-select: none; /* Firefox */
+			        -ms-user-select: none; /* Internet Explorer/Edge */
+			            user-select: none; /* Non-prefixed version, currently
+			                                  supported by Chrome and Opera */
+			}
+		</style>
+
+	</head>
+	<body class="noselect">
+
+		<script src="node_modules/three/build/three.js"></script>
+		<script src="node_modules/paper/dist/paper-full.min.js"></script>
+		<script src="dat.gui.min.js"></script>
+		<script src="jquery-3.2.1.min.js"></script>
+		<script src="socket.io.slim.js"></script>
+
+		<script src="wheelEvent.js"></script>
+		<script src="bundle.js"></script>
+	</body>
+</html>

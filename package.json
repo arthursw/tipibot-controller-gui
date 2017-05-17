@@ -1,0 +1,24 @@
+{
+  "name": "tipibot-controller",
+  "version": "1.0.0",
+  "description": "gui for the tipibot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/dat-gui": "^0.6.2",
+    "@types/jquery": "^2.0.44",
+    "@types/paper": "^0.9.1",
+    "@types/three": "0.0.28",
+    "paper": "^0.11.3",
+    "three": "^0.83.0"
+  },
+  "devDependencies": {
+    "ts-loader": "^2.0.3",
+    "typescript": "^2.3.2",
+    "webpack": "^2.5.1"
+  }
+}
