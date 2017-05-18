@@ -30,8 +30,8 @@ export class Draggable {
 	}
 
 	mouseMove(event:MouseEvent) {
-
 		let position = <paper.Point> this.getWorldPosition(event)
+
 		if(this.dragging) {
 			this.drag(position.subtract(this.previousPosition))
 			this.previousPosition = position.clone()

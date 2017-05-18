@@ -7,14 +7,14 @@ export class Renderer {
 
 	}
 
-	centerOnMachine(machine: {width: number, height: number}) {
+	centerOnTipibot(tipibot: {width: number, height: number}) {
 	}
 
 	getDomElement(): any {
 		return null
 	}
 
-	createRectangle(x: number, y:number, width:number, height:number): Rectangle {
+	createRectangle(rectangle: paper.Rectangle): Rectangle {
 		return null
 	}
 
@@ -22,7 +22,7 @@ export class Renderer {
 		return null
 	}
 
-	createPen(x: number, y:number, machineWidth: number, communication: Communication): Pen {
+	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
 		return null
 	}
 
@@ -57,7 +57,7 @@ export class PaperRenderer {
 	canvas: HTMLCanvasElement
 	dragging: boolean
 	previousPosition: paper.Point
-	machineLayer: paper.Layer
+	tipibotLayer: paper.Layer
 	drawingLayer: paper.Layer
 
 	constructor() {
@@ -68,43 +68,43 @@ export class PaperRenderer {
 
 		paper.setup(<any>this.canvas)
 
-		this.machineLayer = new paper.Layer()
+		this.tipibotLayer = new paper.Layer()
 
 		this.dragging = false
 		this.previousPosition = new paper.Point(0, 0)
 
 	}
 
-	centerOnMachine(machine: {width: number, height: number}) {
+	centerOnTipibot(tipibot: {width: number, height: number}) {
 		let margin = 100
-		let ratio = Math.max((machine.width + margin) / window.innerWidth, (machine.height + margin) / window.innerHeight)
+		let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
 		paper.view.zoom = 1 / ratio
 		console.log(paper.view.zoom)
 
-		paper.view.setCenter(new paper.Point(machine.width / 2, machine.height / 2))
+		paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2))
 	}
 
 	getDomElement(): any {
 		return null
 	}
 
-	createRectangle(x: number, y:number, width:number, height:number): Rectangle {
-		return new PaperRectangle(x, y, width, height, this.machineLayer)
+	createRectangle(rectangle: paper.Rectangle): Rectangle {
+		return new PaperRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.tipibotLayer)
 	}
 
 	createCircle(x: number, y:number, radius:number, nSegments:number = 12): Circle {
-		return new PaperCircle(x, y, radius, this.machineLayer)
+		return new PaperCircle(x, y, radius, this.tipibotLayer)
 	}
 
-	createPen(x: number, y:number, machineWidth: number, communication: Communication): Pen {
+	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
 		let pen = new PaperPen(communication)
-		pen.initialize(x, y, machineWidth, this.machineLayer)
+		pen.initialize(x, y, tipibotWidth, this.tipibotLayer)
 		return pen
 	}
 	
 	createDrawingLayer() {
 		this.drawingLayer = new paper.Layer()
-		this.drawingLayer.moveBelow(this.machineLayer)
+		this.drawingLayer.moveBelow(this.tipibotLayer)
 	}
 
 	windowResize(){
@@ -139,7 +139,7 @@ export class PaperRenderer {
 	}
 
 	mouseWheel(event: WheelEvent) {
-		paper.view.zoom = Math.max(0.25, Math.min(5, paper.view.zoom + event.deltaY / 500))
+		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500))
 		console.log(paper.view.zoom)
 		event.preventDefault()
 	}
@@ -178,11 +178,11 @@ export class ThreeRenderer extends Renderer {
 		container.appendChild( this.getDomElement() )
 	}
 
-	centerOnMachine(machine: {width: number, height: number}) {
-		this.setCameraCenterTo(new THREE.Vector3(machine.width / 2, machine.height / 2, 0))
+	centerOnTipibot(tipibot: {width: number, height: number}) {
+		this.setCameraCenterTo(new THREE.Vector3(tipibot.width / 2, tipibot.height / 2, 0))
 
 		let margin = 100
-		let ratio = Math.max((machine.width + margin) / window.innerWidth, (machine.height + margin) / window.innerHeight)
+		let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
 		this.camera.zoom = 1 / ratio
 		this.camera.updateProjectionMatrix()
 	}
@@ -191,17 +191,17 @@ export class ThreeRenderer extends Renderer {
 		return this.renderer.domElement
 	}
 
-	createRectangle(x: number, y:number, width:number, height:number): Rectangle {
-		return new ThreeRectangle(x, y, width, height, this.scene, this.lineMaterial )
+	createRectangle(rectangle: paper.Rectangle): Rectangle {
+		return new ThreeRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.scene, this.lineMaterial )
 	}
 
 	createCircle(x: number, y:number, radius:number, nSegments:number = 12): Circle {
 		return new ThreeCircle(x, y, radius, nSegments, this.scene, this.lineMaterial )
 	}
 
-	createPen(x: number, y:number, machineWidth: number, communication: Communication): Pen {
+	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
 		let pen = new ThreePen(communication)
-		pen.initialize(x, y, machineWidth, this.camera, this.scene, this.lineMaterial)
+		pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial)
 		return pen
 	}
 

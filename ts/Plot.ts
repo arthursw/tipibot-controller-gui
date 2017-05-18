@@ -1,7 +1,10 @@
+import { Tipibot, tipibot } from "./Tipibot"
+import { Settings } from "./Settings"
 import { Draggable } from "./Draggable"
 import { Communication } from "./Communication"
 
 export class Plot extends Draggable {
+	static currentPlot: Plot = null
 
 	public static createGUI(gui: any) {
 		gui.add({plot: function() { console.log('plot') }}, 'plot')
@@ -12,7 +15,7 @@ export class Plot extends Draggable {
 	}
 
 	plot() {
-
+		Plot.currentPlot.plot()
 	}
 }
 
@@ -22,6 +25,8 @@ export class SVGPlot extends Plot {
 	static scale: number = 1
 
 	svgItem: paper.Item
+	currentItem: paper.Item
+	currentSegment: paper.Segment
 
 	public static onImageLoad(event: any) {
 		let svgPlot = new SVGPlot(paper.project.importSVG(event.target.result))
@@ -46,7 +51,7 @@ export class SVGPlot extends Plot {
 	}
 
 	public static createGUI(gui: any) {
-		let loadDivJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'/>")
+		let loadDivJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]' accept='image/svg+xml'/>")
 		let loadController = gui.add({loadSVG: function() { loadDivJ.click() }}, 'loadSVG')
 		$(loadController.domElement).append(loadDivJ)
 		loadDivJ.hide()
@@ -55,11 +60,12 @@ export class SVGPlot extends Plot {
 
 		scaleController.onChange((value: number) => {
 			SVGPlot.svgPlot.svgItem.scaling = new paper.Point(value, value)
-		}
+		})
 	}
 
 	constructor(svg: paper.Item) {
 		super()
+		Plot.currentPlot = this
 		SVGPlot.svgPlot = this
 		this.svgItem = svg
 		paper.project.layers[0].addChild(svg)
@@ -85,7 +91,7 @@ export class SVGPlot extends Plot {
 
 	mouseDown(event: MouseEvent) {
 		let hitResult = paper.project.hitTest(this.getWorldPosition(event))
-		if(hitResult != null && hitResult.item == SVGPlot.pen) {
+		if(hitResult != null && hitResult.item == tipibot.pen.item) {
 			return
 		}
 		super.mouseDown(event)
@@ -93,6 +99,7 @@ export class SVGPlot extends Plot {
 
 	plot() {
 		this.plotItem(this.svgItem)
+		tipibot.goHome()
 	}
 
 	plotItem(item: paper.Item) {
@@ -100,15 +107,13 @@ export class SVGPlot extends Plot {
 			let path: paper.Path = <paper.Path>item
 			for(let segment of path.segments) {
 				if(segment == path.firstSegment) {
-					if(!Communication.communication.currentPosition.equals(segment.point)) {
-						Communication.communication.sendMoveDirect(segment.point)
+					if(!tipibot.getPosition().equals(segment.point)) {
+						tipibot.penUp()
+						tipibot.moveDirect(segment.point)
 					}
-					Communication.communication.sendPenDown(1450, 540)
+					tipibot.penDown()
 				} else {
-					Communication.communication.sendMoveLinear(segment.point)
-					if(segment == path.lastSegment) {
-						Communication.communication.sendPenUp(1450, 540)
-					}
+					tipibot.moveLinear(segment.point)
 				}
 			}
 		} else if(item.className == 'Shape') {
@@ -119,6 +124,72 @@ export class SVGPlot extends Plot {
 		}
 		for(let child of item.children) {
 			this.plotItem(child)
+		}
+	}
+
+	plotItemStep(): any {
+		let item = this.currentItem
+
+		// if we didn't already plot the item: plot it along with its children
+		if(item.data.plotted == null || !item.data.plotted) {
+
+			// plot path
+			if(item.className == 'Path' || item.className == 'CompoundPath') {
+				let path: paper.Path = <paper.Path>item
+				let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
+				if(segment == path.firstSegment) {
+					if(!tipibot.getPosition().equals(segment.point)) {
+						tipibot.penUp()
+						tipibot.moveDirect(segment.point, this.plotItemStep)
+					}
+					tipibot.penDown()
+				} else {
+					tipibot.moveLinear(segment.point, this.plotItemStep)
+				}
+
+				// go to next segment
+				this.currentSegment = segment.next != path.firstSegment ? segment.next : null
+
+			} else if(item.className == 'Shape') {
+				console.error('A shape was found in the SVG to plot.')
+			}
+
+			// plot children
+			if(item.children.length > 0) {
+				this.currentItem = item.firstChild
+				this.currentSegment = null
+				this.plotItemStep()
+				return
+			}
+			item.data.plotted = true
+		}
+
+		// plot next siblings if any, or go up to parent
+		if(item != this.svgItem && item.parent != null && item.index < item.parent.children.length - 1) {
+			if(item.index < item.parent.children.length - 1) {
+				this.currentItem = item.nextSibling
+				this.currentSegment = null
+				this.plotItemStep()
+				return
+			} else {
+				this.currentItem = item.parent
+				this.currentSegment = null
+				this.plotItemStep()
+				return
+			}
+		}
+
+		if(item == this.svgItem) {
+			this.clearData(item)
+		}
+	}
+
+	clearData(item: paper.Item) {
+		item.data = null
+		if(item.children) {
+			for(let child of item.children) {
+				this.clearData(child)
+			}
 		}
 	}
 }

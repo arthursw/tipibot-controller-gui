@@ -1,24 +1,32 @@
+import { Settings } from "./Settings"
+
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
-// TODO: check if we can get rid of commandSent: this is bad since we could send two different commands before recieving the first answer :(
-
 declare var io: any
 
-export class Communication {
-	static communication: Communication = null
+declare type Command = {
+	data: string
+	callback: ()=> any
+}
 
-	commandSent: string
+export class Communication {
+
 	serialPort: string
 	socket: any
 	gui: any
+	portController: any
+	serialPorts: Array<string>
+	commandQueue: Array<Command>
 
 	constructor(gui:any) {
-		Communication.communication = this
-		this.commandSent = ''
+		communication = this
 		this.serialPort = ''
 		this.socket = null
 		this.gui = gui
+		this.portController = null
+		this.serialPorts = []
+		this.commandQueue = []
 		this.connectToArduinoCreateAgent()
 	}
 
@@ -62,33 +70,34 @@ export class Communication {
 		// this.openWebsocketConnection("ws://localhost:8991")
 	}
 
-	initializeSerailConnectionPorts(event: any) {
+	serialConnectionPortChanged(value: string) {
+		if(value == 'Disconnected') {
+			this.socket.emit('command', 'close ' + this.serialPort)
+		}
+		else if(value == 'Refresh') {
+			this.serialPorts = []
+			this.socket.emit('command', 'list')
+		} else {
+			this.serialPort = value
+			this.socket.emit('command', 'open ' + value + ' 115200')
+		}
+	}
 
-		let portNames = ['Disconnected', 'Refresh']
-		for(let listItem of event.data) {
-			if(listItem.hasOwnProperty('Network') && !listItem.Network && listItem.hasOwnProperty('Ports')) {
-				for(let portName of listItem.Ports) {
-					portNames.push(portName)
-				}
+	initializeSerialConnectionPorts(data: any) {
+		for(let port of data.Ports) {
+			if(this.serialPorts.indexOf(port.Name) < 0) {
+				this.serialPorts.push(port.Name)
 			}
 		}
+		let portNames = ['Disconnected', 'Refresh'].concat(this.serialPorts)
 
-		let controller = this.gui.add( {'port': 'Disconnected'}, 'port', portNames )
-		
-		controller.onChange((value: string) => {
-			if(value == 'Disconnected') {
-				this.commandSent = 'close'
-				this.socket.send('close ' + this.serialPort)
-			}
-			if(value != 'Refresh') {
-				this.commandSent = 'list'
-				this.socket.send(this.commandSent)
-			} else {
-				this.commandSent = 'open'
-				this.serialPort = value
-				this.socket.send('open ' + value + ' 115200')
-			}
-		})
+		if(this.portController == null) {
+			this.portController = this.gui.add( {'port': 'Disconnected'}, 'port' )
+		} else {
+			this.portController = this.portController.options(portNames)
+		}
+
+		this.portController.onFinishChange( (value: any) => this.serialConnectionPortChanged(value) )
 	}
 
 	checkSerialConnection(event: any) {
@@ -105,7 +114,6 @@ export class Communication {
 		
 		this.socket.on('connect', (response: any) => {
 			console.log('connect response: ', response)
-			this.commandSent = 'list'
 
 			// this.socket.emit('command', 'log on')	
 			this.socket.emit('command', 'list')	
@@ -113,17 +121,62 @@ export class Communication {
 
 		// window.ws = this.socket
 
-		this.socket.on('message', function (event: any) {
-			console.log(event)
+		this.socket.on('message', (message: any) => {
+			let data = null
+			try {
+				data = JSON.parse(message)
+			} catch (e) {
+				return
+		    }
+			// List serial ports response (list):
+			if(data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
+				this.initializeSerialConnectionPorts(data)
+				return
+			}
 
-			if(this.commandSent == 'list') {
-				this.initializeSerailConnectionPorts(event)
-			} else if(this.commandSent == 'open') {
-				this.checkSerialConnection(event)
-			} else if(this.commandSent == 'close') {
-				this.checkSerialConnection(event)
-			} else if(this.commandSent == 'sent') {
-				console.log('send response')
+			// Command responses:
+			if(data.hasOwnProperty('Cmd')) {
+				switch (data.Cmd) {
+					case 'Open':
+						console.log('Port: ' + data.Port)
+						console.log(data.Desc)
+						break;
+					case 'OpenFail':
+						console.log('Port: ' + data.Port)
+						console.log(data.Desc)
+						break;
+					case 'Close':
+						console.log('Port: ' + data.Port)
+						console.log(data.Desc)
+						break;
+					case 'Queued':
+						console.log('Queued:')
+						console.log('QCnt: ' + data.QCnt)
+						console.log('Ids: ', data.Ids)
+						console.log('D: ', data.D)
+						console.log('Port: ' + data.Port)
+						break;
+					case 'Write':
+						console.log('Write:')
+						console.log('QCnt: ' + data.QCnt)
+						console.log('Ids: ', data.Ids)
+						console.log('P: ' + data.P)
+						this.messageReceived()
+						break;
+					case 'CompleteFake':
+						console.log('CompleteFake:')
+						console.log('QCnt: ' + data.QCnt)
+						console.log('Ids: ', data.Ids)
+						console.log('P: ' + data.P)
+						break;
+					default:
+						console.error('Received unknown command: ' + data.Cmd)
+						break;
+				}
+			} else if(data.hasOwnProperty('Error')) {
+				console.error(data.Error)
+			} else if(data.hasOwnProperty('D')) { 				// Output from the serial port
+				console.log('Serial output: ', data.D)
 			}
 		})
 
@@ -132,52 +185,74 @@ export class Communication {
 	}
 
 	send(data: string) {
-		if(this.socket == null) {
-			return
-		}
-		this.commandSent = 'sent'
 		this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 	}
 
-    sendSetPosition(point: paper.Point) {
-		this.send('G92 X' + point.x + ' Y' + point.y + '\n')
-    }
-
-	sendMoveDirect(point: paper.Point) {
-		this.send('G0 X' + point.x + ' Y' + point.y + '\n')
+	messageReceived() {
+		if(this.commandQueue.length > 0) {
+			let command = this.commandQueue.shift()
+			command.callback()
+			this.send(this.commandQueue[0].data)
+		}
 	}
 
-	sendMoveLinear(point: paper.Point) {
-		this.send('G1 X' + point.x + ' Y' + point.y + '\n')
+	queue(data: string, callback: () => any = null) {
+		if(this.socket == null) {
+			return
+		}
+
+		this.commandQueue.push({ data: data, callback: callback })
+
+		if(this.commandQueue.length == 1) {
+			this.send(data)
+		}
+	}
+
+	clearQueue() {
+		this.commandQueue = []
+	}
+
+    sendSetPosition(point: paper.Point) {
+		this.queue('G92 X' + point.x + ' Y' + point.y + '\n')
+    }
+
+	sendMoveDirect(point: paper.Point, callback: () => any = null) {
+		this.queue('G0 X' + point.x + ' Y' + point.y + '\n', callback)
+	}
+
+	sendMoveLinear(point: paper.Point, callback: () => any = null) {
+		this.queue('G1 X' + point.x + ' Y' + point.y + '\n', callback)
 	}
 
 	sendSpeed(speed: number) {
-		this.send('G0 F' + speed + '\n')
+		this.queue('G0 F' + speed + '\n')
 	}
 
-	sendMachineSpecs(machineWidth: number, stepsPerRev: number, mmPerRev: number) {
-		this.send('M4 X' + machineWidth + ' S' + stepsPerRev + ' P' + mmPerRev + '\n')
+	sendTipibotSpecs(tipibotWidth: number, stepsPerRev: number, mmPerRev: number) {
+		this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' P' + mmPerRev + '\n')
 	}
 
 	sendPause(delay: number) {
-		this.send('G4 P' + delay + '\n')
+		this.queue('G4 P' + delay + '\n')
 	}
 
 	sendMotorOff() {
-		this.send('M84\n')
+		this.queue('M84\n')
 	}
 
-	sendPenLift(servoTempo: number, servoValue: number) {
-		this.send('G4 P' + servoTempo + '\n')
-		this.send('M340 P3 S' + servoValue + '\n')
-		this.send('G4 P0\n')
+	sendPenState(servoValue: number, servoTempo: number = 0) {
+		this.queue('G4 P' + servoTempo + '\n')
+		this.queue('M340 P3 S' + servoValue + '\n')
+		this.queue('G4 P0\n')
 	}
 
-	sendPenUp(servoUpTempo: number, servoUpValue: number) {
-		this.sendPenLift(servoUpTempo, servoUpValue)
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
+		this.sendPenState(servoUpValue, servoUpTempo)
 	}
 
-	sendPenDown(servoDownTempo: number, servoDownValue: number) {
-		this.sendPenLift(servoDownTempo, servoDownValue)
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
+		this.sendPenState(servoDownValue, servoDownTempo)
 	}
 }
+
+export let communication: Communication = null

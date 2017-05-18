@@ -1,12 +1,14 @@
 /// <reference path="../node_modules/@types/three/index.d.ts"/>
 /// <reference path="../node_modules/@types/jquery/index.d.ts"/>
 /// <reference path="../node_modules/@types/paper/index.d.ts"/>
+/// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 
 import { Settings, SettingsManager } from "./Settings"
+import { Tipibot, tipibot } from "./Tipibot"
 import { Renderer, ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { Plot, SVGPlot } from "./Plot"
@@ -20,7 +22,6 @@ let communication: Communication = null
 
 let container = null
 
-let pen: Pen
 let renderer: Renderer
 
 let drawing = {
@@ -38,24 +39,16 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		SVGPlot.createGUI(gui)
 		Plot.createGUI(gui)
 
-		gui.add(Settings.machine, 'speed', 0, 2000)
+		gui.add(Settings.tipibot, 'speed', 0, 2000)
 		
 
 		communication = new Communication(gui)
 
 		renderer = new PaperRenderer()
 
-		let machineRectangle = renderer.createRectangle(0, 0, Settings.machine.width, Settings.machine.height)
-		let paperRectangle = renderer.createRectangle(Settings.drawArea.x, Settings.drawArea.y, Settings.drawArea.width, Settings.drawArea.height)
-		let motorLeft = renderer.createCircle(0, 0, 50, 24)
-		let motorRight = renderer.createCircle(Settings.machine.width, 0, 50, 24)
+		tipibot.initialize(renderer)
 
-		renderer.centerOnMachine(Settings.machine)
-
-		// Pen
-		pen = renderer.createPen(Settings.machine.homeX, Settings.machine.homeY, Settings.machine.width, communication)
-		SVGPlot.pen = pen.item
-
+		renderer.centerOnTipibot(Settings.tipibot)
 		renderer.createDrawingLayer()
 	}
 
