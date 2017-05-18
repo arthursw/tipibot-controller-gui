@@ -1,4 +1,4 @@
-node_modules
+node_modules/*
 
 !node_modules/three/build/three.js
 !node_modules/paper/dist/paper-full.min.js
