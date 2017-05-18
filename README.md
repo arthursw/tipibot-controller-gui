@@ -1,3 +1,3 @@
 # Tipibot controller
 
-Controller for the Tipibot
+[Controller](https://arthursw.github.io/tipibot-controller/) for the Tipibot
