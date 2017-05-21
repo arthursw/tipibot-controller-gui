@@ -1,6 +1,21 @@
-export class Rectangle {
+export class Shape {
+	path: paper.Path
 	constructor() {
 
+	}
+
+	setPosition(position: paper.Point) {
+		this.path.position = position
+	}
+
+	remove() {
+		this.path.remove()
+	}
+}
+
+export class Rectangle extends Shape {
+	constructor() {
+		super()
 	}
 
 	update(x: number, y:number, width:number, height:number) {
@@ -12,9 +27,9 @@ export class Rectangle {
 	}
 }
 
-export class Circle {
+export class Circle extends Shape {
 	constructor() {
-
+		super()
 	}
 
 	update(x: number, y:number, radius:number) {
@@ -22,7 +37,6 @@ export class Circle {
 }
 
 export class PaperRectangle extends Rectangle {
-	path: paper.Path
 	constructor(x: number, y:number, width:number, height:number, layer: paper.Layer = null) {
 		super()
 		this.update(x, y, width, height, layer)
@@ -47,7 +61,7 @@ export class PaperRectangle extends Rectangle {
 }
 
 export class PaperCircle extends Circle {
-	path: paper.Path
+
 	constructor(x: number, y:number, radius:number, layer: paper.Layer = null) {
 		super()
 		this.update(x, y, radius, layer)
@@ -73,6 +87,7 @@ export class PaperCircle extends Circle {
 
 export class ThreeRectangle extends Rectangle {
 	line: THREE.Line
+	scene: THREE.Scene
 	constructor(x: number, y:number, width:number, height:number, scene: THREE.Scene, material: THREE.LineBasicMaterial = null) {
 		super()
 		let geometry = new THREE.Geometry()
@@ -86,6 +101,7 @@ export class ThreeRectangle extends Rectangle {
 			new THREE.Vector3( x, y, 0 )
 		)
 		scene.add(this.line)
+		this.scene = scene
 	}
 
 	update(x: number, y:number, width:number, height:number) {
@@ -102,6 +118,14 @@ export class ThreeRectangle extends Rectangle {
 		geometry.vertices[3].y = y
 		geometry.vertices[4].x = x
 		geometry.vertices[4].y = y
+	}
+
+	setPosition(position: paper.Point) {
+		this.line.position.set(position.x, position.y, 0)
+	}
+
+	remove() {
+		this.scene.remove(this.line)
 	}
 }
 
@@ -129,5 +153,13 @@ export class ThreeCircle extends Circle {
 			geometry.vertices.push(new THREE.Vector3(x + radius * Math.cos(i * angleStep), y + radius * Math.sin(i * angleStep)))
 		}
 		this.scene.add(this.line)
+	}
+
+	setPosition(position: paper.Point) {
+		this.line.position.set(position.x, position.y, 0)
+	}
+
+	remove() {
+		this.scene.remove(this.line)
 	}
 }

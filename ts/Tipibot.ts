@@ -1,5 +1,5 @@
 import { Communication, communication } from "./Communication"
-import { Settings, SettingsManager } from "./Settings"
+import { Settings, settingsManager } from "./Settings"
 import { Rectangle, Circle} from "./Shapes"
 import { Renderer } from "./Renderers"
 import { Pen } from "./Pen"
@@ -17,6 +17,9 @@ export class Tipibot {
 	constructor() {
 		this.isPenUp = true
 	}
+	
+	createGUI(gui: any) {
+	}
 
 	tipibotRectangle() {
 		return new paper.Rectangle(0, 0, Settings.tipibot.width, Settings.tipibot.height)
@@ -32,7 +35,7 @@ export class Tipibot {
 		this.motorLeft = renderer.createCircle(0, 0, 50, 24)
 		this.motorRight = renderer.createCircle(Settings.tipibot.width, 0, 50, 24)
 		this.pen = renderer.createPen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width, communication)
-		SettingsManager.addTipibotToGUI(this)
+		settingsManager.addTipibotToGUI(this)
 	}
 
 	settingsChanged() {
@@ -88,12 +91,16 @@ export class Tipibot {
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
 		if(!this.isPenUp) {
 			communication.sendPenUp(servoUpValue, servoUpTempo)
+			settingsManager.penUp()
+			this.isPenUp = true
 		}
 	}
 
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		if(this.isPenUp) {
 			communication.sendPenUp(servoDownValue, servoDownTempo)
+			settingsManager.penDown()
+			this.isPenUp = false
 		}
 	}
 

@@ -1,3 +1,4 @@
+import { GUI, Controller } from "./GUI"
 import { Settings } from "./Settings"
 
 // Connect to arduino-create-agent
@@ -14,12 +15,12 @@ export class Communication {
 
 	serialPort: string
 	socket: any
-	gui: any
-	portController: any
+	gui: GUI
+	portController: Controller
 	serialPorts: Array<string>
 	commandQueue: Array<Command>
 
-	constructor(gui:any) {
+	constructor(gui:GUI) {
 		communication = this
 		this.serialPort = ''
 		this.socket = null

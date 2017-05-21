@@ -3,26 +3,41 @@
 /// <reference path="../node_modules/@types/paper/index.d.ts"/>
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
+// Todo:
+// - add feedback when setting position (when click setPosition)
+// - set position: update x, y in real time
+// - make a visual difference between penUp / penDown (on the pen: fill / no fill)
+// - stop
+// - motorOff
+// - goHome
+// - up/down/left/right keys to move pen position
+// - svg rotate / flipX / flipY
+
+
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 
-import { Settings, SettingsManager } from "./Settings"
+import { Settings, settingsManager } from "./Settings"
 import { Tipibot, tipibot } from "./Tipibot"
 import { Renderer, ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { Plot, SVGPlot } from "./Plot"
 import { Communication } from "./Communication"
 import { Draggable } from "./Draggable"
+import { GUI } from "./GUI"
+import { Circle } from "./Shapes"
 
 declare var addWheelListener: any
-declare var dat: any
 
 let communication: Communication = null
 
 let container = null
 
-let renderer: Renderer
+let renderer: Renderer = null
+
+let gui: GUI
+let positionPreview: Circle = null
 
 let drawing = {
 	scale: 1,
@@ -33,18 +48,19 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function initialize() {
 
-		var gui = new dat.GUI();
+		gui = new GUI()
 
-		SettingsManager.createGUI(gui)
+		settingsManager.createGUI(gui)
 		SVGPlot.createGUI(gui)
-		Plot.createGUI(gui)
+		Plot.createGUI(SVGPlot.gui)
 
-		gui.add(Settings.tipibot, 'speed', 0, 2000)
+		// gui.add(Settings.tipibot, 'speed', 0, 2000)
 		
 
 		communication = new Communication(gui)
 
 		renderer = new PaperRenderer()
+		SVGPlot.renderer = renderer
 
 		tipibot.initialize(renderer)
 
@@ -65,10 +81,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		renderer.windowResize()
 	}
 
-	function getWorldPosition(event:MouseEvent): paper.Point {
-		return paper.view.viewToProject(new paper.Point(event.clientX, event.clientY))
-	}
-
 	function mouseDown(event: MouseEvent) {
 		for(let draggable of Draggable.draggables) {
 			draggable.mouseDown(event)
@@ -81,6 +93,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			draggable.mouseMove(event)
 		}
 		renderer.mouseMove(event)
+
+		if(settingsManager.settingPosition) {
+			let position = renderer.getWorldPosition(event)
+			if(positionPreview == null) {
+				positionPreview = renderer.createCircle(position.x, position.y, Pen.RADIUS)
+			}
+			positionPreview.setPosition(position)
+			settingsManager.setPositionSliders(position)
+		}
 	}
 
 	function mouseUp(event: MouseEvent) {
@@ -88,6 +109,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			draggable.mouseUp(event)
 		}
 		renderer.mouseUp(event)
+		if(settingsManager.settingPosition && !settingsManager.setPositionButton.contains(<HTMLElement>event.target) ) {
+			if(positionPreview != null) {
+				positionPreview.remove()
+				positionPreview = null
+			}
+			tipibot.setPosition(renderer.getWorldPosition(event))
+			settingsManager.toggleSetPosition(false)
+		}
 	}
 
 	function mouseLeave(event: MouseEvent) {

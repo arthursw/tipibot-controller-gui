@@ -1,3 +1,5 @@
+import { GUI, Controller } from "./GUI"
+
 let tipibotHeight = 2020
 let tipibotWidth = 1780
 
@@ -35,142 +37,186 @@ export let Settings = {
 }
 
 declare let saveAs: any
+
 declare type Tipibot = {
 	getPosition: ()=> paper.Point
 	setX: (x: number)=> any
 	setY: (y: number)=> any
 	settingsChanged: ()=> any
+	
+	penUp: (servoUpValue?: number, servoUpTempo?: number)=> any
+	penDown: (servoDownValue?: number, servoDownTempo?: number)=> any
+
+	isPenUp: boolean
+
 }
 
 export class SettingsManager {
 	
-	static tipibotFolder: any = null
-	static servoFolder: any = null
-	static servoPositionFolder: any = null
-	static servoDelayFolder: any = null
-	static drawAreaFolder: any = null
-	static xSlider: any = null
-	static ySlider: any = null
-	static tipibot: Tipibot
+	tipibotFolder: GUI = null
+	servoFolder: GUI = null
+	servoPositionFolder: GUI = null
+	servoDelayFolder: GUI = null
+	drawAreaFolder: GUI = null
+	xSlider: Controller = null
+	ySlider: Controller = null
+	tipibot: Tipibot
+	setPositionButton: Controller = null
+	penStateButton: Controller = null
+	settingPosition: boolean = false
 
-	static getControllers() {
-		let controllers = SettingsManager.tipibotFolder.__controllers
-		controllers = controllers.concat(SettingsManager.servoPositionFolder.__controllers)
-		controllers = controllers.concat(SettingsManager.servoDelayFolder.__controllers)
-		controllers = controllers.concat(SettingsManager.drawAreaFolder.__controllers)
+	constructor() {
+	}
+
+	getControllers() {
+		let controllers = this.tipibotFolder.getControllers()
+		controllers = controllers.concat(this.servoPositionFolder.getControllers())
+		controllers = controllers.concat(this.servoDelayFolder.getControllers())
+		controllers = controllers.concat(this.drawAreaFolder.getControllers())
 		return controllers
 	}
 
-	static createGUI(gui: any) {
+	createGUI(gui: GUI) {
 
-		let loadDivJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='application/json'/>")
-		let loadController = gui.add({loadSettings: function() { loadDivJ.click() }}, 'loadSettings')
-		$(loadController.domElement).append(loadDivJ)
-		loadDivJ.hide()
-		loadDivJ.change(SettingsManager.handleFileSelect)
+		let loadController = gui.addFileSelectorButton('loadSettings', 'application/json', this.handleFileSelect )
 
-		gui.add(SettingsManager, 'saveSettings')
+		gui.add(this, 'saveSettings')
 
-		SettingsManager.tipibotFolder = gui.addFolder('Tipibot')
-		SettingsManager.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000)
-		SettingsManager.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000)
-		SettingsManager.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width)
-		SettingsManager.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height)
-		SettingsManager.tipibotFolder.add(Settings.tipibot, 'speed', 0, 5000)
+		this.tipibotFolder = gui.addFolder('Tipibot')
+		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000)
+		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000)
+		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width)
+		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height)
+		this.tipibotFolder.add(Settings.tipibot, 'speed', 0, 5000)
 
-		SettingsManager.servoFolder = gui.addFolder('Servo')
+		this.servoFolder = gui.addFolder('Servo')
 
-		SettingsManager.servoPositionFolder = SettingsManager.servoFolder.addFolder('Position')
-		SettingsManager.servoPositionFolder.add(Settings.servo.position, 'up', 0, 3600)
-		SettingsManager.servoPositionFolder.add(Settings.servo.position, 'down', 0, 3600)
+		this.servoPositionFolder = this.servoFolder.addFolder('Position')
+		this.servoPositionFolder.add(Settings.servo.position, 'up', 0, 3600)
+		this.servoPositionFolder.add(Settings.servo.position, 'down', 0, 3600)
 
-		SettingsManager.servoDelayFolder = SettingsManager.servoFolder.addFolder('Delay')
-		SettingsManager.servoDelayFolder.add(Settings.servo.delay, 'up', 0, 1000)
-		SettingsManager.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000)
+		this.servoDelayFolder = this.servoFolder.addFolder('Delay')
+		this.servoDelayFolder.add(Settings.servo.delay, 'up', 0, 1000)
+		this.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000)
 
-		SettingsManager.drawAreaFolder = gui.addFolder('DrawArea')
-		SettingsManager.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width)
-		SettingsManager.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height)
-		SettingsManager.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width)
-		SettingsManager.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height)
+		this.drawAreaFolder = gui.addFolder('DrawArea')
+		this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width)
+		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height)
+		this.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width)
+		this.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height)
 
-		let controllers = SettingsManager.getControllers()
+		let controllers = this.getControllers()
 
 		for(let controller of controllers) {
-			controller.onChange(SettingsManager.settingChanged)
+			controller.onChange(this.settingChanged)
 		}
 	}
 
-	static addTipibotToGUI(tipibot: Tipibot) {
-		SettingsManager.tipibot = tipibot
+	addTipibotToGUI(tipibot: Tipibot) {
+		this.tipibot = tipibot
 		let position = tipibot.getPosition()
-		SettingsManager.xSlider = SettingsManager.tipibotFolder.add(position, 'x', 0, Settings.tipibot.width).onChange((value: number)=>{tipibot.setX(value)})
-		SettingsManager.ySlider = SettingsManager.tipibotFolder.add(position, 'y', 0, Settings.tipibot.height).onChange((value: number)=>{tipibot.setY(value)})
+		this.xSlider = this.tipibotFolder.addSlider('x', position.x, 0, Settings.tipibot.width).onChange((value: number)=>{tipibot.setX(value)})
+		this.ySlider = this.tipibotFolder.addSlider('y', position.y, 0, Settings.tipibot.height).onChange((value: number)=>{tipibot.setY(value)})
+
+		this.setPositionButton = this.tipibotFolder.addButton('setPosition', () => this.toggleSetPosition() )
+		this.penStateButton = this.tipibotFolder.addButton('penDown', () => this.changePenState() )
 	}
 
-	public static settingChanged(value: any=null) {
-		SettingsManager.xSlider.max(Settings.tipibot.width)
-		SettingsManager.ySlider.max(Settings.tipibot.height)
+	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
+		if(!setPosition) {
+			this.setPositionButton.changeName('setPosition')
+		} else {
+			this.setPositionButton.changeName('cancel')
+		}
+		this.settingPosition = setPosition
+	}
 
-		SettingsManager.xSlider.setValue(Settings.tipibot.homeX)
-		SettingsManager.ySlider.setValue(Settings.tipibot.homeY)
+	setPositionSliders(point: paper.Point) {
+		this.xSlider.setValueNoCallback(point.x)
+		this.ySlider.setValueNoCallback(point.y)
+	}
 
-		for(let controller of SettingsManager.drawAreaFolder.__controllers.concat(SettingsManager.tipibotFolder.__controllers)) {
-			if(controller.property == 'x' || controller.property == 'width' || controller.property == 'homeX') {
+	changePenState() {
+		if(this.tipibot.isPenUp) {
+			this.tipibot.penDown()
+		} else {
+			this.tipibot.penUp()
+		}
+	}
+
+	penUp() {
+		this.penStateButton.changeName('penDown')
+	}
+
+	penDown() {
+		this.penStateButton.changeName('penUp')
+	}
+
+	settingChanged(value: any=null) {
+		this.xSlider.max(Settings.tipibot.width)
+		this.ySlider.max(Settings.tipibot.height)
+
+		this.xSlider.setValue(Settings.tipibot.homeX)
+		this.ySlider.setValue(Settings.tipibot.homeY)
+
+		for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
+			if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.width)
 			}
-			if(controller.property == 'y' || controller.property == 'height' || controller.property == 'homeX') {
+			if(controller.getName() == 'y' || controller.getName() == 'height' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.height)
 			}
 		}
 
-		SettingsManager.tipibot.settingsChanged()
+		this.tipibot.settingsChanged()
 	}
 
-	static saveSettings() {
-		let json = JSON.stringify(Settings)
+	saveSettings() {
+		let json = JSON.stringify(Settings, null, '\t')
 		var blob = new Blob([json], {type: "application/json"})
 		saveAs(blob, "settings.json")
 		localStorage.setItem('settings', json)
 	}
 
-	static updateSliders() {
-		let controllers = SettingsManager.getControllers()
+	updateSliders() {
+		let controllers = this.getControllers()
 
 		for(let controller of controllers) {
 			controller.updateDisplay()
 		}
 	}
 
-	static copyObjectProperties(Target: any, Source: any) {
+	copyObjectProperties(Target: any, Source: any) {
 		for(let property in Target) {
 			if(typeof(Target[property]) === 'object') {
-				SettingsManager.copyObjectProperties(Target[property], Source[property])
+				this.copyObjectProperties(Target[property], Source[property])
 			} else {
 				Target[property] = Source[property]
 			}
 		}
 	}
 
-	static onJsonLoad(event: any) {
-		SettingsManager.copyObjectProperties(Settings, JSON.parse(event.target.result))
-		SettingsManager.settingChanged()
-		SettingsManager.updateSliders()
+	onJsonLoad(event: any) {
+		this.copyObjectProperties(Settings, JSON.parse(event.target.result))
+		this.settingChanged()
+		this.updateSliders()
 	}
 
-	static handleFileSelect(event: any) {
+	handleFileSelect(event: any) {
 		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
 
 		for (let i = 0; i < files.length; i++) {
 			let file = files.item(i)
 			
 			let reader = new FileReader()
-			reader.onload = SettingsManager.onJsonLoad
+			reader.onload = this.onJsonLoad
 			reader.readAsText(file)
 		}
 	}
 
-	static loadLocalStorage() {
+	loadLocalStorage() {
 		Settings = JSON.parse(localStorage.getItem('settings'))
 	}
- }
+}
+
+export let settingsManager = new SettingsManager()

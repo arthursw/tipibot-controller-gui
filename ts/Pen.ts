@@ -1,14 +1,21 @@
 import { Communication } from "./Communication"
 import { Draggable } from "./Draggable"
-import { Settings } from "./Settings"
+import { Settings, settingsManager } from "./Settings"
+import { tipibot } from "./Tipibot"
 
-const RADIUS = 20
+declare type Renderer = {
+	getWorldPosition(event: MouseEvent): paper.Point
+}
+
+
 
 export class Pen extends Draggable {
+	public static RADIUS = 20
+
 	communication: Communication
 
-	constructor(communication: Communication) {
-		super(null)
+	constructor(communication: Communication, renderer: Renderer) {
+		super(renderer)
 		this.communication = communication
 	}
 
@@ -36,12 +43,12 @@ export class PaperPen extends Pen {
 	circle: paper.Path
 	lines: paper.Path
 
-	constructor(communication: Communication) {
-		super(communication)
+	constructor(communication: Communication, renderer: Renderer) {
+		super(communication, renderer)
 	}
 
 	initialize(x: number, y:number, tipibotWidth: number, layer: paper.Layer = null) {
-		this.circle = paper.Path.Circle(new paper.Point(x, y), RADIUS)
+		this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS)
 		this.circle.strokeWidth = 1
 		this.circle.strokeColor = 'black'
 		this.circle.fillColor = 'black'
@@ -71,6 +78,8 @@ export class PaperPen extends Pen {
 	setPosition(point: paper.Point) {
 		this.circle.position = point
 		this.lines.segments[1].point = point
+		tipibot.moveDirect(point)
+		settingsManager.setPositionSliders(point)
 	}
 
 	drag(delta: paper.Point) {
@@ -96,12 +105,12 @@ export class ThreePen extends Pen {
 	camera: THREE.OrthographicCamera
 	lines: THREE.Line
 
-	constructor(communication: Communication) {
-		super(communication)
+	constructor(communication: Communication, renderer: Renderer) {
+		super(communication, renderer)
 	}
 
 	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.OrthographicCamera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
-		let geometry = new THREE.CircleGeometry( RADIUS, 32 )
+		let geometry = new THREE.CircleGeometry( Pen.RADIUS, 32 )
 		let material = new THREE.MeshBasicMaterial( { color: 0xffff00 } )
 		this.circle = new THREE.Mesh( geometry, material )
 		this.circle.position.x = x
@@ -153,9 +162,8 @@ export class ThreePen extends Pen {
 	}
 
 	mouseDown(event:MouseEvent) {
-
 		let position = this.getWorldPosition(event)
-		if(position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < RADIUS * RADIUS) {
+		if(position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
 			this.dragging = true
 			this.previousPosition = position.clone()
 		}

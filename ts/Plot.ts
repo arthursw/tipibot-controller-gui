@@ -2,20 +2,29 @@ import { Tipibot, tipibot } from "./Tipibot"
 import { Settings } from "./Settings"
 import { Draggable } from "./Draggable"
 import { Communication } from "./Communication"
+import { GUI } from "./GUI"
+
+
+declare type Renderer = {
+	getWorldPosition(event: MouseEvent): paper.Point
+}
 
 export class Plot extends Draggable {
 	static currentPlot: Plot = null
 
-	public static createGUI(gui: any) {
-		gui.add({plot: function() { console.log('plot') }}, 'plot')
+	public static createGUI(gui: GUI) {
+		gui.addButton('plot', ()=> {
+			if(Plot.currentPlot != null) {
+				Plot.currentPlot.plot()
+			}
+		})
 	}
 
-	constructor() {
-		super()
+	constructor(renderer: Renderer) {
+		super(renderer)
 	}
 
 	plot() {
-		Plot.currentPlot.plot()
 	}
 }
 
@@ -23,13 +32,15 @@ export class SVGPlot extends Plot {
 	static pen: paper.Item = null
 	static svgPlot: SVGPlot = null
 	static scale: number = 1
+	static renderer: Renderer
+	static gui: GUI
 
 	svgItem: paper.Item
 	currentItem: paper.Item
 	currentSegment: paper.Segment
 
 	public static onImageLoad(event: any) {
-		let svgPlot = new SVGPlot(paper.project.importSVG(event.target.result))
+		let svgPlot = new SVGPlot(paper.project.importSVG(event.target.result), SVGPlot.renderer)
 	}
 
 	public static handleFileSelect(event: any) {
@@ -50,12 +61,10 @@ export class SVGPlot extends Plot {
 		}
 	}
 
-	public static createGUI(gui: any) {
-		let loadDivJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]' accept='image/svg+xml'/>")
-		let loadController = gui.add({loadSVG: function() { loadDivJ.click() }}, 'loadSVG')
-		$(loadController.domElement).append(loadDivJ)
-		loadDivJ.hide()
-		loadDivJ.change(SVGPlot.handleFileSelect)
+	public static createGUI(gui: GUI) {
+		SVGPlot.gui = gui
+		gui.addFileSelectorButton('loadSVG', 'image/svg+xml', SVGPlot.handleFileSelect)
+
 		let scaleController = gui.add(SVGPlot, 'scale', 0.1, 5)
 
 		scaleController.onChange((value: number) => {
@@ -63,8 +72,8 @@ export class SVGPlot extends Plot {
 		})
 	}
 
-	constructor(svg: paper.Item) {
-		super()
+	constructor(svg: paper.Item, renderer: Renderer) {
+		super(renderer)
 		Plot.currentPlot = this
 		SVGPlot.svgPlot = this
 		this.svgItem = svg

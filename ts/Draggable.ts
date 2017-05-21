@@ -1,12 +1,18 @@
+declare type Renderer = {
+	getWorldPosition(event: MouseEvent): paper.Point
+}
+
 export class Draggable {
 	
 	static draggables: Array<Draggable> = new Array<Draggable>()
 
+	renderer: Renderer
 	dragging: boolean
 	previousPosition: paper.Point
 	item: paper.Item
 
-	constructor(item: paper.Item=null) {
+	constructor(renderer: Renderer, item: paper.Item=null) {
+		this.renderer = renderer
 		this.dragging = false
 		this.previousPosition = new paper.Point(0, 0)
 		this.item = item
@@ -18,7 +24,7 @@ export class Draggable {
 	}
 
 	getWorldPosition(event:MouseEvent): paper.Point {
-		return paper.view.viewToProject(new paper.Point(event.clientX, event.clientY))
+		return this.renderer.getWorldPosition(event)
 	}
 
 	mouseDown(event:MouseEvent) {

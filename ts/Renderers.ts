@@ -30,6 +30,14 @@ export class Renderer {
 
 	}
 
+	getMousePosition(event: MouseEvent): paper.Point {
+		return new paper.Point(event.clientX, event.clientY)
+	}
+
+	getWorldPosition(event: MouseEvent): paper.Point {
+		return paper.view.viewToProject(this.getMousePosition(event))
+	}
+
 	windowResize(){
 	}
 
@@ -52,7 +60,7 @@ export class Renderer {
 	}
 }
 
-export class PaperRenderer {
+export class PaperRenderer extends Renderer {
 	
 	canvas: HTMLCanvasElement
 	dragging: boolean
@@ -61,6 +69,7 @@ export class PaperRenderer {
 	drawingLayer: paper.Layer
 
 	constructor() {
+		super()
 		this.canvas = document.createElement('canvas')
 		this.canvas.width = window.innerWidth
 		this.canvas.height = window.innerHeight
@@ -79,13 +88,12 @@ export class PaperRenderer {
 		let margin = 100
 		let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
 		paper.view.zoom = 1 / ratio
-		console.log(paper.view.zoom)
 
 		paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2))
 	}
 
 	getDomElement(): any {
-		return null
+		return paper.view.element
 	}
 
 	createRectangle(rectangle: paper.Rectangle): Rectangle {
@@ -97,7 +105,7 @@ export class PaperRenderer {
 	}
 
 	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
-		let pen = new PaperPen(communication)
+		let pen = new PaperPen(communication, this)
 		pen.initialize(x, y, tipibotWidth, this.tipibotLayer)
 		return pen
 	}
@@ -116,14 +124,13 @@ export class PaperRenderer {
 
 	mouseDown(event: MouseEvent) {
 		this.dragging = true
-		this.previousPosition = new paper.Point(event.clientX, event.clientY)
+		this.previousPosition = this.getMousePosition(event)
 	}
 
 	mouseMove(event: MouseEvent) {
 		if(event.buttons == 4 && this.dragging) { 											// wheel button
-			let position = new paper.Point(event.clientX, event.clientY)
+			let position = this.getMousePosition(event)
 			paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom))
-			console.log(paper.view.center)
 			paper.view.draw()
 			this.previousPosition.x = position.x
 			this.previousPosition.y = position.y
@@ -139,9 +146,10 @@ export class PaperRenderer {
 	}
 
 	mouseWheel(event: WheelEvent) {
+		if(event.target != this.getDomElement()) {
+			return
+		}
 		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500))
-		console.log(paper.view.zoom)
-		event.preventDefault()
 	}
 
 	render() {
@@ -200,7 +208,7 @@ export class ThreeRenderer extends Renderer {
 	}
 
 	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
-		let pen = new ThreePen(communication)
+		let pen = new ThreePen(communication, this)
 		pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial)
 		return pen
 	}
@@ -209,6 +217,14 @@ export class ThreeRenderer extends Renderer {
 		this.camera.position.x = point.x - window.innerWidth / 2
 		this.camera.position.y = point.y - window.innerHeight / 2
 		this.camera.position.z = point.z
+	}
+
+	getWorldPosition(event: MouseEvent) {
+		let windowCenter = new paper.Point(window.innerWidth / 2, window.innerHeight / 2)
+		let windowOrigin = windowCenter.subtract(windowCenter.divide(this.camera.zoom).subtract(this.camera.position))
+		let delta = this.getMousePosition(event).divide(this.camera.zoom)
+
+		return windowOrigin.add(delta)
 	}
 
 	windowResize(){
@@ -245,11 +261,12 @@ export class ThreeRenderer extends Renderer {
 	}
 
 	mouseWheel(event: WheelEvent) {
+		if(event.target != this.getDomElement()) {
+			return
+		}
 		this.camera.zoom += ( event.deltaY / 500 )
 		this.camera.zoom = Math.max(0.1, Math.min(5, this.camera.zoom))
 		this.camera.updateProjectionMatrix()
-
-		event.preventDefault()
 	}
 
 	render() {
