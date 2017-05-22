@@ -1,8 +1,8 @@
 import { Tipibot, tipibot } from "./Tipibot"
 import { Settings } from "./Settings"
 import { Draggable } from "./Draggable"
-import { Communication } from "./Communication"
-import { GUI } from "./GUI"
+import { Communication, communication } from "./Communication"
+import { GUI, Controller } from "./GUI"
 
 
 declare type Renderer = {
@@ -10,14 +10,35 @@ declare type Renderer = {
 }
 
 export class Plot extends Draggable {
+
+	static plotFolder: GUI = null
+
 	static currentPlot: Plot = null
 
+	static xSlider: Controller = null
+	static ySlider: Controller = null
+
+	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
+		return (value: any)=> { 
+			if(Plot.currentPlot != null) { 
+				if(addValue) {
+					parameters.unshift(value)
+				}
+				f.apply(Plot.currentPlot, parameters)
+			} 
+		}
+	}
+
 	public static createGUI(gui: GUI) {
-		gui.addButton('plot', ()=> {
-			if(Plot.currentPlot != null) {
-				Plot.currentPlot.plot()
-			}
-		})
+		Plot.plotFolder = gui.addFolder('Plot')
+		Plot.plotFolder.addButton('plot', Plot.createCallback(Plot.prototype.plot))
+		Plot.plotFolder.addButton('stop', Plot.createCallback(Plot.prototype.stop))
+		Plot.plotFolder.addButton('rotate', Plot.createCallback(Plot.prototype.rotate))
+		Plot.plotFolder.addButton('flipX', Plot.createCallback(Plot.prototype.flipX))
+		Plot.plotFolder.addButton('flipY', Plot.createCallback(Plot.prototype.flipY))
+
+		Plot.xSlider = Plot.plotFolder.addSlider('x', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
+		Plot.ySlider = Plot.plotFolder.addSlider('y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
 	}
 
 	constructor(renderer: Renderer) {
@@ -25,6 +46,30 @@ export class Plot extends Draggable {
 	}
 
 	plot() {
+	}
+
+	stop() {
+		communication.sendStop()
+	}
+
+	rotate() {
+		this.item.rotate(90)
+	}
+
+	flipX() {
+		this.item.scale(-1, 1)
+	}
+	
+	flipY() {
+		this.item.scale(1, -1)
+	}
+	
+	setX(x: number) {
+		this.item.position.x = x
+	}
+	
+	setY(y: number) {
+		this.item.position.y = y
 	}
 }
 
@@ -104,6 +149,12 @@ export class SVGPlot extends Plot {
 			return
 		}
 		super.mouseDown(event)
+	}
+
+	drag(delta: paper.Point) {
+		super.drag(delta)
+		Plot.xSlider.setValueNoCallback(this.item.position.x)
+		Plot.ySlider.setValueNoCallback(this.item.position.y)
 	}
 
 	plot() {

@@ -95,7 +95,7 @@ export class GUI {
 		return new Controller( this.gui.add(object, propertyName, min, max) )
 	}
 
-	addButton(name: string, callback: ()=>any): Controller {
+	addButton(name: string, callback: (value?: any)=>any): Controller {
 		let object:any = {}
 		object[name] = callback
 		return new Controller(this.gui.add(object, name))

@@ -4,15 +4,9 @@
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
 // Todo:
-// - add feedback when setting position (when click setPosition)
-// - set position: update x, y in real time
 // - make a visual difference between penUp / penDown (on the pen: fill / no fill)
-// - stop
-// - motorOff
-// - goHome
 // - up/down/left/right keys to move pen position
-// - svg rotate / flipX / flipY
-
+// - reorganize GUI folders (settings)
 
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
@@ -50,14 +44,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 		gui = new GUI()
 
+		communication = new Communication(gui)
+
 		settingsManager.createGUI(gui)
+		Plot.createGUI(gui)
 		SVGPlot.createGUI(gui)
-		Plot.createGUI(SVGPlot.gui)
 
 		// gui.add(Settings.tipibot, 'speed', 0, 2000)
 		
-
-		communication = new Communication(gui)
 
 		renderer = new PaperRenderer()
 		SVGPlot.renderer = renderer
@@ -94,13 +88,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		}
 		renderer.mouseMove(event)
 
-		if(settingsManager.settingPosition) {
+		if(tipibot.settingPosition) {
 			let position = renderer.getWorldPosition(event)
 			if(positionPreview == null) {
 				positionPreview = renderer.createCircle(position.x, position.y, Pen.RADIUS)
 			}
 			positionPreview.setPosition(position)
-			settingsManager.setPositionSliders(position)
+			tipibot.setPositionSliders(position)
 		}
 	}
 
@@ -109,13 +103,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			draggable.mouseUp(event)
 		}
 		renderer.mouseUp(event)
-		if(settingsManager.settingPosition && !settingsManager.setPositionButton.contains(<HTMLElement>event.target) ) {
+		if(tipibot.settingPosition && !tipibot.setPositionButton.contains(<HTMLElement>event.target) ) {
 			if(positionPreview != null) {
 				positionPreview.remove()
 				positionPreview = null
 			}
 			tipibot.setPosition(renderer.getWorldPosition(event))
-			settingsManager.toggleSetPosition(false)
+			tipibot.toggleSetPosition(false)
 		}
 	}
 
@@ -130,10 +124,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		renderer.mouseWheel(event)
 	}
 
+	function keyDown(event: KeyboardEvent) {
+		tipibot.keyDown(event)
+	}
+
 	window.addEventListener( 'resize', windowResize, false )
 	document.body.addEventListener('mousedown', mouseDown)
 	document.body.addEventListener('mousemove', mouseMove)
 	document.body.addEventListener('mouseup', mouseUp)
 	document.body.addEventListener('mouseleave', mouseLeave)
+	document.body.addEventListener('keydown', keyDown)
 	addWheelListener(document.body, mouseWheel)
 });

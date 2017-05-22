@@ -39,13 +39,14 @@ export let Settings = {
 declare let saveAs: any
 
 declare type Tipibot = {
+	createGUI: (gui:GUI)=> void
 	getPosition: ()=> paper.Point
-	setX: (x: number)=> any
-	setY: (y: number)=> any
-	settingsChanged: ()=> any
+	setX: (x: number)=> void
+	setY: (y: number)=> void
+	settingsChanged: ()=> void
 	
-	penUp: (servoUpValue?: number, servoUpTempo?: number)=> any
-	penDown: (servoDownValue?: number, servoDownTempo?: number)=> any
+	penUp: (servoUpValue?: number, servoUpTempo?: number)=> void
+	penDown: (servoDownValue?: number, servoDownTempo?: number)=> void
 
 	isPenUp: boolean
 
@@ -53,17 +54,13 @@ declare type Tipibot = {
 
 export class SettingsManager {
 	
+	settingsFolder: GUI = null
 	tipibotFolder: GUI = null
 	servoFolder: GUI = null
 	servoPositionFolder: GUI = null
 	servoDelayFolder: GUI = null
 	drawAreaFolder: GUI = null
-	xSlider: Controller = null
-	ySlider: Controller = null
 	tipibot: Tipibot
-	setPositionButton: Controller = null
-	penStateButton: Controller = null
-	settingPosition: boolean = false
 
 	constructor() {
 	}
@@ -78,9 +75,9 @@ export class SettingsManager {
 
 	createGUI(gui: GUI) {
 
-		let loadController = gui.addFileSelectorButton('loadSettings', 'application/json', this.handleFileSelect )
-
-		gui.add(this, 'saveSettings')
+		this.settingsFolder = gui.addFolder('Settings')
+		this.settingsFolder.addFileSelectorButton('load', 'application/json', this.handleFileSelect )
+		this.settingsFolder.add(this, 'save')
 
 		this.tipibotFolder = gui.addFolder('Tipibot')
 		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000)
@@ -114,50 +111,10 @@ export class SettingsManager {
 
 	addTipibotToGUI(tipibot: Tipibot) {
 		this.tipibot = tipibot
-		let position = tipibot.getPosition()
-		this.xSlider = this.tipibotFolder.addSlider('x', position.x, 0, Settings.tipibot.width).onChange((value: number)=>{tipibot.setX(value)})
-		this.ySlider = this.tipibotFolder.addSlider('y', position.y, 0, Settings.tipibot.height).onChange((value: number)=>{tipibot.setY(value)})
-
-		this.setPositionButton = this.tipibotFolder.addButton('setPosition', () => this.toggleSetPosition() )
-		this.penStateButton = this.tipibotFolder.addButton('penDown', () => this.changePenState() )
-	}
-
-	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
-		if(!setPosition) {
-			this.setPositionButton.changeName('setPosition')
-		} else {
-			this.setPositionButton.changeName('cancel')
-		}
-		this.settingPosition = setPosition
-	}
-
-	setPositionSliders(point: paper.Point) {
-		this.xSlider.setValueNoCallback(point.x)
-		this.ySlider.setValueNoCallback(point.y)
-	}
-
-	changePenState() {
-		if(this.tipibot.isPenUp) {
-			this.tipibot.penDown()
-		} else {
-			this.tipibot.penUp()
-		}
-	}
-
-	penUp() {
-		this.penStateButton.changeName('penDown')
-	}
-
-	penDown() {
-		this.penStateButton.changeName('penUp')
+		this.tipibot.createGUI(this.tipibotFolder)
 	}
 
 	settingChanged(value: any=null) {
-		this.xSlider.max(Settings.tipibot.width)
-		this.ySlider.max(Settings.tipibot.height)
-
-		this.xSlider.setValue(Settings.tipibot.homeX)
-		this.ySlider.setValue(Settings.tipibot.homeY)
 
 		for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
 			if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
@@ -171,7 +128,7 @@ export class SettingsManager {
 		this.tipibot.settingsChanged()
 	}
 
-	saveSettings() {
+	save() {
 		let json = JSON.stringify(Settings, null, '\t')
 		var blob = new Blob([json], {type: "application/json"})
 		saveAs(blob, "settings.json")

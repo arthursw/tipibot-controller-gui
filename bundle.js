@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 6);
+/******/ 	return __webpack_require__(__webpack_require__.s = 8);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -106,16 +106,12 @@ exports.Settings = {
 };
 var SettingsManager = (function () {
     function SettingsManager() {
+        this.settingsFolder = null;
         this.tipibotFolder = null;
         this.servoFolder = null;
         this.servoPositionFolder = null;
         this.servoDelayFolder = null;
         this.drawAreaFolder = null;
-        this.xSlider = null;
-        this.ySlider = null;
-        this.setPositionButton = null;
-        this.penStateButton = null;
-        this.settingPosition = false;
     }
     SettingsManager.prototype.getControllers = function () {
         var controllers = this.tipibotFolder.getControllers();
@@ -125,8 +121,9 @@ var SettingsManager = (function () {
         return controllers;
     };
     SettingsManager.prototype.createGUI = function (gui) {
-        var loadController = gui.addFileSelectorButton('loadSettings', 'application/json', this.handleFileSelect);
-        gui.add(this, 'saveSettings');
+        this.settingsFolder = gui.addFolder('Settings');
+        this.settingsFolder.addFileSelectorButton('load', 'application/json', this.handleFileSelect);
+        this.settingsFolder.add(this, 'save');
         this.tipibotFolder = gui.addFolder('Tipibot');
         this.tipibotFolder.add(exports.Settings.tipibot, 'width', 100, 10000);
         this.tipibotFolder.add(exports.Settings.tipibot, 'height', 100, 10000);
@@ -152,48 +149,11 @@ var SettingsManager = (function () {
         }
     };
     SettingsManager.prototype.addTipibotToGUI = function (tipibot) {
-        var _this = this;
         this.tipibot = tipibot;
-        var position = tipibot.getPosition();
-        this.xSlider = this.tipibotFolder.addSlider('x', position.x, 0, exports.Settings.tipibot.width).onChange(function (value) { tipibot.setX(value); });
-        this.ySlider = this.tipibotFolder.addSlider('y', position.y, 0, exports.Settings.tipibot.height).onChange(function (value) { tipibot.setY(value); });
-        this.setPositionButton = this.tipibotFolder.addButton('setPosition', function () { return _this.toggleSetPosition(); });
-        this.penStateButton = this.tipibotFolder.addButton('penDown', function () { return _this.changePenState(); });
-    };
-    SettingsManager.prototype.toggleSetPosition = function (setPosition) {
-        if (setPosition === void 0) { setPosition = !this.settingPosition; }
-        if (!setPosition) {
-            this.setPositionButton.changeName('setPosition');
-        }
-        else {
-            this.setPositionButton.changeName('cancel');
-        }
-        this.settingPosition = setPosition;
-    };
-    SettingsManager.prototype.setPositionSliders = function (point) {
-        this.xSlider.setValueNoCallback(point.x);
-        this.ySlider.setValueNoCallback(point.y);
-    };
-    SettingsManager.prototype.changePenState = function () {
-        if (this.tipibot.isPenUp) {
-            this.tipibot.penDown();
-        }
-        else {
-            this.tipibot.penUp();
-        }
-    };
-    SettingsManager.prototype.penUp = function () {
-        this.penStateButton.changeName('penDown');
-    };
-    SettingsManager.prototype.penDown = function () {
-        this.penStateButton.changeName('penUp');
+        this.tipibot.createGUI(this.tipibotFolder);
     };
     SettingsManager.prototype.settingChanged = function (value) {
         if (value === void 0) { value = null; }
-        this.xSlider.max(exports.Settings.tipibot.width);
-        this.ySlider.max(exports.Settings.tipibot.height);
-        this.xSlider.setValue(exports.Settings.tipibot.homeX);
-        this.ySlider.setValue(exports.Settings.tipibot.homeY);
         for (var _i = 0, _a = this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers()); _i < _a.length; _i++) {
             var controller = _a[_i];
             if (controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
@@ -205,7 +165,7 @@ var SettingsManager = (function () {
         }
         this.tipibot.settingsChanged();
     };
-    SettingsManager.prototype.saveSettings = function () {
+    SettingsManager.prototype.save = function () {
         var json = JSON.stringify(exports.Settings, null, '\t');
         var blob = new Blob([json], { type: "application/json" });
         saveAs(blob, "settings.json");
@@ -309,6 +269,164 @@ exports.Draggable = Draggable;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var Communication_1 = __webpack_require__(3);
+var Settings_1 = __webpack_require__(0);
+var Tipibot = (function () {
+    function Tipibot() {
+        this.xSlider = null;
+        this.ySlider = null;
+        this.setPositionButton = null;
+        this.penStateButton = null;
+        this.settingPosition = false;
+        this.isPenUp = true;
+    }
+    Tipibot.prototype.createGUI = function (gui) {
+        var _this = this;
+        var goHomeButton = gui.addButton('goHome', function () { return _this.goHome(); });
+        var position = this.getPosition();
+        this.xSlider = gui.addSlider('x', position.x, 0, Settings_1.Settings.tipibot.width).onChange(function (value) { _this.setX(value); });
+        this.ySlider = gui.addSlider('y', position.y, 0, Settings_1.Settings.tipibot.height).onChange(function (value) { _this.setY(value); });
+        this.setPositionButton = gui.addButton('setPosition', function () { return _this.toggleSetPosition(); });
+        this.penStateButton = gui.addButton('penDown', function () { return _this.changePenState(); });
+        var motorsOffButton = gui.addButton('motorsOff', function () { return _this.motorsOff(); });
+    };
+    Tipibot.prototype.setPositionSliders = function (point) {
+        this.xSlider.setValueNoCallback(point.x);
+        this.ySlider.setValueNoCallback(point.y);
+    };
+    Tipibot.prototype.toggleSetPosition = function (setPosition) {
+        if (setPosition === void 0) { setPosition = !this.settingPosition; }
+        if (!setPosition) {
+            this.setPositionButton.changeName('setPosition');
+        }
+        else {
+            this.setPositionButton.changeName('cancel');
+        }
+        this.settingPosition = setPosition;
+    };
+    Tipibot.prototype.changePenState = function () {
+        if (this.isPenUp) {
+            this.penDown();
+        }
+        else {
+            this.penUp();
+        }
+    };
+    Tipibot.prototype.tipibotRectangle = function () {
+        return new paper.Rectangle(0, 0, Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
+    };
+    Tipibot.prototype.paperRectangle = function () {
+        return new paper.Rectangle(Settings_1.Settings.tipibot.width / 2 - Settings_1.Settings.drawArea.width / 2 + Settings_1.Settings.drawArea.x, Settings_1.Settings.drawArea.y, Settings_1.Settings.drawArea.width, Settings_1.Settings.drawArea.height);
+    };
+    Tipibot.prototype.initialize = function (renderer) {
+        this.area = renderer.createRectangle(this.tipibotRectangle());
+        this.paper = renderer.createRectangle(this.paperRectangle());
+        this.motorLeft = renderer.createCircle(0, 0, 50, 24);
+        this.motorRight = renderer.createCircle(Settings_1.Settings.tipibot.width, 0, 50, 24);
+        this.pen = renderer.createPen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.width, Communication_1.communication);
+        Settings_1.settingsManager.addTipibotToGUI(this);
+    };
+    Tipibot.prototype.settingsChanged = function () {
+        this.xSlider.max(Settings_1.Settings.tipibot.width);
+        this.ySlider.max(Settings_1.Settings.tipibot.height);
+        this.xSlider.setValue(Settings_1.Settings.tipibot.homeX);
+        this.ySlider.setValue(Settings_1.Settings.tipibot.homeY);
+        this.area.updateRectangle(this.tipibotRectangle());
+        this.paper.updateRectangle(this.paperRectangle());
+        this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
+        this.pen.settingsChanged();
+    };
+    Tipibot.prototype.getPosition = function () {
+        return this.pen.getPosition();
+    };
+    Tipibot.prototype.setX = function (x) {
+        var p = this.getPosition();
+        this.setPosition(new paper.Point(x, p.y));
+    };
+    Tipibot.prototype.setY = function (y) {
+        var p = this.getPosition();
+        this.setPosition(new paper.Point(p.x, y));
+    };
+    Tipibot.prototype.setPosition = function (point) {
+        this.pen.setPosition(point);
+        Communication_1.communication.sendSetPosition(point);
+    };
+    Tipibot.prototype.moveDirect = function (point, callback) {
+        if (callback === void 0) { callback = null; }
+        Communication_1.communication.sendMoveDirect(point, callback);
+    };
+    Tipibot.prototype.moveLinear = function (point, callback) {
+        if (callback === void 0) { callback = null; }
+        Communication_1.communication.sendMoveLinear(point, callback);
+    };
+    Tipibot.prototype.setSpeed = function (speed) {
+        Communication_1.communication.sendSpeed(speed);
+    };
+    Tipibot.prototype.tipibotSpecs = function (tipibotWidth, stepsPerRev, mmPerRev) {
+        Communication_1.communication.sendTipibotSpecs(tipibotWidth, stepsPerRev, mmPerRev);
+    };
+    Tipibot.prototype.pause = function (delay) {
+        Communication_1.communication.sendPause(delay);
+    };
+    Tipibot.prototype.motorOff = function () {
+        Communication_1.communication.sendMotorOff();
+    };
+    Tipibot.prototype.penUp = function (servoUpValue, servoUpTempo) {
+        if (servoUpValue === void 0) { servoUpValue = Settings_1.Settings.servo.position.up; }
+        if (servoUpTempo === void 0) { servoUpTempo = Settings_1.Settings.servo.delay.up; }
+        if (!this.isPenUp) {
+            Communication_1.communication.sendPenUp(servoUpValue, servoUpTempo);
+            this.penStateButton.changeName('penDown');
+            this.isPenUp = true;
+        }
+    };
+    Tipibot.prototype.penDown = function (servoDownValue, servoDownTempo) {
+        if (servoDownValue === void 0) { servoDownValue = Settings_1.Settings.servo.position.down; }
+        if (servoDownTempo === void 0) { servoDownTempo = Settings_1.Settings.servo.delay.down; }
+        if (this.isPenUp) {
+            Communication_1.communication.sendPenUp(servoDownValue, servoDownTempo);
+            this.penStateButton.changeName('penUp');
+            this.isPenUp = false;
+        }
+    };
+    Tipibot.prototype.goHome = function () {
+        this.penUp();
+        this.moveDirect(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
+    };
+    Tipibot.prototype.motorsOff = function () {
+        Communication_1.communication.sendMotorOff();
+    };
+    Tipibot.prototype.keyDown = function (event) {
+        switch (event.keyCode) {
+            case 37:
+                this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)));
+                break;
+            case 38:
+                this.moveDirect(this.getPosition().add(new paper.Point(0, -1)));
+                break;
+            case 39:
+                this.moveDirect(this.getPosition().add(new paper.Point(1, 0)));
+                break;
+            case 40:
+                this.moveDirect(this.getPosition().add(new paper.Point(0, 1)));
+                break;
+            default:
+                break;
+        }
+    };
+    return Tipibot;
+}());
+exports.Tipibot = Tipibot;
+exports.tipibot = new Tipibot();
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 var Settings_1 = __webpack_require__(0);
 var Communication = (function () {
     function Communication(gui) {
@@ -325,7 +443,7 @@ var Communication = (function () {
         // Find proper websocket port with http requests info
         // It will listen to http and websocket connections on a range of ports from 8990 to 9000.
         var _this = this;
-        var portNumber = 8990;
+        var portNumber = 8991;
         var connectionSuccess = function (data, textStatus, jqXHR) {
             console.log("connection to arduino-create-agent success");
             console.log("textStatus: ");
@@ -341,10 +459,15 @@ var Communication = (function () {
             console.log(errorThrown);
             console.log("textStatus: ");
             console.log(textStatus);
-            portNumber++;
-            if (portNumber > 9000) {
+            if (portNumber == 9000) {
+                portNumber = 8990;
+            }
+            else if (portNumber == 8990) {
                 console.log("Error: impossible to connect to arduino-create-agent");
                 return;
+            }
+            else {
+                portNumber++;
             }
             connectArduinoCreateAgent();
         };
@@ -392,75 +515,77 @@ var Communication = (function () {
             console.log('Unknown response: ', event);
         }
     };
+    Communication.prototype.onWebSocketConnect = function (response) {
+        console.log('connect response: ', response);
+        this.socket.emit('command', 'list');
+    };
+    Communication.prototype.onWebSocketMessage = function (message) {
+        var data = null;
+        try {
+            data = JSON.parse(message);
+        }
+        catch (e) {
+            return;
+        }
+        // List serial ports response (list):
+        if (data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
+            this.initializeSerialConnectionPorts(data);
+            return;
+        }
+        // Command responses:
+        if (data.hasOwnProperty('Cmd')) {
+            switch (data.Cmd) {
+                case 'Open':
+                    console.log('Port: ' + data.Port);
+                    console.log(data.Desc);
+                    break;
+                case 'OpenFail':
+                    console.log('Port: ' + data.Port);
+                    console.log(data.Desc);
+                    break;
+                case 'Close':
+                    console.log('Port: ' + data.Port);
+                    console.log(data.Desc);
+                    break;
+                case 'Queued':
+                    console.log('Queued:');
+                    console.log('QCnt: ' + data.QCnt);
+                    console.log('Ids: ', data.Ids);
+                    console.log('D: ', data.D);
+                    console.log('Port: ' + data.Port);
+                    break;
+                case 'Write':
+                    console.log('Write:');
+                    console.log('QCnt: ' + data.QCnt);
+                    console.log('Ids: ', data.Ids);
+                    console.log('P: ' + data.P);
+                    this.messageReceived();
+                    break;
+                case 'CompleteFake':
+                    console.log('CompleteFake:');
+                    console.log('QCnt: ' + data.QCnt);
+                    console.log('Ids: ', data.Ids);
+                    console.log('P: ' + data.P);
+                    break;
+                default:
+                    console.error('Received unknown command: ' + data.Cmd);
+                    break;
+            }
+        }
+        else if (data.hasOwnProperty('Error')) {
+            console.error(data.Error);
+        }
+        else if (data.hasOwnProperty('D')) {
+            console.log('Serial output: ', data.D);
+        }
+    };
     Communication.prototype.openWebsocketConnection = function (websocketPort) {
         var _this = this;
-        this.socket = io(websocketPort);
-        this.socket.on('connect', function (response) {
-            console.log('connect response: ', response);
-            // this.socket.emit('command', 'log on')	
-            _this.socket.emit('command', 'list');
-        });
+        this.socket = io('ws://localhost:3000');
+        // this.socket = io(websocketPort)
+        this.socket.on('connect', function (response) { return _this.onWebSocketConnect(response); });
         // window.ws = this.socket
-        this.socket.on('message', function (message) {
-            var data = null;
-            try {
-                data = JSON.parse(message);
-            }
-            catch (e) {
-                return;
-            }
-            // List serial ports response (list):
-            if (data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
-                _this.initializeSerialConnectionPorts(data);
-                return;
-            }
-            // Command responses:
-            if (data.hasOwnProperty('Cmd')) {
-                switch (data.Cmd) {
-                    case 'Open':
-                        console.log('Port: ' + data.Port);
-                        console.log(data.Desc);
-                        break;
-                    case 'OpenFail':
-                        console.log('Port: ' + data.Port);
-                        console.log(data.Desc);
-                        break;
-                    case 'Close':
-                        console.log('Port: ' + data.Port);
-                        console.log(data.Desc);
-                        break;
-                    case 'Queued':
-                        console.log('Queued:');
-                        console.log('QCnt: ' + data.QCnt);
-                        console.log('Ids: ', data.Ids);
-                        console.log('D: ', data.D);
-                        console.log('Port: ' + data.Port);
-                        break;
-                    case 'Write':
-                        console.log('Write:');
-                        console.log('QCnt: ' + data.QCnt);
-                        console.log('Ids: ', data.Ids);
-                        console.log('P: ' + data.P);
-                        _this.messageReceived();
-                        break;
-                    case 'CompleteFake':
-                        console.log('CompleteFake:');
-                        console.log('QCnt: ' + data.QCnt);
-                        console.log('Ids: ', data.Ids);
-                        console.log('P: ' + data.P);
-                        break;
-                    default:
-                        console.error('Received unknown command: ' + data.Cmd);
-                        break;
-                }
-            }
-            else if (data.hasOwnProperty('Error')) {
-                console.error(data.Error);
-            }
-            else if (data.hasOwnProperty('D')) {
-                console.log('Serial output: ', data.D);
-            }
-        });
+        this.socket.on('message', function (message) { return _this.onWebSocketMessage(message); });
         return;
     };
     Communication.prototype.send = function (data) {
@@ -525,108 +650,13 @@ var Communication = (function () {
         if (servoDownTempo === void 0) { servoDownTempo = Settings_1.Settings.servo.delay.down; }
         this.sendPenState(servoDownValue, servoDownTempo);
     };
+    Communication.prototype.sendStop = function () {
+        this.queue('M0\n');
+    };
     return Communication;
 }());
 exports.Communication = Communication;
 exports.communication = null;
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var Communication_1 = __webpack_require__(2);
-var Settings_1 = __webpack_require__(0);
-var Tipibot = (function () {
-    function Tipibot() {
-        this.isPenUp = true;
-    }
-    Tipibot.prototype.createGUI = function (gui) {
-    };
-    Tipibot.prototype.tipibotRectangle = function () {
-        return new paper.Rectangle(0, 0, Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
-    };
-    Tipibot.prototype.paperRectangle = function () {
-        return new paper.Rectangle(Settings_1.Settings.tipibot.width / 2 - Settings_1.Settings.drawArea.width / 2 + Settings_1.Settings.drawArea.x, Settings_1.Settings.drawArea.y, Settings_1.Settings.drawArea.width, Settings_1.Settings.drawArea.height);
-    };
-    Tipibot.prototype.initialize = function (renderer) {
-        this.area = renderer.createRectangle(this.tipibotRectangle());
-        this.paper = renderer.createRectangle(this.paperRectangle());
-        this.motorLeft = renderer.createCircle(0, 0, 50, 24);
-        this.motorRight = renderer.createCircle(Settings_1.Settings.tipibot.width, 0, 50, 24);
-        this.pen = renderer.createPen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.width, Communication_1.communication);
-        Settings_1.settingsManager.addTipibotToGUI(this);
-    };
-    Tipibot.prototype.settingsChanged = function () {
-        this.area.updateRectangle(this.tipibotRectangle());
-        this.paper.updateRectangle(this.paperRectangle());
-        this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
-        this.pen.settingsChanged();
-    };
-    Tipibot.prototype.getPosition = function () {
-        return this.pen.getPosition();
-    };
-    Tipibot.prototype.setX = function (x) {
-        var p = this.getPosition();
-        this.setPosition(new paper.Point(x, p.y));
-    };
-    Tipibot.prototype.setY = function (y) {
-        var p = this.getPosition();
-        this.setPosition(new paper.Point(p.x, y));
-    };
-    Tipibot.prototype.setPosition = function (point) {
-        this.pen.setPosition(point);
-        Communication_1.communication.sendSetPosition(point);
-    };
-    Tipibot.prototype.moveDirect = function (point, callback) {
-        if (callback === void 0) { callback = null; }
-        Communication_1.communication.sendMoveDirect(point, callback);
-    };
-    Tipibot.prototype.moveLinear = function (point, callback) {
-        if (callback === void 0) { callback = null; }
-        Communication_1.communication.sendMoveLinear(point, callback);
-    };
-    Tipibot.prototype.setSpeed = function (speed) {
-        Communication_1.communication.sendSpeed(speed);
-    };
-    Tipibot.prototype.tipibotSpecs = function (tipibotWidth, stepsPerRev, mmPerRev) {
-        Communication_1.communication.sendTipibotSpecs(tipibotWidth, stepsPerRev, mmPerRev);
-    };
-    Tipibot.prototype.pause = function (delay) {
-        Communication_1.communication.sendPause(delay);
-    };
-    Tipibot.prototype.motorOff = function () {
-        Communication_1.communication.sendMotorOff();
-    };
-    Tipibot.prototype.penUp = function (servoUpValue, servoUpTempo) {
-        if (servoUpValue === void 0) { servoUpValue = Settings_1.Settings.servo.position.up; }
-        if (servoUpTempo === void 0) { servoUpTempo = Settings_1.Settings.servo.delay.up; }
-        if (!this.isPenUp) {
-            Communication_1.communication.sendPenUp(servoUpValue, servoUpTempo);
-            Settings_1.settingsManager.penUp();
-            this.isPenUp = true;
-        }
-    };
-    Tipibot.prototype.penDown = function (servoDownValue, servoDownTempo) {
-        if (servoDownValue === void 0) { servoDownValue = Settings_1.Settings.servo.position.down; }
-        if (servoDownTempo === void 0) { servoDownTempo = Settings_1.Settings.servo.delay.down; }
-        if (this.isPenUp) {
-            Communication_1.communication.sendPenUp(servoDownValue, servoDownTempo);
-            Settings_1.settingsManager.penDown();
-            this.isPenUp = false;
-        }
-    };
-    Tipibot.prototype.goHome = function () {
-        this.penUp();
-        this.moveDirect(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
-    };
-    return Tipibot;
-}());
-exports.Tipibot = Tipibot;
-exports.tipibot = new Tipibot();
 
 
 /***/ }),
@@ -646,25 +676,330 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var Tipibot_1 = __webpack_require__(3);
 var Draggable_1 = __webpack_require__(1);
+var Settings_1 = __webpack_require__(0);
+var Tipibot_1 = __webpack_require__(2);
+var Pen = (function (_super) {
+    __extends(Pen, _super);
+    function Pen(communication, renderer) {
+        var _this = _super.call(this, renderer) || this;
+        _this.communication = communication;
+        return _this;
+    }
+    Pen.prototype.settingsChanged = function () {
+        this.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
+    };
+    Pen.prototype.getPosition = function () {
+        return null;
+    };
+    Pen.prototype.setPosition = function (point) {
+    };
+    Pen.prototype.mouseStop = function (event) {
+        if (this.dragging) {
+            this.communication.sendMoveDirect(this.getWorldPosition(event));
+        }
+        _super.prototype.mouseStop.call(this, event);
+    };
+    return Pen;
+}(Draggable_1.Draggable));
+Pen.RADIUS = 20;
+exports.Pen = Pen;
+var PaperPen = (function (_super) {
+    __extends(PaperPen, _super);
+    function PaperPen(communication, renderer) {
+        return _super.call(this, communication, renderer) || this;
+    }
+    PaperPen.prototype.initialize = function (x, y, tipibotWidth, layer) {
+        if (layer === void 0) { layer = null; }
+        this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
+        this.circle.strokeWidth = 1;
+        this.circle.strokeColor = 'black';
+        this.circle.fillColor = 'black';
+        this.item = this.circle;
+        this.lines = new paper.Path();
+        this.lines.add(new paper.Point(0, 0));
+        this.lines.add(new paper.Point(x, y));
+        this.lines.add(new paper.Point(tipibotWidth, 0));
+        this.lines.strokeWidth = 1;
+        this.lines.strokeColor = 'black';
+        this.previousPosition = new paper.Point(0, 0);
+        if (layer) {
+            layer.addChild(this.circle);
+            layer.addChild(this.lines);
+        }
+    };
+    PaperPen.prototype.getPosition = function () {
+        return this.circle.position;
+    };
+    PaperPen.prototype.setPosition = function (point) {
+        this.circle.position = point;
+        this.lines.segments[1].point = point;
+        Tipibot_1.tipibot.moveDirect(point);
+        Tipibot_1.tipibot.setPositionSliders(point);
+    };
+    PaperPen.prototype.drag = function (delta) {
+        this.setPosition(this.circle.position.add(delta));
+    };
+    PaperPen.prototype.mouseStop = function (event) {
+        if (this.dragging) {
+            this.setPosition(this.circle.position);
+        }
+        _super.prototype.mouseStop.call(this, event);
+    };
+    PaperPen.prototype.settingsChanged = function () {
+        this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
+        _super.prototype.settingsChanged.call(this);
+    };
+    return PaperPen;
+}(Pen));
+exports.PaperPen = PaperPen;
+var ThreePen = (function (_super) {
+    __extends(ThreePen, _super);
+    function ThreePen(communication, renderer) {
+        return _super.call(this, communication, renderer) || this;
+    }
+    ThreePen.prototype.initialize = function (x, y, tipibotWidth, camera, scene, lineMat) {
+        if (scene === void 0) { scene = null; }
+        if (lineMat === void 0) { lineMat = null; }
+        var geometry = new THREE.CircleGeometry(Pen.RADIUS, 32);
+        var material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        this.circle = new THREE.Mesh(geometry, material);
+        this.circle.position.x = x;
+        this.circle.position.y = y;
+        this.circle.rotation.x = Math.PI;
+        var lineGeometry = new THREE.Geometry();
+        var lineMaterial = lineMat != null ? lineMat : new THREE.LineBasicMaterial({ color: 0xffffff });
+        lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, y, 0), new THREE.Vector3(tipibotWidth, 0, 0));
+        this.lines = new THREE.Line(lineGeometry, lineMaterial);
+        this.camera = camera;
+        if (scene) {
+            scene.add(this.lines);
+            scene.add(this.circle);
+        }
+    };
+    ThreePen.prototype.getPosition = function () {
+        return this.vectorToPoint(this.circle.position);
+    };
+    ThreePen.prototype.setPosition = function (point) {
+        var position = this.pointToVector(point);
+        this.circle.position.copy(position);
+        this.lines.geometry.vertices[1].copy(position);
+        this.lines.geometry.verticesNeedUpdate = true;
+    };
+    ThreePen.prototype.settingsChanged = function () {
+        this.lines.geometry.vertices[2].x = Settings_1.Settings.tipibot.width;
+        _super.prototype.settingsChanged.call(this);
+    };
+    ThreePen.prototype.pointToVector = function (point) {
+        return new THREE.Vector3(point.x, point.y, 0);
+    };
+    ThreePen.prototype.vectorToPoint = function (point) {
+        return new paper.Point(point.x, point.y);
+    };
+    ThreePen.prototype.mouseDown = function (event) {
+        var position = this.getWorldPosition(event);
+        if (position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
+            this.dragging = true;
+            this.previousPosition = position.clone();
+        }
+    };
+    ThreePen.prototype.mouseMove = function (event) {
+        var position = this.getWorldPosition(event);
+        if (this.dragging) {
+            var circlePosition = this.vectorToPoint(this.circle.position);
+            this.setPosition(circlePosition.add(position.subtract(this.previousPosition)));
+            this.previousPosition = position.clone();
+        }
+    };
+    ThreePen.prototype.mouseStop = function (event) {
+        if (this.dragging) {
+            this.communication.sendMoveDirect(this.getWorldPosition(event));
+        }
+        this.dragging = false;
+    };
+    ThreePen.prototype.mouseUp = function (event) {
+        this.mouseStop(event);
+    };
+    ThreePen.prototype.mouseLeave = function (event) {
+        this.mouseStop(event);
+    };
+    return ThreePen;
+}(Pen));
+exports.ThreePen = ThreePen;
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Controller = (function () {
+    function Controller(controller) {
+        this.controller = controller;
+    }
+    Controller.prototype.getDomElement = function () {
+        return this.controller.domElement;
+    };
+    Controller.prototype.getParentDomElement = function () {
+        return this.getDomElement().parentElement.parentElement;
+    };
+    Controller.prototype.contains = function (element) {
+        return $.contains(this.getParentDomElement(), element);
+    };
+    Controller.prototype.getProperty = function () {
+        return this.controller.property;
+    };
+    Controller.prototype.getName = function () {
+        return this.controller.property;
+    };
+    Controller.prototype.onChange = function (callback) {
+        this.controller.onChange(callback);
+        return this;
+    };
+    Controller.prototype.onFinishChange = function (callback) {
+        this.controller.onFinishChange(callback);
+        return this;
+    };
+    Controller.prototype.setValue = function (value) {
+        this.controller.setValue(value);
+    };
+    Controller.prototype.setValueNoCallback = function (value) {
+        this.controller.object[this.controller.property] = value;
+        this.controller.updateDisplay();
+    };
+    Controller.prototype.max = function (value) {
+        this.controller.max(value);
+    };
+    Controller.prototype.min = function (value) {
+        this.controller.min(value);
+    };
+    Controller.prototype.updateDisplay = function () {
+        this.controller.updateDisplay();
+    };
+    Controller.prototype.options = function (options) {
+        return this.controller.options(options);
+    };
+    Controller.prototype.changeName = function (name) {
+        $(this.controller.domElement.parentElement).find('span.property-name').html(name);
+    };
+    return Controller;
+}());
+exports.Controller = Controller;
+var GUI = (function () {
+    function GUI(folder) {
+        if (folder === void 0) { folder = null; }
+        this.gui = folder != null ? folder : new dat.GUI();
+    }
+    GUI.prototype.add = function (object, propertyName, min, max) {
+        if (min === void 0) { min = null; }
+        if (max === void 0) { max = null; }
+        return new Controller(this.gui.add(object, propertyName, min, max));
+    };
+    GUI.prototype.addButton = function (name, callback) {
+        var object = {};
+        object[name] = callback;
+        return new Controller(this.gui.add(object, name));
+    };
+    GUI.prototype.addFileSelectorButton = function (name, fileType, callback) {
+        var divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "'/>");
+        var button = this.addButton(name, function () { return divJ.click(); });
+        $(button.getDomElement()).append(divJ);
+        divJ.hide();
+        divJ.change(callback);
+        return button;
+    };
+    GUI.prototype.addSlider = function (name, value, min, max) {
+        var object = {};
+        object[name] = value;
+        return this.add(object, name, min, max);
+    };
+    GUI.prototype.addFolder = function (name) {
+        return new GUI(this.gui.addFolder(name));
+    };
+    GUI.prototype.getControllers = function () {
+        return this.gui.__controllers;
+    };
+    return GUI;
+}());
+exports.GUI = GUI;
+
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var Tipibot_1 = __webpack_require__(2);
+var Settings_1 = __webpack_require__(0);
+var Draggable_1 = __webpack_require__(1);
+var Communication_1 = __webpack_require__(3);
 var Plot = (function (_super) {
     __extends(Plot, _super);
     function Plot(renderer) {
         return _super.call(this, renderer) || this;
     }
-    Plot.createGUI = function (gui) {
-        gui.addButton('plot', function () {
+    Plot.createCallback = function (f, addValue, parameters) {
+        if (addValue === void 0) { addValue = false; }
+        if (parameters === void 0) { parameters = []; }
+        return function (value) {
             if (Plot.currentPlot != null) {
-                Plot.currentPlot.plot();
+                if (addValue) {
+                    parameters.unshift(value);
+                }
+                f.apply(Plot.currentPlot, parameters);
             }
-        });
+        };
+    };
+    Plot.createGUI = function (gui) {
+        Plot.plotFolder = gui.addFolder('Plot');
+        Plot.plotFolder.addButton('plot', Plot.createCallback(Plot.prototype.plot));
+        Plot.plotFolder.addButton('stop', Plot.createCallback(Plot.prototype.stop));
+        Plot.plotFolder.addButton('rotate', Plot.createCallback(Plot.prototype.rotate));
+        Plot.plotFolder.addButton('flipX', Plot.createCallback(Plot.prototype.flipX));
+        Plot.plotFolder.addButton('flipY', Plot.createCallback(Plot.prototype.flipY));
+        Plot.xSlider = Plot.plotFolder.addSlider('x', 0, 0, Settings_1.Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true));
+        Plot.ySlider = Plot.plotFolder.addSlider('y', 0, 0, Settings_1.Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true));
     };
     Plot.prototype.plot = function () {
     };
+    Plot.prototype.stop = function () {
+        Communication_1.communication.sendStop();
+    };
+    Plot.prototype.rotate = function () {
+        this.item.rotate(90);
+    };
+    Plot.prototype.flipX = function () {
+        this.item.scale(-1, 1);
+    };
+    Plot.prototype.flipY = function () {
+        this.item.scale(1, -1);
+    };
+    Plot.prototype.setX = function (x) {
+        this.item.position.x = x;
+    };
+    Plot.prototype.setY = function (y) {
+        this.item.position.y = y;
+    };
     return Plot;
 }(Draggable_1.Draggable));
+Plot.plotFolder = null;
 Plot.currentPlot = null;
+Plot.xSlider = null;
+Plot.ySlider = null;
 exports.Plot = Plot;
 var SVGPlot = (function (_super) {
     __extends(SVGPlot, _super);
@@ -725,6 +1060,11 @@ var SVGPlot = (function (_super) {
             return;
         }
         _super.prototype.mouseDown.call(this, event);
+    };
+    SVGPlot.prototype.drag = function (delta) {
+        _super.prototype.drag.call(this, delta);
+        Plot.xSlider.setValueNoCallback(this.item.position.x);
+        Plot.ySlider.setValueNoCallback(this.item.position.y);
     };
     SVGPlot.prototype.plot = function () {
         this.plotItem(this.svgItem);
@@ -828,7 +1168,7 @@ exports.SVGPlot = SVGPlot;
 
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -844,8 +1184,8 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var Shapes_1 = __webpack_require__(8);
-var Pen_1 = __webpack_require__(7);
+var Shapes_1 = __webpack_require__(9);
+var Pen_1 = __webpack_require__(4);
 var Renderer = (function () {
     function Renderer() {
     }
@@ -1060,7 +1400,7 @@ exports.ThreeRenderer = ThreeRenderer;
 
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1071,25 +1411,20 @@ exports.ThreeRenderer = ThreeRenderer;
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
 // Todo:
-// - add feedback when setting position (when click setPosition)
-// - set position: update x, y in real time
 // - make a visual difference between penUp / penDown (on the pen: fill / no fill)
-// - stop
-// - motorOff
-// - goHome
 // - up/down/left/right keys to move pen position
-// - svg rotate / flipX / flipY
+// - reorganize GUI folders (settings)
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 var Settings_1 = __webpack_require__(0);
-var Tipibot_1 = __webpack_require__(3);
-var Renderers_1 = __webpack_require__(5);
-var Pen_1 = __webpack_require__(7);
-var Plot_1 = __webpack_require__(4);
-var Communication_1 = __webpack_require__(2);
+var Tipibot_1 = __webpack_require__(2);
+var Renderers_1 = __webpack_require__(7);
+var Pen_1 = __webpack_require__(4);
+var Plot_1 = __webpack_require__(6);
+var Communication_1 = __webpack_require__(3);
 var Draggable_1 = __webpack_require__(1);
-var GUI_1 = __webpack_require__(9);
+var GUI_1 = __webpack_require__(5);
 var communication = null;
 var container = null;
 var renderer = null;
@@ -1101,11 +1436,11 @@ var drawing = {
 document.addEventListener("DOMContentLoaded", function (event) {
     function initialize() {
         gui = new GUI_1.GUI();
-        Settings_1.settingsManager.createGUI(gui);
-        Plot_1.SVGPlot.createGUI(gui);
-        Plot_1.Plot.createGUI(Plot_1.SVGPlot.gui);
-        // gui.add(Settings.tipibot, 'speed', 0, 2000)
         communication = new Communication_1.Communication(gui);
+        Settings_1.settingsManager.createGUI(gui);
+        Plot_1.Plot.createGUI(gui);
+        Plot_1.SVGPlot.createGUI(gui);
+        // gui.add(Settings.tipibot, 'speed', 0, 2000)
         renderer = new Renderers_1.PaperRenderer();
         Plot_1.SVGPlot.renderer = renderer;
         Tipibot_1.tipibot.initialize(renderer);
@@ -1134,13 +1469,13 @@ document.addEventListener("DOMContentLoaded", function (event) {
             draggable.mouseMove(event);
         }
         renderer.mouseMove(event);
-        if (Settings_1.settingsManager.settingPosition) {
+        if (Tipibot_1.tipibot.settingPosition) {
             var position = renderer.getWorldPosition(event);
             if (positionPreview == null) {
                 positionPreview = renderer.createCircle(position.x, position.y, Pen_1.Pen.RADIUS);
             }
             positionPreview.setPosition(position);
-            Settings_1.settingsManager.setPositionSliders(position);
+            Tipibot_1.tipibot.setPositionSliders(position);
         }
     }
     function mouseUp(event) {
@@ -1149,13 +1484,13 @@ document.addEventListener("DOMContentLoaded", function (event) {
             draggable.mouseUp(event);
         }
         renderer.mouseUp(event);
-        if (Settings_1.settingsManager.settingPosition && !Settings_1.settingsManager.setPositionButton.contains(event.target)) {
+        if (Tipibot_1.tipibot.settingPosition && !Tipibot_1.tipibot.setPositionButton.contains(event.target)) {
             if (positionPreview != null) {
                 positionPreview.remove();
                 positionPreview = null;
             }
             Tipibot_1.tipibot.setPosition(renderer.getWorldPosition(event));
-            Settings_1.settingsManager.toggleSetPosition(false);
+            Tipibot_1.tipibot.toggleSetPosition(false);
         }
     }
     function mouseLeave(event) {
@@ -1168,186 +1503,21 @@ document.addEventListener("DOMContentLoaded", function (event) {
     function mouseWheel(event) {
         renderer.mouseWheel(event);
     }
+    function keyDown(event) {
+        Tipibot_1.tipibot.keyDown(event);
+    }
     window.addEventListener('resize', windowResize, false);
     document.body.addEventListener('mousedown', mouseDown);
     document.body.addEventListener('mousemove', mouseMove);
     document.body.addEventListener('mouseup', mouseUp);
     document.body.addEventListener('mouseleave', mouseLeave);
+    document.body.addEventListener('keydown', keyDown);
     addWheelListener(document.body, mouseWheel);
 });
 
 
 /***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-var Draggable_1 = __webpack_require__(1);
-var Settings_1 = __webpack_require__(0);
-var Tipibot_1 = __webpack_require__(3);
-var Pen = (function (_super) {
-    __extends(Pen, _super);
-    function Pen(communication, renderer) {
-        var _this = _super.call(this, renderer) || this;
-        _this.communication = communication;
-        return _this;
-    }
-    Pen.prototype.settingsChanged = function () {
-        this.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
-    };
-    Pen.prototype.getPosition = function () {
-        return null;
-    };
-    Pen.prototype.setPosition = function (point) {
-    };
-    Pen.prototype.mouseStop = function (event) {
-        if (this.dragging) {
-            this.communication.sendMoveDirect(this.getWorldPosition(event));
-        }
-        _super.prototype.mouseStop.call(this, event);
-    };
-    return Pen;
-}(Draggable_1.Draggable));
-Pen.RADIUS = 20;
-exports.Pen = Pen;
-var PaperPen = (function (_super) {
-    __extends(PaperPen, _super);
-    function PaperPen(communication, renderer) {
-        return _super.call(this, communication, renderer) || this;
-    }
-    PaperPen.prototype.initialize = function (x, y, tipibotWidth, layer) {
-        if (layer === void 0) { layer = null; }
-        this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
-        this.circle.strokeWidth = 1;
-        this.circle.strokeColor = 'black';
-        this.circle.fillColor = 'black';
-        this.item = this.circle;
-        this.lines = new paper.Path();
-        this.lines.add(new paper.Point(0, 0));
-        this.lines.add(new paper.Point(x, y));
-        this.lines.add(new paper.Point(tipibotWidth, 0));
-        this.lines.strokeWidth = 1;
-        this.lines.strokeColor = 'black';
-        this.previousPosition = new paper.Point(0, 0);
-        if (layer) {
-            layer.addChild(this.circle);
-            layer.addChild(this.lines);
-        }
-    };
-    PaperPen.prototype.getPosition = function () {
-        return this.circle.position;
-    };
-    PaperPen.prototype.setPosition = function (point) {
-        this.circle.position = point;
-        this.lines.segments[1].point = point;
-        Tipibot_1.tipibot.moveDirect(point);
-        Settings_1.settingsManager.setPositionSliders(point);
-    };
-    PaperPen.prototype.drag = function (delta) {
-        this.setPosition(this.circle.position.add(delta));
-    };
-    PaperPen.prototype.mouseStop = function (event) {
-        if (this.dragging) {
-            this.setPosition(this.circle.position);
-        }
-        _super.prototype.mouseStop.call(this, event);
-    };
-    PaperPen.prototype.settingsChanged = function () {
-        this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
-        _super.prototype.settingsChanged.call(this);
-    };
-    return PaperPen;
-}(Pen));
-exports.PaperPen = PaperPen;
-var ThreePen = (function (_super) {
-    __extends(ThreePen, _super);
-    function ThreePen(communication, renderer) {
-        return _super.call(this, communication, renderer) || this;
-    }
-    ThreePen.prototype.initialize = function (x, y, tipibotWidth, camera, scene, lineMat) {
-        if (scene === void 0) { scene = null; }
-        if (lineMat === void 0) { lineMat = null; }
-        var geometry = new THREE.CircleGeometry(Pen.RADIUS, 32);
-        var material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        this.circle = new THREE.Mesh(geometry, material);
-        this.circle.position.x = x;
-        this.circle.position.y = y;
-        this.circle.rotation.x = Math.PI;
-        var lineGeometry = new THREE.Geometry();
-        var lineMaterial = lineMat != null ? lineMat : new THREE.LineBasicMaterial({ color: 0xffffff });
-        lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, y, 0), new THREE.Vector3(tipibotWidth, 0, 0));
-        this.lines = new THREE.Line(lineGeometry, lineMaterial);
-        this.camera = camera;
-        if (scene) {
-            scene.add(this.lines);
-            scene.add(this.circle);
-        }
-    };
-    ThreePen.prototype.getPosition = function () {
-        return this.vectorToPoint(this.circle.position);
-    };
-    ThreePen.prototype.setPosition = function (point) {
-        var position = this.pointToVector(point);
-        this.circle.position.copy(position);
-        this.lines.geometry.vertices[1].copy(position);
-        this.lines.geometry.verticesNeedUpdate = true;
-    };
-    ThreePen.prototype.settingsChanged = function () {
-        this.lines.geometry.vertices[2].x = Settings_1.Settings.tipibot.width;
-        _super.prototype.settingsChanged.call(this);
-    };
-    ThreePen.prototype.pointToVector = function (point) {
-        return new THREE.Vector3(point.x, point.y, 0);
-    };
-    ThreePen.prototype.vectorToPoint = function (point) {
-        return new paper.Point(point.x, point.y);
-    };
-    ThreePen.prototype.mouseDown = function (event) {
-        var position = this.getWorldPosition(event);
-        if (position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
-            this.dragging = true;
-            this.previousPosition = position.clone();
-        }
-    };
-    ThreePen.prototype.mouseMove = function (event) {
-        var position = this.getWorldPosition(event);
-        if (this.dragging) {
-            var circlePosition = this.vectorToPoint(this.circle.position);
-            this.setPosition(circlePosition.add(position.subtract(this.previousPosition)));
-            this.previousPosition = position.clone();
-        }
-    };
-    ThreePen.prototype.mouseStop = function (event) {
-        if (this.dragging) {
-            this.communication.sendMoveDirect(this.getWorldPosition(event));
-        }
-        this.dragging = false;
-    };
-    ThreePen.prototype.mouseUp = function (event) {
-        this.mouseStop(event);
-    };
-    ThreePen.prototype.mouseLeave = function (event) {
-        this.mouseStop(event);
-    };
-    return ThreePen;
-}(Pen));
-exports.ThreePen = ThreePen;
-
-
-/***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1527,104 +1697,6 @@ var ThreeCircle = (function (_super) {
     return ThreeCircle;
 }(Circle));
 exports.ThreeCircle = ThreeCircle;
-
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var Controller = (function () {
-    function Controller(controller) {
-        this.controller = controller;
-    }
-    Controller.prototype.getDomElement = function () {
-        return this.controller.domElement;
-    };
-    Controller.prototype.getParentDomElement = function () {
-        return this.getDomElement().parentElement.parentElement;
-    };
-    Controller.prototype.contains = function (element) {
-        return $.contains(this.getParentDomElement(), element);
-    };
-    Controller.prototype.getProperty = function () {
-        return this.controller.property;
-    };
-    Controller.prototype.getName = function () {
-        return this.controller.property;
-    };
-    Controller.prototype.onChange = function (callback) {
-        this.controller.onChange(callback);
-        return this;
-    };
-    Controller.prototype.onFinishChange = function (callback) {
-        this.controller.onFinishChange(callback);
-        return this;
-    };
-    Controller.prototype.setValue = function (value) {
-        this.controller.setValue(value);
-    };
-    Controller.prototype.setValueNoCallback = function (value) {
-        this.controller.object[this.controller.property] = value;
-        this.controller.updateDisplay();
-    };
-    Controller.prototype.max = function (value) {
-        this.controller.max(value);
-    };
-    Controller.prototype.min = function (value) {
-        this.controller.min(value);
-    };
-    Controller.prototype.updateDisplay = function () {
-        this.controller.updateDisplay();
-    };
-    Controller.prototype.options = function (options) {
-        return this.controller.options(options);
-    };
-    Controller.prototype.changeName = function (name) {
-        $(this.controller.domElement.parentElement).find('span.property-name').html(name);
-    };
-    return Controller;
-}());
-exports.Controller = Controller;
-var GUI = (function () {
-    function GUI(folder) {
-        if (folder === void 0) { folder = null; }
-        this.gui = folder != null ? folder : new dat.GUI();
-    }
-    GUI.prototype.add = function (object, propertyName, min, max) {
-        if (min === void 0) { min = null; }
-        if (max === void 0) { max = null; }
-        return new Controller(this.gui.add(object, propertyName, min, max));
-    };
-    GUI.prototype.addButton = function (name, callback) {
-        var object = {};
-        object[name] = callback;
-        return new Controller(this.gui.add(object, name));
-    };
-    GUI.prototype.addFileSelectorButton = function (name, fileType, callback) {
-        var divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "'/>");
-        var button = this.addButton(name, function () { return divJ.click(); });
-        $(button.getDomElement()).append(divJ);
-        divJ.hide();
-        divJ.change(callback);
-        return button;
-    };
-    GUI.prototype.addSlider = function (name, value, min, max) {
-        var object = {};
-        object[name] = value;
-        return this.add(object, name, min, max);
-    };
-    GUI.prototype.addFolder = function (name) {
-        return new GUI(this.gui.addFolder(name));
-    };
-    GUI.prototype.getControllers = function () {
-        return this.gui.__controllers;
-    };
-    return GUI;
-}());
-exports.GUI = GUI;
 
 
 /***/ })

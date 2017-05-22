@@ -36,7 +36,7 @@ export class Communication {
 		// Find proper websocket port with http requests info
 		// It will listen to http and websocket connections on a range of ports from 8990 to 9000.
 
-		let portNumber = 8990
+		let portNumber = 8991
 
 		let connectionSuccess = (data: any, textStatus: string, jqXHR: any) => {
 			console.log( "connection to arduino-create-agent success" )
@@ -54,10 +54,14 @@ export class Communication {
 			console.log(errorThrown)
 			console.log("textStatus: ")
 			console.log(textStatus)
-			portNumber++
-			if(portNumber > 9000) {
+			if(portNumber == 9000) {
+				portNumber = 8990
+			}
+			else if(portNumber == 8990) {
 				console.log( "Error: impossible to connect to arduino-create-agent" )
 				return
+			} else {
+				portNumber++
 			}
 			connectArduinoCreateAgent()
 		}
@@ -109,77 +113,80 @@ export class Communication {
 		}
 	}
 
+	onWebSocketConnect(response: any) {
+		console.log('connect response: ', response)
+		this.socket.emit('command', 'list')	
+	}
+
+	onWebSocketMessage(message: string) {
+		let data = null
+		try {
+			data = JSON.parse(message)
+		} catch (e) {
+			return
+	    }
+		// List serial ports response (list):
+		if(data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
+			this.initializeSerialConnectionPorts(data)
+			return
+		}
+
+		// Command responses:
+		if(data.hasOwnProperty('Cmd')) {
+			switch (data.Cmd) {
+				case 'Open':
+					console.log('Port: ' + data.Port)
+					console.log(data.Desc)
+					break;
+				case 'OpenFail':
+					console.log('Port: ' + data.Port)
+					console.log(data.Desc)
+					break;
+				case 'Close':
+					console.log('Port: ' + data.Port)
+					console.log(data.Desc)
+					break;
+				case 'Queued':
+					console.log('Queued:')
+					console.log('QCnt: ' + data.QCnt)
+					console.log('Ids: ', data.Ids)
+					console.log('D: ', data.D)
+					console.log('Port: ' + data.Port)
+					break;
+				case 'Write':
+					console.log('Write:')
+					console.log('QCnt: ' + data.QCnt)
+					console.log('Ids: ', data.Ids)
+					console.log('P: ' + data.P)
+					this.messageReceived()
+					break;
+				case 'CompleteFake':
+					console.log('CompleteFake:')
+					console.log('QCnt: ' + data.QCnt)
+					console.log('Ids: ', data.Ids)
+					console.log('P: ' + data.P)
+					break;
+				default:
+					console.error('Received unknown command: ' + data.Cmd)
+					break;
+			}
+		} else if(data.hasOwnProperty('Error')) {
+			console.error(data.Error)
+		} else if(data.hasOwnProperty('D')) { 				// Output from the serial port
+			console.log('Serial output: ', data.D)
+		}
+	}
+
 	openWebsocketConnection(websocketPort: string) {
-
-		this.socket = io(websocketPort)
 		
-		this.socket.on('connect', (response: any) => {
-			console.log('connect response: ', response)
-
-			// this.socket.emit('command', 'log on')	
-			this.socket.emit('command', 'list')	
-		})
+		this.socket = io('ws://localhost:3000')
+		// this.socket = io(websocketPort)
+		
+		this.socket.on('connect', (response: any) => this.onWebSocketConnect(response))
 
 		// window.ws = this.socket
 
-		this.socket.on('message', (message: any) => {
-			let data = null
-			try {
-				data = JSON.parse(message)
-			} catch (e) {
-				return
-		    }
-			// List serial ports response (list):
-			if(data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
-				this.initializeSerialConnectionPorts(data)
-				return
-			}
-
-			// Command responses:
-			if(data.hasOwnProperty('Cmd')) {
-				switch (data.Cmd) {
-					case 'Open':
-						console.log('Port: ' + data.Port)
-						console.log(data.Desc)
-						break;
-					case 'OpenFail':
-						console.log('Port: ' + data.Port)
-						console.log(data.Desc)
-						break;
-					case 'Close':
-						console.log('Port: ' + data.Port)
-						console.log(data.Desc)
-						break;
-					case 'Queued':
-						console.log('Queued:')
-						console.log('QCnt: ' + data.QCnt)
-						console.log('Ids: ', data.Ids)
-						console.log('D: ', data.D)
-						console.log('Port: ' + data.Port)
-						break;
-					case 'Write':
-						console.log('Write:')
-						console.log('QCnt: ' + data.QCnt)
-						console.log('Ids: ', data.Ids)
-						console.log('P: ' + data.P)
-						this.messageReceived()
-						break;
-					case 'CompleteFake':
-						console.log('CompleteFake:')
-						console.log('QCnt: ' + data.QCnt)
-						console.log('Ids: ', data.Ids)
-						console.log('P: ' + data.P)
-						break;
-					default:
-						console.error('Received unknown command: ' + data.Cmd)
-						break;
-				}
-			} else if(data.hasOwnProperty('Error')) {
-				console.error(data.Error)
-			} else if(data.hasOwnProperty('D')) { 				// Output from the serial port
-				console.log('Serial output: ', data.D)
-			}
-		})
+		this.socket.on('message', (message: any) => this.onWebSocketMessage(message))
 
 		return
 
@@ -253,6 +260,10 @@ export class Communication {
 
 	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		this.sendPenState(servoDownValue, servoDownTempo)
+	}
+
+	sendStop() {
+		this.queue('M0\n')
 	}
 }
 

@@ -79,7 +79,7 @@ export class PaperPen extends Pen {
 		this.circle.position = point
 		this.lines.segments[1].point = point
 		tipibot.moveDirect(point)
-		settingsManager.setPositionSliders(point)
+		tipibot.setPositionSliders(point)
 	}
 
 	drag(delta: paper.Point) {

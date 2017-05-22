@@ -3,6 +3,7 @@ import { Settings, settingsManager } from "./Settings"
 import { Rectangle, Circle} from "./Shapes"
 import { Renderer } from "./Renderers"
 import { Pen } from "./Pen"
+import { GUI, Controller } from "./GUI"
 
 export class Tipibot {
 
@@ -14,11 +15,48 @@ export class Tipibot {
 	motorRight: Circle
 	pen: Pen
 
+	xSlider: Controller = null
+	ySlider: Controller = null
+	setPositionButton: Controller = null
+	penStateButton: Controller = null
+	settingPosition: boolean = false
+
 	constructor() {
 		this.isPenUp = true
 	}
 	
-	createGUI(gui: any) {
+	createGUI(gui: GUI) {
+		let goHomeButton = gui.addButton('goHome', ()=> this.goHome())
+
+		let position = this.getPosition()
+		this.xSlider = gui.addSlider('x', position.x, 0, Settings.tipibot.width).onChange((value: number)=>{this.setX(value)})
+		this.ySlider = gui.addSlider('y', position.y, 0, Settings.tipibot.height).onChange((value: number)=>{this.setY(value)})
+
+		this.setPositionButton = gui.addButton('setPosition', () => this.toggleSetPosition() )
+		this.penStateButton = gui.addButton('penDown', () => this.changePenState() )
+		let motorsOffButton = gui.addButton('motorsOff', ()=> this.motorsOff())
+	}
+
+	setPositionSliders(point: paper.Point) {
+		this.xSlider.setValueNoCallback(point.x)
+		this.ySlider.setValueNoCallback(point.y)
+	}
+
+	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
+		if(!setPosition) {
+			this.setPositionButton.changeName('setPosition')
+		} else {
+			this.setPositionButton.changeName('cancel')
+		}
+		this.settingPosition = setPosition
+	}
+	
+	changePenState() {
+		if(this.isPenUp) {
+			this.penDown()
+		} else {
+			this.penUp()
+		}
 	}
 
 	tipibotRectangle() {
@@ -39,6 +77,12 @@ export class Tipibot {
 	}
 
 	settingsChanged() {
+		this.xSlider.max(Settings.tipibot.width)
+		this.ySlider.max(Settings.tipibot.height)
+
+		this.xSlider.setValue(Settings.tipibot.homeX)
+		this.ySlider.setValue(Settings.tipibot.homeY)
+
 		this.area.updateRectangle(this.tipibotRectangle())
 		this.paper.updateRectangle(this.paperRectangle())
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
@@ -91,7 +135,7 @@ export class Tipibot {
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
 		if(!this.isPenUp) {
 			communication.sendPenUp(servoUpValue, servoUpTempo)
-			settingsManager.penUp()
+			this.penStateButton.changeName('penDown')
 			this.isPenUp = true
 		}
 	}
@@ -99,7 +143,7 @@ export class Tipibot {
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		if(this.isPenUp) {
 			communication.sendPenUp(servoDownValue, servoDownTempo)
-			settingsManager.penDown()
+			this.penStateButton.changeName('penUp')
 			this.isPenUp = false
 		}
 	}
@@ -107,6 +151,31 @@ export class Tipibot {
 	goHome() {
 		this.penUp()
 		this.moveDirect(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+	}
+
+	motorsOff() {
+		communication.sendMotorOff()
+	}
+
+	keyDown(event:KeyboardEvent) {
+
+		switch (event.keyCode) {
+			case 37: 			// left arrow
+				this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)))
+				break;
+			case 38: 			// up arrow
+				this.moveDirect(this.getPosition().add(new paper.Point(0, -1)))
+				break;
+			case 39: 			// right arrow
+				this.moveDirect(this.getPosition().add(new paper.Point(1, 0)))
+				break;
+			case 40: 			// down arrow
+				this.moveDirect(this.getPosition().add(new paper.Point(0, 1)))
+				break;
+			
+			default:
+				break;
+		}
 	}
 }
 
