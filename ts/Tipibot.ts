@@ -44,9 +44,9 @@ export class Tipibot {
 
 	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
 		if(!setPosition) {
-			this.setPositionButton.changeName('setPosition')
+			this.setPositionButton.setName('setPosition')
 		} else {
-			this.setPositionButton.changeName('cancel')
+			this.setPositionButton.setName('cancel')
 		}
 		this.settingPosition = setPosition
 	}
@@ -135,7 +135,7 @@ export class Tipibot {
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
 		if(!this.isPenUp) {
 			communication.sendPenUp(servoUpValue, servoUpTempo)
-			this.penStateButton.changeName('penDown')
+			this.penStateButton.setName('penDown')
 			this.isPenUp = true
 		}
 	}
@@ -143,7 +143,7 @@ export class Tipibot {
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		if(this.isPenUp) {
 			communication.sendPenUp(servoDownValue, servoDownTempo)
-			this.penStateButton.changeName('penUp')
+			this.penStateButton.setName('penUp')
 			this.isPenUp = false
 		}
 	}

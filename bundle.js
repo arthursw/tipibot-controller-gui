@@ -218,215 +218,6 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var Draggable = (function () {
-    function Draggable(renderer, item) {
-        if (item === void 0) { item = null; }
-        this.renderer = renderer;
-        this.dragging = false;
-        this.previousPosition = new paper.Point(0, 0);
-        this.item = item;
-        Draggable.draggables.push(this);
-    }
-    Draggable.prototype.drag = function (delta) {
-        this.item.position = this.item.position.add(delta);
-    };
-    Draggable.prototype.getWorldPosition = function (event) {
-        return this.renderer.getWorldPosition(event);
-    };
-    Draggable.prototype.mouseDown = function (event) {
-        var position = this.getWorldPosition(event);
-        if (this.item.bounds.contains(position)) {
-            this.dragging = true;
-            this.previousPosition = position.clone();
-        }
-    };
-    Draggable.prototype.mouseMove = function (event) {
-        var position = this.getWorldPosition(event);
-        if (this.dragging) {
-            this.drag(position.subtract(this.previousPosition));
-            this.previousPosition = position.clone();
-        }
-    };
-    Draggable.prototype.mouseStop = function (event) {
-        this.dragging = false;
-    };
-    Draggable.prototype.mouseUp = function (event) {
-        this.mouseStop(event);
-    };
-    Draggable.prototype.mouseLeave = function (event) {
-        this.mouseStop(event);
-    };
-    return Draggable;
-}());
-Draggable.draggables = new Array();
-exports.Draggable = Draggable;
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var Communication_1 = __webpack_require__(3);
-var Settings_1 = __webpack_require__(0);
-var Tipibot = (function () {
-    function Tipibot() {
-        this.xSlider = null;
-        this.ySlider = null;
-        this.setPositionButton = null;
-        this.penStateButton = null;
-        this.settingPosition = false;
-        this.isPenUp = true;
-    }
-    Tipibot.prototype.createGUI = function (gui) {
-        var _this = this;
-        var goHomeButton = gui.addButton('goHome', function () { return _this.goHome(); });
-        var position = this.getPosition();
-        this.xSlider = gui.addSlider('x', position.x, 0, Settings_1.Settings.tipibot.width).onChange(function (value) { _this.setX(value); });
-        this.ySlider = gui.addSlider('y', position.y, 0, Settings_1.Settings.tipibot.height).onChange(function (value) { _this.setY(value); });
-        this.setPositionButton = gui.addButton('setPosition', function () { return _this.toggleSetPosition(); });
-        this.penStateButton = gui.addButton('penDown', function () { return _this.changePenState(); });
-        var motorsOffButton = gui.addButton('motorsOff', function () { return _this.motorsOff(); });
-    };
-    Tipibot.prototype.setPositionSliders = function (point) {
-        this.xSlider.setValueNoCallback(point.x);
-        this.ySlider.setValueNoCallback(point.y);
-    };
-    Tipibot.prototype.toggleSetPosition = function (setPosition) {
-        if (setPosition === void 0) { setPosition = !this.settingPosition; }
-        if (!setPosition) {
-            this.setPositionButton.changeName('setPosition');
-        }
-        else {
-            this.setPositionButton.changeName('cancel');
-        }
-        this.settingPosition = setPosition;
-    };
-    Tipibot.prototype.changePenState = function () {
-        if (this.isPenUp) {
-            this.penDown();
-        }
-        else {
-            this.penUp();
-        }
-    };
-    Tipibot.prototype.tipibotRectangle = function () {
-        return new paper.Rectangle(0, 0, Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
-    };
-    Tipibot.prototype.paperRectangle = function () {
-        return new paper.Rectangle(Settings_1.Settings.tipibot.width / 2 - Settings_1.Settings.drawArea.width / 2 + Settings_1.Settings.drawArea.x, Settings_1.Settings.drawArea.y, Settings_1.Settings.drawArea.width, Settings_1.Settings.drawArea.height);
-    };
-    Tipibot.prototype.initialize = function (renderer) {
-        this.area = renderer.createRectangle(this.tipibotRectangle());
-        this.paper = renderer.createRectangle(this.paperRectangle());
-        this.motorLeft = renderer.createCircle(0, 0, 50, 24);
-        this.motorRight = renderer.createCircle(Settings_1.Settings.tipibot.width, 0, 50, 24);
-        this.pen = renderer.createPen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.width, Communication_1.communication);
-        Settings_1.settingsManager.addTipibotToGUI(this);
-    };
-    Tipibot.prototype.settingsChanged = function () {
-        this.xSlider.max(Settings_1.Settings.tipibot.width);
-        this.ySlider.max(Settings_1.Settings.tipibot.height);
-        this.xSlider.setValue(Settings_1.Settings.tipibot.homeX);
-        this.ySlider.setValue(Settings_1.Settings.tipibot.homeY);
-        this.area.updateRectangle(this.tipibotRectangle());
-        this.paper.updateRectangle(this.paperRectangle());
-        this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
-        this.pen.settingsChanged();
-    };
-    Tipibot.prototype.getPosition = function () {
-        return this.pen.getPosition();
-    };
-    Tipibot.prototype.setX = function (x) {
-        var p = this.getPosition();
-        this.setPosition(new paper.Point(x, p.y));
-    };
-    Tipibot.prototype.setY = function (y) {
-        var p = this.getPosition();
-        this.setPosition(new paper.Point(p.x, y));
-    };
-    Tipibot.prototype.setPosition = function (point) {
-        this.pen.setPosition(point);
-        Communication_1.communication.sendSetPosition(point);
-    };
-    Tipibot.prototype.moveDirect = function (point, callback) {
-        if (callback === void 0) { callback = null; }
-        Communication_1.communication.sendMoveDirect(point, callback);
-    };
-    Tipibot.prototype.moveLinear = function (point, callback) {
-        if (callback === void 0) { callback = null; }
-        Communication_1.communication.sendMoveLinear(point, callback);
-    };
-    Tipibot.prototype.setSpeed = function (speed) {
-        Communication_1.communication.sendSpeed(speed);
-    };
-    Tipibot.prototype.tipibotSpecs = function (tipibotWidth, stepsPerRev, mmPerRev) {
-        Communication_1.communication.sendTipibotSpecs(tipibotWidth, stepsPerRev, mmPerRev);
-    };
-    Tipibot.prototype.pause = function (delay) {
-        Communication_1.communication.sendPause(delay);
-    };
-    Tipibot.prototype.motorOff = function () {
-        Communication_1.communication.sendMotorOff();
-    };
-    Tipibot.prototype.penUp = function (servoUpValue, servoUpTempo) {
-        if (servoUpValue === void 0) { servoUpValue = Settings_1.Settings.servo.position.up; }
-        if (servoUpTempo === void 0) { servoUpTempo = Settings_1.Settings.servo.delay.up; }
-        if (!this.isPenUp) {
-            Communication_1.communication.sendPenUp(servoUpValue, servoUpTempo);
-            this.penStateButton.changeName('penDown');
-            this.isPenUp = true;
-        }
-    };
-    Tipibot.prototype.penDown = function (servoDownValue, servoDownTempo) {
-        if (servoDownValue === void 0) { servoDownValue = Settings_1.Settings.servo.position.down; }
-        if (servoDownTempo === void 0) { servoDownTempo = Settings_1.Settings.servo.delay.down; }
-        if (this.isPenUp) {
-            Communication_1.communication.sendPenUp(servoDownValue, servoDownTempo);
-            this.penStateButton.changeName('penUp');
-            this.isPenUp = false;
-        }
-    };
-    Tipibot.prototype.goHome = function () {
-        this.penUp();
-        this.moveDirect(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
-    };
-    Tipibot.prototype.motorsOff = function () {
-        Communication_1.communication.sendMotorOff();
-    };
-    Tipibot.prototype.keyDown = function (event) {
-        switch (event.keyCode) {
-            case 37:
-                this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)));
-                break;
-            case 38:
-                this.moveDirect(this.getPosition().add(new paper.Point(0, -1)));
-                break;
-            case 39:
-                this.moveDirect(this.getPosition().add(new paper.Point(1, 0)));
-                break;
-            case 40:
-                this.moveDirect(this.getPosition().add(new paper.Point(0, 1)));
-                break;
-            default:
-                break;
-        }
-    };
-    return Tipibot;
-}());
-exports.Tipibot = Tipibot;
-exports.tipibot = new Tipibot();
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
 var Settings_1 = __webpack_require__(0);
 var Communication = (function () {
     function Communication(gui) {
@@ -660,6 +451,215 @@ exports.communication = null;
 
 
 /***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Draggable = (function () {
+    function Draggable(renderer, item) {
+        if (item === void 0) { item = null; }
+        this.renderer = renderer;
+        this.dragging = false;
+        this.previousPosition = new paper.Point(0, 0);
+        this.item = item;
+        Draggable.draggables.push(this);
+    }
+    Draggable.prototype.drag = function (delta) {
+        this.item.position = this.item.position.add(delta);
+    };
+    Draggable.prototype.getWorldPosition = function (event) {
+        return this.renderer.getWorldPosition(event);
+    };
+    Draggable.prototype.mouseDown = function (event) {
+        var position = this.getWorldPosition(event);
+        if (this.item.bounds.contains(position)) {
+            this.dragging = true;
+            this.previousPosition = position.clone();
+        }
+    };
+    Draggable.prototype.mouseMove = function (event) {
+        var position = this.getWorldPosition(event);
+        if (this.dragging) {
+            this.drag(position.subtract(this.previousPosition));
+            this.previousPosition = position.clone();
+        }
+    };
+    Draggable.prototype.mouseStop = function (event) {
+        this.dragging = false;
+    };
+    Draggable.prototype.mouseUp = function (event) {
+        this.mouseStop(event);
+    };
+    Draggable.prototype.mouseLeave = function (event) {
+        this.mouseStop(event);
+    };
+    return Draggable;
+}());
+Draggable.draggables = new Array();
+exports.Draggable = Draggable;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Communication_1 = __webpack_require__(1);
+var Settings_1 = __webpack_require__(0);
+var Tipibot = (function () {
+    function Tipibot() {
+        this.xSlider = null;
+        this.ySlider = null;
+        this.setPositionButton = null;
+        this.penStateButton = null;
+        this.settingPosition = false;
+        this.isPenUp = true;
+    }
+    Tipibot.prototype.createGUI = function (gui) {
+        var _this = this;
+        var goHomeButton = gui.addButton('goHome', function () { return _this.goHome(); });
+        var position = this.getPosition();
+        this.xSlider = gui.addSlider('x', position.x, 0, Settings_1.Settings.tipibot.width).onChange(function (value) { _this.setX(value); });
+        this.ySlider = gui.addSlider('y', position.y, 0, Settings_1.Settings.tipibot.height).onChange(function (value) { _this.setY(value); });
+        this.setPositionButton = gui.addButton('setPosition', function () { return _this.toggleSetPosition(); });
+        this.penStateButton = gui.addButton('penDown', function () { return _this.changePenState(); });
+        var motorsOffButton = gui.addButton('motorsOff', function () { return _this.motorsOff(); });
+    };
+    Tipibot.prototype.setPositionSliders = function (point) {
+        this.xSlider.setValueNoCallback(point.x);
+        this.ySlider.setValueNoCallback(point.y);
+    };
+    Tipibot.prototype.toggleSetPosition = function (setPosition) {
+        if (setPosition === void 0) { setPosition = !this.settingPosition; }
+        if (!setPosition) {
+            this.setPositionButton.changeName('setPosition');
+        }
+        else {
+            this.setPositionButton.changeName('cancel');
+        }
+        this.settingPosition = setPosition;
+    };
+    Tipibot.prototype.changePenState = function () {
+        if (this.isPenUp) {
+            this.penDown();
+        }
+        else {
+            this.penUp();
+        }
+    };
+    Tipibot.prototype.tipibotRectangle = function () {
+        return new paper.Rectangle(0, 0, Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
+    };
+    Tipibot.prototype.paperRectangle = function () {
+        return new paper.Rectangle(Settings_1.Settings.tipibot.width / 2 - Settings_1.Settings.drawArea.width / 2 + Settings_1.Settings.drawArea.x, Settings_1.Settings.drawArea.y, Settings_1.Settings.drawArea.width, Settings_1.Settings.drawArea.height);
+    };
+    Tipibot.prototype.initialize = function (renderer) {
+        this.area = renderer.createRectangle(this.tipibotRectangle());
+        this.paper = renderer.createRectangle(this.paperRectangle());
+        this.motorLeft = renderer.createCircle(0, 0, 50, 24);
+        this.motorRight = renderer.createCircle(Settings_1.Settings.tipibot.width, 0, 50, 24);
+        this.pen = renderer.createPen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.width, Communication_1.communication);
+        Settings_1.settingsManager.addTipibotToGUI(this);
+    };
+    Tipibot.prototype.settingsChanged = function () {
+        this.xSlider.max(Settings_1.Settings.tipibot.width);
+        this.ySlider.max(Settings_1.Settings.tipibot.height);
+        this.xSlider.setValue(Settings_1.Settings.tipibot.homeX);
+        this.ySlider.setValue(Settings_1.Settings.tipibot.homeY);
+        this.area.updateRectangle(this.tipibotRectangle());
+        this.paper.updateRectangle(this.paperRectangle());
+        this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
+        this.pen.settingsChanged();
+    };
+    Tipibot.prototype.getPosition = function () {
+        return this.pen.getPosition();
+    };
+    Tipibot.prototype.setX = function (x) {
+        var p = this.getPosition();
+        this.setPosition(new paper.Point(x, p.y));
+    };
+    Tipibot.prototype.setY = function (y) {
+        var p = this.getPosition();
+        this.setPosition(new paper.Point(p.x, y));
+    };
+    Tipibot.prototype.setPosition = function (point) {
+        this.pen.setPosition(point);
+        Communication_1.communication.sendSetPosition(point);
+    };
+    Tipibot.prototype.moveDirect = function (point, callback) {
+        if (callback === void 0) { callback = null; }
+        Communication_1.communication.sendMoveDirect(point, callback);
+    };
+    Tipibot.prototype.moveLinear = function (point, callback) {
+        if (callback === void 0) { callback = null; }
+        Communication_1.communication.sendMoveLinear(point, callback);
+    };
+    Tipibot.prototype.setSpeed = function (speed) {
+        Communication_1.communication.sendSpeed(speed);
+    };
+    Tipibot.prototype.tipibotSpecs = function (tipibotWidth, stepsPerRev, mmPerRev) {
+        Communication_1.communication.sendTipibotSpecs(tipibotWidth, stepsPerRev, mmPerRev);
+    };
+    Tipibot.prototype.pause = function (delay) {
+        Communication_1.communication.sendPause(delay);
+    };
+    Tipibot.prototype.motorOff = function () {
+        Communication_1.communication.sendMotorOff();
+    };
+    Tipibot.prototype.penUp = function (servoUpValue, servoUpTempo) {
+        if (servoUpValue === void 0) { servoUpValue = Settings_1.Settings.servo.position.up; }
+        if (servoUpTempo === void 0) { servoUpTempo = Settings_1.Settings.servo.delay.up; }
+        if (!this.isPenUp) {
+            Communication_1.communication.sendPenUp(servoUpValue, servoUpTempo);
+            this.penStateButton.changeName('penDown');
+            this.isPenUp = true;
+        }
+    };
+    Tipibot.prototype.penDown = function (servoDownValue, servoDownTempo) {
+        if (servoDownValue === void 0) { servoDownValue = Settings_1.Settings.servo.position.down; }
+        if (servoDownTempo === void 0) { servoDownTempo = Settings_1.Settings.servo.delay.down; }
+        if (this.isPenUp) {
+            Communication_1.communication.sendPenUp(servoDownValue, servoDownTempo);
+            this.penStateButton.changeName('penUp');
+            this.isPenUp = false;
+        }
+    };
+    Tipibot.prototype.goHome = function () {
+        this.penUp();
+        this.moveDirect(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
+    };
+    Tipibot.prototype.motorsOff = function () {
+        Communication_1.communication.sendMotorOff();
+    };
+    Tipibot.prototype.keyDown = function (event) {
+        switch (event.keyCode) {
+            case 37:
+                this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)));
+                break;
+            case 38:
+                this.moveDirect(this.getPosition().add(new paper.Point(0, -1)));
+                break;
+            case 39:
+                this.moveDirect(this.getPosition().add(new paper.Point(1, 0)));
+                break;
+            case 40:
+                this.moveDirect(this.getPosition().add(new paper.Point(0, 1)));
+                break;
+            default:
+                break;
+        }
+    };
+    return Tipibot;
+}());
+exports.Tipibot = Tipibot;
+exports.tipibot = new Tipibot();
+
+
+/***/ }),
 /* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -676,9 +676,9 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var Draggable_1 = __webpack_require__(1);
+var Draggable_1 = __webpack_require__(2);
 var Settings_1 = __webpack_require__(0);
-var Tipibot_1 = __webpack_require__(2);
+var Tipibot_1 = __webpack_require__(3);
 var Pen = (function (_super) {
     __extends(Pen, _super);
     function Pen(communication, renderer) {
@@ -943,10 +943,10 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var Tipibot_1 = __webpack_require__(2);
+var Tipibot_1 = __webpack_require__(3);
 var Settings_1 = __webpack_require__(0);
-var Draggable_1 = __webpack_require__(1);
-var Communication_1 = __webpack_require__(3);
+var Draggable_1 = __webpack_require__(2);
+var Communication_1 = __webpack_require__(1);
 var Plot = (function (_super) {
     __extends(Plot, _super);
     function Plot(renderer) {
@@ -1418,12 +1418,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 var Settings_1 = __webpack_require__(0);
-var Tipibot_1 = __webpack_require__(2);
+var Tipibot_1 = __webpack_require__(3);
 var Renderers_1 = __webpack_require__(7);
 var Pen_1 = __webpack_require__(4);
 var Plot_1 = __webpack_require__(6);
-var Communication_1 = __webpack_require__(3);
-var Draggable_1 = __webpack_require__(1);
+var Communication_1 = __webpack_require__(1);
+var Draggable_1 = __webpack_require__(2);
 var GUI_1 = __webpack_require__(5);
 var communication = null;
 var container = null;

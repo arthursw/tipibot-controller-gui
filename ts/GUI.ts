@@ -9,6 +9,7 @@ declare type DatController = {
 	setValue: (value: number) => any
 	max: (value: number) => any
 	min: (value: number) => any
+	step: (value: number) => any
 	updateDisplay(): () => any
 	options: (options: string[]) => any
 }
@@ -44,6 +45,10 @@ export class Controller {
 		return this.controller.property
 	}
 
+	getValue(): any {
+		return this.controller.object[this.controller.property]
+	}
+
 	onChange(callback: (value: any) => any) {
 		this.controller.onChange(callback)
 		return this
@@ -71,6 +76,10 @@ export class Controller {
 		this.controller.min(value)
 	}
 
+	step(value: number) {
+		this.controller.step(value)
+	}
+
 	updateDisplay() {
 		this.controller.updateDisplay()
 	}
@@ -79,7 +88,7 @@ export class Controller {
 		return this.controller.options(options)
 	}
 
-	changeName(name: string) {
+	setName(name: string) {
 		$(this.controller.domElement.parentElement).find('span.property-name').html(name)
 	}
 }
@@ -87,10 +96,14 @@ export class Controller {
 export class GUI {
 	gui: any
 
-	constructor(folder: DatFolder = null) {
-		this.gui = folder != null ? folder : new dat.GUI()
+	constructor(folder: DatFolder = null, options: any = null) {
+		this.gui = folder != null ? folder : new dat.GUI(options)
 	}
 
+	getDomElement(): HTMLElement {
+		return this.gui.domElement
+	}
+	
 	add(object: any, propertyName: string, min: number = null, max: number = null): Controller {
 		return new Controller( this.gui.add(object, propertyName, min, max) )
 	}
@@ -113,10 +126,14 @@ export class GUI {
 		return button
 	}
 
-	addSlider(name: string, value: number, min: number, max: number): Controller {
+	addSlider(name: string, value: number, min: number, max: number, step: number=null): Controller {
 		let object:any = {}
 		object[name] = value
-		return this.add(object, name, min, max)
+		let slider:any = this.add(object, name, min, max)
+		if(step != null) {
+			slider.step(step)
+		}
+		return slider
 	}
 
 	addFolder(name: string): GUI {

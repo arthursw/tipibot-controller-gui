@@ -4,7 +4,10 @@
   "description": "gui for the tipibot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --config webpack.config.js",
+    "start-simple": "serve",
+    "start": "webpack-dev-server"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +26,7 @@
     "@types/three": "0.0.28",
     "ts-loader": "^2.0.3",
     "typescript": "^2.3.2",
-    "webpack": "^2.5.1"
+    "webpack": "^2.5.1",
+    "webpack-dev-server": "^2.4.5"
   }
 }
