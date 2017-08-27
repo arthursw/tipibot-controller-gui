@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		SVGPlot.renderer = renderer
 
 		tipibot.initialize(renderer)
+		communication.setTipibot(tipibot)
 
 		renderer.centerOnTipibot(Settings.tipibot)
 		renderer.createDrawingLayer()

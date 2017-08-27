@@ -31,7 +31,8 @@ export class Plot extends Draggable {
 
 	public static createGUI(gui: GUI) {
 		Plot.plotFolder = gui.addFolder('Plot')
-		Plot.plotFolder.addButton('plot', Plot.createCallback(Plot.prototype.plot))
+		Plot.plotFolder.addButton('draw', Plot.createCallback(Plot.prototype.plot))
+		Plot.plotFolder.add({'pause': false}, 'pause').onChange((value)=>communication.interface.setPause(value))
 		Plot.plotFolder.addButton('stop', Plot.createCallback(Plot.prototype.stop))
 		Plot.plotFolder.addButton('rotate', Plot.createCallback(Plot.prototype.rotate))
 		Plot.plotFolder.addButton('flipX', Plot.createCallback(Plot.prototype.flipX))
@@ -49,7 +50,7 @@ export class Plot extends Draggable {
 	}
 
 	stop() {
-		communication.sendStop()
+		communication.interface.sendStop()
 	}
 
 	rotate() {

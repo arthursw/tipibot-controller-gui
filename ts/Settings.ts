@@ -1,4 +1,5 @@
 import { GUI, Controller } from "./GUI"
+import { TipibotInterface } from "./TipibotInterface"
 
 let tipibotHeight = 2020
 let tipibotWidth = 1780
@@ -15,7 +16,12 @@ export let Settings = {
 		height: tipibotHeight,
 		homeX: tipibotWidth / 2,
 		homeY: paperHeight + homeY,
-		speed: 1440
+		speed: 1440,
+		acceleration: 400,
+		stepsPerRev: 200,
+		stepMultiplier: 32,
+		mmPerRev: 96,
+		penWidth: 2
 	},
 	servo: {
 		position: {
@@ -38,20 +44,6 @@ export let Settings = {
 
 declare let saveAs: any
 
-declare type Tipibot = {
-	createGUI: (gui:GUI)=> void
-	getPosition: ()=> paper.Point
-	setX: (x: number)=> void
-	setY: (y: number)=> void
-	settingsChanged: ()=> void
-	
-	penUp: (servoUpValue?: number, servoUpTempo?: number)=> void
-	penDown: (servoDownValue?: number, servoDownTempo?: number)=> void
-
-	isPenUp: boolean
-
-}
-
 export class SettingsManager {
 	
 	settingsFolder: GUI = null
@@ -60,7 +52,7 @@ export class SettingsManager {
 	servoPositionFolder: GUI = null
 	servoDelayFolder: GUI = null
 	drawAreaFolder: GUI = null
-	tipibot: Tipibot
+	tipibot: TipibotInterface
 
 	constructor() {
 	}
@@ -84,7 +76,12 @@ export class SettingsManager {
 		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000)
 		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width)
 		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height)
-		this.tipibotFolder.add(Settings.tipibot, 'speed', 0, 5000)
+		this.tipibotFolder.add(Settings.tipibot, 'speed', 100, 10000)
+		this.tipibotFolder.add(Settings.tipibot, 'acceleration', 50, 1500)
+		this.tipibotFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500)
+		this.tipibotFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64)
+		this.tipibotFolder.add(Settings.tipibot, 'mmPerRev', 1, 250)
+		this.tipibotFolder.add(Settings.tipibot, 'penWidth', 1, 20)
 
 		this.servoFolder = gui.addFolder('Servo')
 
@@ -105,17 +102,34 @@ export class SettingsManager {
 		let controllers = this.getControllers()
 
 		for(let controller of controllers) {
-			controller.onChange(this.settingChanged)
+			let name = controller.getName()
+			let parentName = controller.getTopParentName()
+			controller.onChange( (value: any) => this.settingChanged(parentName, name, value) )
 		}
 	}
 
-	addTipibotToGUI(tipibot: Tipibot) {
+	addTipibotToGUI(tipibot: TipibotInterface) {
 		this.tipibot = tipibot
 		this.tipibot.createGUI(this.tipibotFolder)
 	}
 
-	settingChanged(value: any=null) {
+	settingChanged(parentName: string, name: string, value: any=null) {
 
+		if(parentName == 'Tipibot' && (name == 'width' || name == 'height')) {
+			for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
+				if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
+					controller.max(Settings.tipibot.width)
+				}
+				if(controller.getName() == 'y' || controller.getName() == 'height' || controller.getName() == 'homeX') {
+					controller.max(Settings.tipibot.height)
+				}
+			}
+		}
+
+		this.tipibot.settingChanged(parentName, name, value)
+	}
+
+	settingsChanged() {
 		for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
 			if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.width)
@@ -155,7 +169,7 @@ export class SettingsManager {
 
 	onJsonLoad(event: any) {
 		this.copyObjectProperties(Settings, JSON.parse(event.target.result))
-		this.settingChanged()
+		this.settingsChanged()
 		this.updateSliders()
 	}
 

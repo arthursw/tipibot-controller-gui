@@ -32,7 +32,7 @@ export class Pen extends Draggable {
 
 	mouseStop(event: MouseEvent) {
 		if(this.dragging) {
-			this.communication.sendMoveDirect(this.getWorldPosition(event))
+			this.communication.interface.sendMoveDirect(this.getWorldPosition(event))
 		}
 		super.mouseStop(event)
 	}
@@ -182,7 +182,7 @@ export class ThreePen extends Pen {
 
 	mouseStop(event: MouseEvent) {
 		if(this.dragging) {
-			this.communication.sendMoveDirect(this.getWorldPosition(event))
+			this.communication.interface.sendMoveDirect(this.getWorldPosition(event))
 		}
 		this.dragging = false
 	}

@@ -4,7 +4,11 @@
 		"height": 2020,
 		"homeX": 890,
 		"homeY": 1608,
-		"speed": 1440
+		"speed": 1440,
+		"acceleration": 400,
+		"stepsPerRev": 200,
+		"stepMultiplier": 32,
+		"mmPerRev": 96
 	},
 	"servo": {
 		"position": {

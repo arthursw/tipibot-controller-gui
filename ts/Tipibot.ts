@@ -4,8 +4,9 @@ import { Rectangle, Circle} from "./Shapes"
 import { Renderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { GUI, Controller } from "./GUI"
+import { TipibotInterface } from "./TipibotInterface"
 
-export class Tipibot {
+export class Tipibot implements TipibotInterface {
 
 	isPenUp: boolean
 
@@ -23,6 +24,18 @@ export class Tipibot {
 
 	constructor() {
 		this.isPenUp = true
+	}
+
+	mmPerSteps() {
+		return Settings.tipibot.mmPerRev / Settings.tipibot.stepsPerRev;
+	}
+
+	stepsPerMm() {
+		return Settings.tipibot.stepsPerRev / Settings.tipibot.mmPerRev;
+	}
+
+	mmToSteps(point: paper.Point): paper.Point {
+		return point.multiply(this.stepsPerMm())
 	}
 	
 	createGUI(gui: GUI) {
@@ -75,6 +88,32 @@ export class Tipibot {
 		this.pen = renderer.createPen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width, communication)
 		settingsManager.addTipibotToGUI(this)
 	}
+	
+	settingChanged(parentName: string, name: string, value: any) {
+		if(parentName == 'Tipibot') {
+			if(name == 'width') {
+				this.xSlider.max(Settings.tipibot.width)
+				this.motorRight.update(Settings.tipibot.width, 0, 50)
+			}
+			else if(name == 'height') {
+				this.ySlider.max(Settings.tipibot.height)
+			}
+			else if(name == 'homeX') {
+				this.xSlider.setValue(Settings.tipibot.homeX)
+			}
+			else if(name == 'homeY') {
+				this.xSlider.setValue(Settings.tipibot.homeY)
+			}
+			if(name == 'width' || name == 'height') {
+				communication.interface.sendTipibotSize()
+				this.area.updateRectangle(this.tipibotRectangle())
+			}
+		} else if(parentName == 'DrawArea') {
+			this.paper.updateRectangle(this.paperRectangle())
+		} else if(parentName == 'Servo') {
+			this.pen.settingsChanged()
+		}
+	}
 
 	settingsChanged() {
 		this.xSlider.max(Settings.tipibot.width)
@@ -105,36 +144,36 @@ export class Tipibot {
 
     setPosition(point: paper.Point) {
     	this.pen.setPosition(point)
-    	communication.sendSetPosition(point)
+    	communication.interface.sendSetPosition(point)
     }
 
 	moveDirect(point: paper.Point, callback: () => any = null) {
-		communication.sendMoveDirect(point, callback)
+		communication.interface.sendMoveDirect(point, callback)
 	}
 
 	moveLinear(point: paper.Point, callback: () => any = null) {
-		communication.sendMoveLinear(point, callback)
+		communication.interface.sendMoveLinear(point, callback)
 	}
 
 	setSpeed(speed: number) {
-		communication.sendSpeed(speed)
+		communication.interface.sendSpeed(speed)
 	}
 
-	tipibotSpecs(tipibotWidth: number, stepsPerRev: number, mmPerRev: number) {
-		communication.sendTipibotSpecs(tipibotWidth, stepsPerRev, mmPerRev)
+	tipibotSpecs() {
+		communication.interface.sendTipibotSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
 	}
 
 	pause(delay: number) {
-		communication.sendPause(delay)
+		communication.interface.sendPause(delay)
 	}
 
 	motorOff() {
-		communication.sendMotorOff()
+		communication.interface.sendMotorOff()
 	}
 
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
 		if(!this.isPenUp) {
-			communication.sendPenUp(servoUpValue, servoUpTempo)
+			communication.interface.sendPenUp(servoUpValue, servoUpTempo)
 			this.penStateButton.setName('penDown')
 			this.isPenUp = true
 		}
@@ -142,7 +181,7 @@ export class Tipibot {
 
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		if(this.isPenUp) {
-			communication.sendPenUp(servoDownValue, servoDownTempo)
+			communication.interface.sendPenUp(servoDownValue, servoDownTempo)
 			this.penStateButton.setName('penUp')
 			this.isPenUp = false
 		}
@@ -154,7 +193,7 @@ export class Tipibot {
 	}
 
 	motorsOff() {
-		communication.sendMotorOff()
+		communication.interface.sendMotorOff()
 	}
 
 	keyDown(event:KeyboardEvent) {

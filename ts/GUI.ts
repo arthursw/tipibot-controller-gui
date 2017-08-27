@@ -4,6 +4,7 @@ declare type DatController = {
 	domElement: HTMLElement
 	property: string
 	object: any
+	__gui: { name: string, parent: any }
 	onChange: (value: any) => any
 	onFinishChange: (value: any) => any
 	setValue: (value: number) => any
@@ -27,6 +28,20 @@ export class Controller {
 
 	getDomElement(): HTMLElement {
 		return this.controller.domElement
+	}
+
+	getParent(): { name: string, parent: any } {
+		return this.controller.__gui
+	}
+
+	getTopParentName(): string {
+		let name = ''
+		let folder = this.getParent()
+		do {
+			name = folder.name
+			folder = folder.parent
+		} while(folder.name)
+		return name
 	}
 
 	getParentDomElement(): HTMLElement {
@@ -95,8 +110,10 @@ export class Controller {
 
 export class GUI {
 	gui: any
+	controllers: Controller[]
 
 	constructor(folder: DatFolder = null, options: any = null) {
+		this.controllers = []
 		this.gui = folder != null ? folder : new dat.GUI(options)
 	}
 
@@ -105,13 +122,17 @@ export class GUI {
 	}
 	
 	add(object: any, propertyName: string, min: number = null, max: number = null): Controller {
-		return new Controller( this.gui.add(object, propertyName, min, max) )
+		let controller = new Controller( this.gui.add(object, propertyName, min, max) )
+		this.controllers.push(controller)
+		return controller
 	}
 
 	addButton(name: string, callback: (value?: any)=>any): Controller {
 		let object:any = {}
 		object[name] = callback
-		return new Controller(this.gui.add(object, name))
+		let controller = new Controller(this.gui.add(object, name))
+		this.controllers.push(controller)
+		return controller
 	}
 
 	addFileSelectorButton(name: string, fileType: string, callback: (event: any)=>any): Controller {	
@@ -141,6 +162,6 @@ export class GUI {
 	}
 
 	getControllers(): Controller[] {
-		return this.gui.__controllers
+		return this.controllers
 	}
 }
