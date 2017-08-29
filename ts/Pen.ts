@@ -1,4 +1,4 @@
-import { Communication } from "./Communication"
+import { Communication } from "./Communication/Communication"
 import { Draggable } from "./Draggable"
 import { Settings, settingsManager } from "./Settings"
 import { tipibot } from "./Tipibot"
@@ -24,16 +24,19 @@ export class Pen extends Draggable {
 	}
 
 	getPosition(): paper.Point {
-		return null
+		return this.item.position // will be overloaded
 	}
 
-	setPosition(point: paper.Point) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
+		if(updateSliders) {
+			tipibot.setPositionSliders(point)
+		}
+		if(move) {
+			tipibot.moveDirect(point)
+		}
 	}
 
 	mouseStop(event: MouseEvent) {
-		if(this.dragging) {
-			this.communication.interface.sendMoveDirect(this.getWorldPosition(event))
-		}
 		super.mouseStop(event)
 	}
 }
@@ -75,15 +78,14 @@ export class PaperPen extends Pen {
 		return this.circle.position
 	}
 
-	setPosition(point: paper.Point) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
 		this.circle.position = point
 		this.lines.segments[1].point = point
-		tipibot.moveDirect(point)
-		tipibot.setPositionSliders(point)
+		super.setPosition(point, updateSliders, move)
 	}
 
 	drag(delta: paper.Point) {
-		this.setPosition(this.circle.position.add(delta))
+		this.setPosition(this.circle.position.add(delta), true, false)
 	}
 
 	mouseStop(event: MouseEvent) {
@@ -141,11 +143,13 @@ export class ThreePen extends Pen {
 		return this.vectorToPoint(this.circle.position)
 	}
 
-	setPosition(point: paper.Point) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
 		let position = this.pointToVector(point)
-		this.circle.position.copy(position);
-		(<THREE.Geometry>this.lines.geometry).vertices[1].copy(position);
-		(<THREE.Geometry>this.lines.geometry).verticesNeedUpdate = true;
+		this.circle.position.copy(position)
+		let geometry = <THREE.Geometry>this.lines.geometry
+		geometry.vertices[1].copy(position)
+		geometry.verticesNeedUpdate = true
+		super.setPosition(point, updateSliders, move)
 	}
 	
 	settingsChanged() {
@@ -174,17 +178,10 @@ export class ThreePen extends Pen {
 		let position = this.getWorldPosition(event)
 		if(this.dragging) {
 			let circlePosition = this.vectorToPoint(this.circle.position)
-			this.setPosition(circlePosition.add(position.subtract(this.previousPosition)))
+			this.setPosition(circlePosition.add(position.subtract(this.previousPosition)), true, false)
 
 			this.previousPosition = position.clone()
 		}
-	}
-
-	mouseStop(event: MouseEvent) {
-		if(this.dragging) {
-			this.communication.interface.sendMoveDirect(this.getWorldPosition(event))
-		}
-		this.dragging = false
 	}
 
 	mouseUp(event:MouseEvent) {

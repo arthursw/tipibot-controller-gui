@@ -13,6 +13,7 @@ declare type DatController = {
 	step: (value: number) => any
 	updateDisplay(): () => any
 	options: (options: string[]) => any
+	name: (n: string) => DatController
 }
 
 declare type DatFolder = {
@@ -103,8 +104,14 @@ export class Controller {
 		return this.controller.options(options)
 	}
 
-	setName(name: string) {
-		$(this.controller.domElement.parentElement).find('span.property-name').html(name)
+	setName(name: string): Controller {
+		this.name(name)
+		return this
+	}
+
+	name(name: string): Controller {
+		this.controller.name(name)
+		return this
 	}
 }
 
@@ -121,8 +128,8 @@ export class GUI {
 		return this.gui.domElement
 	}
 	
-	add(object: any, propertyName: string, min: number = null, max: number = null): Controller {
-		let controller = new Controller( this.gui.add(object, propertyName, min, max) )
+	add(object: any, propertyName: string, min: number = null, max: number = null, step: number = null): Controller {
+		let controller = new Controller( this.gui.add(object, propertyName, min, max, step) )
 		this.controllers.push(controller)
 		return controller
 	}

@@ -1,12 +1,14 @@
 import { Settings } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 
+const MAX_INPUT_BUFFER_LENGTH = 500
+
 declare type Command = {
 	data: string
 	callback: ()=> any
 }
 
-export class CommunicationInterface {
+export class Interpreter {
 	
 	serialPort: string
 	socket: any
@@ -48,14 +50,33 @@ export class CommunicationInterface {
 
 	messageReceived(message: string) {
 		this.serialInput += message
-		if(this.serialInput.indexOf(this.continueMessage) == 0) {
+		
+		let messages = this.serialInput.split('\n')
+		
+		// process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
+		for(let i=0 ; i<messages.length-1 ; i++) {
+			this.processMessage(messages[i])
+		}
+
+		// Clear any old message
+		if(this.serialInput.endsWith('\n')) {
 			this.serialInput = ''
+		} else {
+			this.serialInput = messages[messages.length-1]
+		}
+	}
+
+	processMessage(message: string) {
+		console.log(message)
+		if(message.indexOf(this.continueMessage) == 0) {
 			if(this.commandQueue.length > 0) {
 				let command = this.commandQueue.shift()
 				if(command.callback != null) {
 					command.callback()
 				}
-				this.send(this.commandQueue[0].data)
+				if(this.commandQueue.length > 0) {
+					this.send(this.commandQueue[0].data)
+				}
 			}
 		}
 	}

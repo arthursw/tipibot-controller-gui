@@ -1,6 +1,6 @@
 import { Rectangle, Circle, ThreeRectangle, ThreeCircle, PaperRectangle, PaperCircle } from "./Shapes"
 import { Pen, ThreePen, PaperPen } from "./Pen"
-import { Communication } from "./Communication"
+import { Communication } from "./Communication/Communication"
 
 export class Renderer {
 	constructor() {

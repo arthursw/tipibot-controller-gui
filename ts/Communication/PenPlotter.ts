@@ -1,7 +1,7 @@
 import { Settings, settingsManager } from "../Settings"
-import { CommunicationInterface } from "./CommunicationInterface"
+import { Interpreter } from "./Interpreter"
 
-export class PenPlotter extends CommunicationInterface {
+export class PenPlotter extends Interpreter {
 
     sendSetPosition(point: paper.Point) {
 		this.queue('G92 X' + point.x + ' Y' + point.y + '\n')

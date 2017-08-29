@@ -38,8 +38,13 @@ export let Settings = {
 		y: homeY,
 		width: paperWidth,
 		height: paperHeight
+	},
+	plot: {
+		flatten: true,
+		flattenPrecision: 0.25,
+		subdivide: false,
+		maxSegmentLength: 10
 	}
-
 }
 
 declare let saveAs: any
@@ -68,36 +73,36 @@ export class SettingsManager {
 	createGUI(gui: GUI) {
 
 		this.settingsFolder = gui.addFolder('Settings')
-		this.settingsFolder.addFileSelectorButton('load', 'application/json', this.handleFileSelect )
-		this.settingsFolder.add(this, 'save')
+		this.settingsFolder.addFileSelectorButton('Load', 'application/json', this.handleFileSelect )
+		this.settingsFolder.add(this, 'save').name('Save')
 
 		this.tipibotFolder = gui.addFolder('Tipibot')
-		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000)
-		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000)
-		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width)
-		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height)
-		this.tipibotFolder.add(Settings.tipibot, 'speed', 100, 10000)
-		this.tipibotFolder.add(Settings.tipibot, 'acceleration', 50, 1500)
-		this.tipibotFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500)
-		this.tipibotFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64)
-		this.tipibotFolder.add(Settings.tipibot, 'mmPerRev', 1, 250)
-		this.tipibotFolder.add(Settings.tipibot, 'penWidth', 1, 20)
+		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
+		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
+		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, 1, Settings.tipibot.width).name('Home X')
+		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, 1, Settings.tipibot.height).name('Home Y')
+		this.tipibotFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
+		this.tipibotFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
+		this.tipibotFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
+		this.tipibotFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier')
+		this.tipibotFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
+		this.tipibotFolder.add(Settings.tipibot, 'penWidth', 1, 20, 1).name('Pen width')
 
 		this.servoFolder = gui.addFolder('Servo')
 
 		this.servoPositionFolder = this.servoFolder.addFolder('Position')
-		this.servoPositionFolder.add(Settings.servo.position, 'up', 0, 3600)
-		this.servoPositionFolder.add(Settings.servo.position, 'down', 0, 3600)
+		this.servoPositionFolder.add(Settings.servo.position, 'up', 0, 3600, 1).name('Up')
+		this.servoPositionFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
 
 		this.servoDelayFolder = this.servoFolder.addFolder('Delay')
-		this.servoDelayFolder.add(Settings.servo.delay, 'up', 0, 1000)
-		this.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000)
+		this.servoDelayFolder.add(Settings.servo.delay, 'up', 0, 1000, 1).name('Up')
+		this.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
 
-		this.drawAreaFolder = gui.addFolder('DrawArea')
-		this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width)
-		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height)
-		this.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width)
-		this.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height)
+		this.drawAreaFolder = gui.addFolder('Draw Area')
+		this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width, 1).name('X')
+		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height, 1).name('Y')
+		this.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width, 1).name('Width')
+		this.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height, 1).name('Height')
 
 		let controllers = this.getControllers()
 
@@ -117,10 +122,10 @@ export class SettingsManager {
 
 		if(parentName == 'Tipibot' && (name == 'width' || name == 'height')) {
 			for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
-				if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
+				if(controller.getName() == 'x' || controller.getName() == 'homeX') {
 					controller.max(Settings.tipibot.width)
 				}
-				if(controller.getName() == 'y' || controller.getName() == 'height' || controller.getName() == 'homeX') {
+				if(controller.getName() == 'y' || controller.getName() == 'homeX') {
 					controller.max(Settings.tipibot.height)
 				}
 			}
@@ -131,10 +136,10 @@ export class SettingsManager {
 
 	settingsChanged() {
 		for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
-			if(controller.getName() == 'x' || controller.getName() == 'width' || controller.getName() == 'homeX') {
+			if(controller.getName() == 'x' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.width)
 			}
-			if(controller.getName() == 'y' || controller.getName() == 'height' || controller.getName() == 'homeX') {
+			if(controller.getName() == 'y' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.height)
 			}
 		}

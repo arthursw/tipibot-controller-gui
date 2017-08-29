@@ -17,7 +17,7 @@ import { Tipibot, tipibot } from "./Tipibot"
 import { Renderer, ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { Plot, SVGPlot } from "./Plot"
-import { Communication } from "./Communication"
+import { Communication } from "./Communication/Communication"
 import { Draggable } from "./Draggable"
 import { GUI } from "./GUI"
 import { Circle } from "./Shapes"
@@ -35,6 +35,12 @@ let positionPreview: Circle = null
 
 let drawing = {
 	scale: 1,
+}
+
+let w = <any>window
+
+w.send = function(message: string) {
+	communication.interpreter.send(message)
 }
 
 document.addEventListener("DOMContentLoaded", function(event) { 
@@ -76,9 +82,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		renderer.windowResize()
 	}
 
+	function eventWasOnGUI(event: MouseEvent) {
+		return $.contains(gui.getDomElement(), <any>event.target)
+	}
+
 	function mouseDown(event: MouseEvent) {
-		for(let draggable of Draggable.draggables) {
-			draggable.mouseDown(event)
+		if(!eventWasOnGUI(event)) {
+			for(let draggable of Draggable.draggables) {
+				draggable.mouseDown(event)
+			}
 		}
 		renderer.mouseDown(event)
 	}
@@ -100,8 +112,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseUp(event: MouseEvent) {
-		for(let draggable of Draggable.draggables) {
-			draggable.mouseUp(event)
+		if(!eventWasOnGUI(event)) {
+			for(let draggable of Draggable.draggables) {
+				draggable.mouseUp(event)
+			}
 		}
 		renderer.mouseUp(event)
 		if(tipibot.settingPosition && !tipibot.setPositionButton.contains(<HTMLElement>event.target) ) {

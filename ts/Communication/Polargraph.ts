@@ -1,5 +1,5 @@
 import { Settings, settingsManager } from "../Settings"
-import { CommunicationInterface } from "./CommunicationInterface"
+import { Interpreter } from "./Interpreter"
 
 
 const CMD_CHANGELENGTH = "C01,";
@@ -53,12 +53,16 @@ const CMD_ACTIVATE_MACHINE_BUTTON = "C49";
 const CMD_DEACTIVATE_MACHINE_BUTTON = "C50";
 
 
-export class Polargraph extends CommunicationInterface {
+export class Polargraph extends Interpreter {
 
 	connectionOpened(description: string) {
 		this.sendPenWidth(Settings.tipibot.penWidth)
 		this.sendTipibotSpecs()
 		this.sendSpeed()
+	}
+
+	send(data: string) {
+		super.send(data + String.fromCharCode(10))
 	}
 
 	getMaxSegmentLength() {
@@ -79,11 +83,14 @@ export class Polargraph extends CommunicationInterface {
 
     sendSetPosition(point: paper.Point) {
 		let pointInSteps = this.tipibot.mmToSteps(point);
-		let command = CMD_SETPOSITION + Math.round(pointInSteps.x + 0.5) + "," + Math.round(pointInSteps.y + 0.5) + ',END';
+		let command = CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		this.queue(command);
     }
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
+		// let position = this.tipibot.getPosition()
+		// let pointInSteps = this.tipibot.mmToSteps(point);
+		// TODO: Convert to lengths
 		this.sendMoveToNativePosition(true, point, callback);
 	}
 

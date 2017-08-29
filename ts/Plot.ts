@@ -1,7 +1,7 @@
 import { Tipibot, tipibot } from "./Tipibot"
 import { Settings } from "./Settings"
 import { Draggable } from "./Draggable"
-import { Communication, communication } from "./Communication"
+import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
 
 
@@ -31,26 +31,136 @@ export class Plot extends Draggable {
 
 	public static createGUI(gui: GUI) {
 		Plot.plotFolder = gui.addFolder('Plot')
-		Plot.plotFolder.addButton('draw', Plot.createCallback(Plot.prototype.plot))
-		Plot.plotFolder.add({'pause': false}, 'pause').onChange((value)=>communication.interface.setPause(value))
-		Plot.plotFolder.addButton('stop', Plot.createCallback(Plot.prototype.stop))
-		Plot.plotFolder.addButton('rotate', Plot.createCallback(Plot.prototype.rotate))
-		Plot.plotFolder.addButton('flipX', Plot.createCallback(Plot.prototype.flipX))
-		Plot.plotFolder.addButton('flipY', Plot.createCallback(Plot.prototype.flipY))
 
-		Plot.xSlider = Plot.plotFolder.addSlider('x', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
-		Plot.ySlider = Plot.plotFolder.addSlider('y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
+		Plot.plotFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.onFilterChange)
+		Plot.plotFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.onFilterChange)
+		Plot.plotFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.onFilterChange)
+		Plot.plotFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.onFilterChange)
+
+		Plot.plotFolder.addButton('Draw', Plot.createCallback(Plot.prototype.plot))
+		Plot.plotFolder.add({'Pause': false}, 'Pause').onChange((value)=>communication.interpreter.setPause(value))
+		Plot.plotFolder.addButton('Stop', Plot.createCallback(Plot.prototype.stop))
+		Plot.plotFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate))
+		Plot.plotFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX))
+		Plot.plotFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY))
+
+		Plot.xSlider = Plot.plotFolder.addSlider('X', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
+		Plot.ySlider = Plot.plotFolder.addSlider('Y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
 	}
 
-	constructor(renderer: Renderer) {
-		super(renderer)
+	public static onFilterChange() {
+		if(Plot.currentPlot != null) {
+			Plot.currentPlot.filter()
+		}
+	}
+
+	originalItem: paper.Item 			// Not flattened
+
+	constructor(renderer: Renderer, item: paper.Item=null) {
+		super(renderer, item)
+		this.originalItem = null
+		this.filter()
+	}
+
+	mouseDown(event:MouseEvent) {
+		super.mouseDown(event)
+		this.item.selected = this.dragging
+	}
+
+	itemMustBeDrawn(item: paper.Path | paper.Shape) {
+		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null;
+	}
+
+	saveItem() {
+		this.originalItem = this.item.clone(false)
+	}
+
+	loadItem() {
+		this.originalItem.position = this.item.position
+		this.originalItem.applyMatrix = false
+		this.originalItem.scaling = this.item.scaling
+		this.item.remove()
+		this.item = this.originalItem.clone(false)		// If we clone an item which is not on the project, it won't be inserted in the project
+		paper.project.activeLayer.addChild(this.item)	// <- insert here
+	}
+
+	filter() {
+		if(this.originalItem == null && (Settings.plot.subdivide || Settings.plot.flatten)) {
+			this.saveItem()
+		} else if(this.originalItem != null) {
+			this.loadItem()
+		}
+		this.flatten()
+		this.subdivide()
+	}
+
+	filterItem(item: paper.Item, amount: number, filter: (item: paper.Item, amount: number) => void) {
+		if(item.className == 'Path' || item.className == 'CompoundPath') {
+			let path = <paper.Path>item
+			filter.call(this, path, amount)
+		} else if(item.className == 'Shape') {
+			let shape = <paper.Shape>item
+			if(this.itemMustBeDrawn(shape)) {
+				let path = shape.toPath(true)
+				filter.call(this, path, amount)
+				item.parent.addChildren(item.children)
+				item.remove()
+			}
+		}
+		if(item.children == null) {
+			return
+		}
+		for(let child of item.children) {
+			this.filterItem(child, amount, filter)
+		}
+	}
+
+	subdivide() {
+		if(Settings.plot.subdivide) {
+			this.subdivideItem(this.item, Settings.plot.maxSegmentLength)
+			this.item.selected = true
+		}
+	}
+	
+	subdividePath(path: paper.Path, maxSegmentLength: number) {
+		for(let segment of path.segments) {
+			let curve = segment.curve
+			do{
+				curve = curve.divideAt(maxSegmentLength)
+			}while(curve != null);
+		}
+	}
+
+	subdivideItem(item: paper.Item, maxSegmentLength: number) {
+		this.filterItem(item, maxSegmentLength, this.subdividePath)
+	}
+
+	flatten() {
+		if(Settings.plot.flatten) {
+			this.flattenItem(this.item, Settings.plot.flattenPrecision)
+			this.item.selected = true
+		}
+	}
+
+	flattenPath(path: paper.Path, flattenPrecision: number) {
+		path.flatten(flattenPrecision)
+	}
+
+	flattenItem(item: paper.Item, flattenPrecision: number) {
+		this.filterItem(item, flattenPrecision, this.flattenPath)
 	}
 
 	plot() {
+		this.plotItem(this.item)			// to be overloaded. The draw button calls plot()
+		tipibot.goHome()
+	}
+
+	plotItem(item: paper.Item) {
+
 	}
 
 	stop() {
-		communication.interface.sendStop()
+		communication.interpreter.sendStop()
 	}
 
 	rotate() {
@@ -77,11 +187,9 @@ export class Plot extends Draggable {
 export class SVGPlot extends Plot {
 	static pen: paper.Item = null
 	static svgPlot: SVGPlot = null
-	static scale: number = 1
 	static renderer: Renderer
 	static gui: GUI
 
-	svgItem: paper.Item
 	currentItem: paper.Item
 	currentSegment: paper.Segment
 
@@ -109,39 +217,21 @@ export class SVGPlot extends Plot {
 
 	public static createGUI(gui: GUI) {
 		SVGPlot.gui = gui
-		gui.addFileSelectorButton('loadSVG', 'image/svg+xml', SVGPlot.handleFileSelect)
+		gui.addFileSelectorButton('Load SVG', 'image/svg+xml', SVGPlot.handleFileSelect)
 
-		let scaleController = gui.add(SVGPlot, 'scale', 0.1, 5)
+		let scaleController = gui.addSlider('Scale', 1, 0.1, 5)
 
 		scaleController.onChange((value: number) => {
-			SVGPlot.svgPlot.svgItem.scaling = new paper.Point(value, value)
+			SVGPlot.svgPlot.item.applyMatrix = false
+			SVGPlot.svgPlot.item.scaling = new paper.Point(value, value)
 		})
 	}
 
 	constructor(svg: paper.Item, renderer: Renderer) {
-		super(renderer)
+		super(renderer, svg)
 		Plot.currentPlot = this
 		SVGPlot.svgPlot = this
-		this.svgItem = svg
 		paper.project.layers[0].addChild(svg)
-		this.flatten(svg, 20)
-		this.item = this.svgItem
-	}
-
-	flatten(item: paper.Item, flatness: number) {
-		if(item.className == 'Path' || item.className == 'CompoundPath') {
-			(<paper.Path>item).flatten(flatness)
-		} else if(item.className == 'Shape') {
-			(<paper.Shape>item).toPath(true).flatten(flatness)
-			item.parent.addChildren(item.children)
-			item.remove()
-		}
-		if(item.children == null) {
-			return
-		}
-		for(let child of item.children) {
-			this.flatten(child, flatness)
-		}
 	}
 
 	mouseDown(event: MouseEvent) {
@@ -158,11 +248,6 @@ export class SVGPlot extends Plot {
 		Plot.ySlider.setValueNoCallback(this.item.position.y)
 	}
 
-	plot() {
-		this.plotItem(this.svgItem)
-		tipibot.goHome()
-	}
-
 	plotItem(item: paper.Item) {
 		if(item.className == 'Path' || item.className == 'CompoundPath') {
 			let path: paper.Path = <paper.Path>item
@@ -177,8 +262,6 @@ export class SVGPlot extends Plot {
 					tipibot.moveLinear(segment.point)
 				}
 			}
-		} else if(item.className == 'Shape') {
-			console.error('A shape was found in the SVG to plot.')
 		}
 		if(item.children == null) {
 			return
@@ -226,7 +309,7 @@ export class SVGPlot extends Plot {
 		}
 
 		// plot next siblings if any, or go up to parent
-		if(item != this.svgItem && item.parent != null && item.index < item.parent.children.length - 1) {
+		if(item != this.item && item.parent != null && item.index < item.parent.children.length - 1) {
 			if(item.index < item.parent.children.length - 1) {
 				this.currentItem = item.nextSibling
 				this.currentSegment = null
@@ -240,7 +323,7 @@ export class SVGPlot extends Plot {
 			}
 		}
 
-		if(item == this.svgItem) {
+		if(item == this.item) {
 			this.clearData(item)
 		}
 	}

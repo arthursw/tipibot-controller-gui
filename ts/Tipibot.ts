@@ -1,4 +1,4 @@
-import { Communication, communication } from "./Communication"
+import { Communication, communication } from "./Communication/Communication"
 import { Settings, settingsManager } from "./Settings"
 import { Rectangle, Circle} from "./Shapes"
 import { Renderer } from "./Renderers"
@@ -39,15 +39,15 @@ export class Tipibot implements TipibotInterface {
 	}
 	
 	createGUI(gui: GUI) {
-		let goHomeButton = gui.addButton('goHome', ()=> this.goHome())
+		let goHomeButton = gui.addButton('Go home', ()=> this.goHome())
 
 		let position = this.getPosition()
-		this.xSlider = gui.addSlider('x', position.x, 0, Settings.tipibot.width).onChange((value: number)=>{this.setX(value)})
-		this.ySlider = gui.addSlider('y', position.y, 0, Settings.tipibot.height).onChange((value: number)=>{this.setY(value)})
+		this.xSlider = gui.addSlider('X', position.x, 0, Settings.tipibot.width).onChange((value: number)=>{this.setX(value)})
+		this.ySlider = gui.addSlider('Y', position.y, 0, Settings.tipibot.height).onChange((value: number)=>{this.setY(value)})
 
-		this.setPositionButton = gui.addButton('setPosition', () => this.toggleSetPosition() )
-		this.penStateButton = gui.addButton('penDown', () => this.changePenState() )
-		let motorsOffButton = gui.addButton('motorsOff', ()=> this.motorsOff())
+		this.setPositionButton = gui.addButton('Set position', () => this.toggleSetPosition() )
+		this.penStateButton = gui.addButton('Pen down', () => this.changePenState() )
+		let motorsOffButton = gui.addButton('Motors off', ()=> this.motorsOff())
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -57,9 +57,9 @@ export class Tipibot implements TipibotInterface {
 
 	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
 		if(!setPosition) {
-			this.setPositionButton.setName('setPosition')
+			this.setPositionButton.setName('Set position')
 		} else {
-			this.setPositionButton.setName('cancel')
+			this.setPositionButton.setName('Cancel')
 		}
 		this.settingPosition = setPosition
 	}
@@ -105,10 +105,10 @@ export class Tipibot implements TipibotInterface {
 				this.xSlider.setValue(Settings.tipibot.homeY)
 			}
 			if(name == 'width' || name == 'height') {
-				communication.interface.sendTipibotSize()
+				communication.interpreter.sendTipibotSize()
 				this.area.updateRectangle(this.tipibotRectangle())
 			}
-		} else if(parentName == 'DrawArea') {
+		} else if(parentName == 'Draw Area') {
 			this.paper.updateRectangle(this.paperRectangle())
 		} else if(parentName == 'Servo') {
 			this.pen.settingsChanged()
@@ -143,57 +143,58 @@ export class Tipibot implements TipibotInterface {
 	}
 
     setPosition(point: paper.Point) {
-    	this.pen.setPosition(point)
-    	communication.interface.sendSetPosition(point)
+    	this.pen.setPosition(point, false, false)
+    	communication.interpreter.sendSetPosition(point)
     }
 
 	moveDirect(point: paper.Point, callback: () => any = null) {
-		communication.interface.sendMoveDirect(point, callback)
+		communication.interpreter.sendMoveDirect(point, callback)
 	}
 
 	moveLinear(point: paper.Point, callback: () => any = null) {
-		communication.interface.sendMoveLinear(point, callback)
+		communication.interpreter.sendMoveLinear(point, callback)
 	}
 
 	setSpeed(speed: number) {
-		communication.interface.sendSpeed(speed)
+		communication.interpreter.sendSpeed(speed)
 	}
 
 	tipibotSpecs() {
-		communication.interface.sendTipibotSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
+		communication.interpreter.sendTipibotSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
 	}
 
 	pause(delay: number) {
-		communication.interface.sendPause(delay)
+		communication.interpreter.sendPause(delay)
 	}
 
 	motorOff() {
-		communication.interface.sendMotorOff()
+		communication.interpreter.sendMotorOff()
 	}
 
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
 		if(!this.isPenUp) {
-			communication.interface.sendPenUp(servoUpValue, servoUpTempo)
-			this.penStateButton.setName('penDown')
+			communication.interpreter.sendPenUp(servoUpValue, servoUpTempo)
+			this.penStateButton.setName('Pen down')
 			this.isPenUp = true
 		}
 	}
 
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
 		if(this.isPenUp) {
-			communication.interface.sendPenUp(servoDownValue, servoDownTempo)
-			this.penStateButton.setName('penUp')
+			communication.interpreter.sendPenUp(servoDownValue, servoDownTempo)
+			this.penStateButton.setName('Pen up')
 			this.isPenUp = false
 		}
 	}
 
 	goHome() {
 		this.penUp()
-		this.moveDirect(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+		// The pen will make me (tipibot) move :-)
+		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true)
 	}
 
 	motorsOff() {
-		communication.interface.sendMotorOff()
+		communication.interpreter.sendMotorOff()
 	}
 
 	keyDown(event:KeyboardEvent) {

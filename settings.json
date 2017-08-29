@@ -25,5 +25,10 @@
 		"y": 388,
 		"width": 1780,
 		"height": 1220
+	},
+	"plot": {
+		"flattenPrecision": 0.25,
+		"subdivide": false,
+		"maxSegmentLength": 2
 	}
 }

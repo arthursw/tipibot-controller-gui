@@ -1,11 +1,13 @@
-import { GUI, Controller } from "./GUI"
-import { Settings } from "./Settings"
-import { CommunicationInterface } from "./Communication/CommunicationInterface"
-import { Polargraph } from "./Communication/Polargraph"
-import { TipibotInterface} from "./TipibotInterface"
+import { GUI, Controller } from "../GUI"
+import { Settings } from "../Settings"
+import { TipibotInterface} from "../TipibotInterface"
+import { Interpreter } from "./Interpreter"
+import { Polargraph } from "./Polargraph"
 
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
+
+const SERIAL_COMMUNICATION_SPEED = 57600
 
 declare var io: any
 
@@ -15,7 +17,7 @@ export class Communication {
 	gui: GUI
 	portController: Controller
 	serialPorts: Array<string>
-	interface: CommunicationInterface
+	interpreter: Interpreter
 
 	constructor(gui:GUI) {
 		communication = this
@@ -24,11 +26,11 @@ export class Communication {
 		this.portController = null
 		this.serialPorts = []
 		this.connectToArduinoCreateAgent()
-		this.interface = new Polargraph()
+		this.interpreter = new Polargraph()
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
-		this.interface.setTipibot(tipibot)
+		this.interpreter.setTipibot(tipibot)
 	}
 
 	connectToArduinoCreateAgent() {
@@ -77,14 +79,14 @@ export class Communication {
 
 	serialConnectionPortChanged(value: string) {
 		if(value == 'Disconnected') {
-			this.socket.emit('command', 'close ' + this.interface.serialPort)
+			this.socket.emit('command', 'close ' + this.interpreter.serialPort)
 		}
 		else if(value == 'Refresh') {
 			this.serialPorts = []
 			this.socket.emit('command', 'list')
 		} else {
-			this.interface.setSerialPort(value);
-			this.socket.emit('command', 'open ' + value + ' 57600')
+			this.interpreter.setSerialPort(value);
+			this.socket.emit('command', 'open ' + value + ' ' + SERIAL_COMMUNICATION_SPEED)
 		}
 	}
 
@@ -97,7 +99,7 @@ export class Communication {
 		let portNames = ['Disconnected', 'Refresh'].concat(this.serialPorts)
 
 		if(this.portController == null) {
-			this.portController = this.gui.add( {'port': 'Disconnected'}, 'port' )
+			this.portController = this.gui.add( {'Port': 'Disconnected'}, 'Port' )
 		} else {
 			this.portController = this.portController.options(portNames)
 		}
@@ -137,7 +139,7 @@ export class Communication {
 				case 'Open':
 					console.log('Port: ' + data.Port)
 					console.log(data.Desc)
-					this.interface.connectionOpened(data.Desc)
+					this.interpreter.connectionOpened(data.Desc)
 					break;
 				case 'OpenFail':
 					console.log('Port: ' + data.Port)
@@ -173,8 +175,7 @@ export class Communication {
 		} else if(data.hasOwnProperty('Error')) {
 			console.error(data.Error)
 		} else if(data.hasOwnProperty('D')) { 				// Output from the serial port
-			console.log('Serial output: ', data.D)
-			this.interface.messageReceived(data.D)
+			this.interpreter.messageReceived(data.D)
 		}
 	}
 
@@ -182,7 +183,7 @@ export class Communication {
 		
 		// this.socket = io('ws://localhost:3000')
 		this.socket = io(websocketPort)
-		this.interface.setSocket(this.socket)
+		this.interpreter.setSocket(this.socket)
 		
 		this.socket.on('connect', (response: any) => this.onWebSocketConnect(response))
 
