@@ -67,6 +67,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 		renderer.centerOnTipibot(Settings.tipibot)
 		renderer.createDrawingLayer()
+
+		// debug
+		w.tipibot = tipibot
+		w.settingsManager = settingsManager
+		w.gui = gui
+		w.renderer = renderer
+		w.communication = communication
 	}
 
 	initialize()
@@ -80,6 +87,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function windowResize() {
 		renderer.windowResize()
+		renderer.centerOnTipibot(Settings.tipibot, false)
 	}
 
 	function eventWasOnGUI(event: MouseEvent) {

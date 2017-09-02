@@ -7,7 +7,7 @@ export class Renderer {
 
 	}
 
-	centerOnTipibot(tipibot: {width: number, height: number}) {
+	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
 	}
 
 	getDomElement(): any {
@@ -22,7 +22,7 @@ export class Renderer {
 		return null
 	}
 
-	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
+	createPen(x: number, y:number, tipibotWidth: number): Pen {
 		return null
 	}
 
@@ -84,10 +84,12 @@ export class PaperRenderer extends Renderer {
 
 	}
 
-	centerOnTipibot(tipibot: {width: number, height: number}) {
-		let margin = 100
-		let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
-		paper.view.zoom = 1 / ratio
+	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
+		if(zoom) {
+			let margin = 100
+			let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
+			paper.view.zoom = 1 / ratio
+		}
 
 		paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2))
 	}
@@ -104,8 +106,8 @@ export class PaperRenderer extends Renderer {
 		return new PaperCircle(x, y, radius, this.tipibotLayer)
 	}
 
-	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
-		let pen = new PaperPen(communication, this)
+	createPen(x: number, y:number, tipibotWidth: number): Pen {
+		let pen = new PaperPen(this)
 		pen.initialize(x, y, tipibotWidth, this.tipibotLayer)
 		return pen
 	}
@@ -186,13 +188,15 @@ export class ThreeRenderer extends Renderer {
 		container.appendChild( this.getDomElement() )
 	}
 
-	centerOnTipibot(tipibot: {width: number, height: number}) {
+	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
 		this.setCameraCenterTo(new THREE.Vector3(tipibot.width / 2, tipibot.height / 2, 0))
-
-		let margin = 100
-		let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
-		this.camera.zoom = 1 / ratio
-		this.camera.updateProjectionMatrix()
+		
+		if(zoom) {
+			let margin = 100
+			let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
+			this.camera.zoom = 1 / ratio
+			this.camera.updateProjectionMatrix()
+		}
 	}
 	
 	getDomElement(): any {
@@ -207,8 +211,8 @@ export class ThreeRenderer extends Renderer {
 		return new ThreeCircle(x, y, radius, nSegments, this.scene, this.lineMaterial )
 	}
 
-	createPen(x: number, y:number, tipibotWidth: number, communication: Communication): Pen {
-		let pen = new ThreePen(communication, this)
+	createPen(x: number, y:number, tipibotWidth: number): Pen {
+		let pen = new ThreePen(this)
 		pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial)
 		return pen
 	}

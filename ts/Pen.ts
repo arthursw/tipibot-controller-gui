@@ -1,4 +1,4 @@
-import { Communication } from "./Communication/Communication"
+import { Communication, communication } from "./Communication/Communication"
 import { Draggable } from "./Draggable"
 import { Settings, settingsManager } from "./Settings"
 import { tipibot } from "./Tipibot"
@@ -12,15 +12,11 @@ declare type Renderer = {
 export class Pen extends Draggable {
 	public static RADIUS = 20
 
-	communication: Communication
-
-	constructor(communication: Communication, renderer: Renderer) {
+	constructor(renderer: Renderer) {
 		super(renderer)
-		this.communication = communication
 	}
 
-	settingsChanged() {
-		this.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+	tipibotWidthChanged() {
 	}
 
 	getPosition(): paper.Point {
@@ -46,8 +42,8 @@ export class PaperPen extends Pen {
 	circle: paper.Path
 	lines: paper.Path
 
-	constructor(communication: Communication, renderer: Renderer) {
-		super(communication, renderer)
+	constructor(renderer: Renderer) {
+		super(renderer)
 	}
 
 	initialize(x: number, y:number, tipibotWidth: number, layer: paper.Layer = null) {
@@ -95,9 +91,8 @@ export class PaperPen extends Pen {
 		super.mouseStop(event)
 	}
 
-	settingsChanged() {
+	tipibotWidthChanged() {
 		this.lines.segments[2].point.x = Settings.tipibot.width
-		super.settingsChanged()
 	}
 }
 
@@ -107,8 +102,8 @@ export class ThreePen extends Pen {
 	camera: THREE.OrthographicCamera
 	lines: THREE.Line
 
-	constructor(communication: Communication, renderer: Renderer) {
-		super(communication, renderer)
+	constructor(renderer: Renderer) {
+		super(renderer)
 	}
 
 	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.OrthographicCamera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
@@ -152,9 +147,8 @@ export class ThreePen extends Pen {
 		super.setPosition(point, updateSliders, move)
 	}
 	
-	settingsChanged() {
+	tipibotWidthChanged() {
 		(<THREE.Geometry>this.lines.geometry).vertices[2].x = Settings.tipibot.width
-		super.settingsChanged()
 	}
 
 	pointToVector(point: paper.Point): THREE.Vector3 {

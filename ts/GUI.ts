@@ -75,7 +75,10 @@ export class Controller {
 		return this
 	}
 
-	setValue(value: number) {
+	setValue(value: number, noCallback=false) {
+		if(noCallback) {
+			return this.setValueNoCallback(value)
+		}
 		this.controller.setValue(value)
 	}
 
@@ -84,12 +87,22 @@ export class Controller {
 		this.controller.updateDisplay()
 	}
 
-	max(value: number) {
+	max(value: number, noCallback=true) {
 		this.controller.max(value)
+		if(noCallback) {
+			this.setValueNoCallback(Math.min(value, this.getValue()))
+		} else {
+			this.setValue(Math.min(value, this.getValue()))
+		}
 	}
 
-	min(value: number) {
+	min(value: number, noCallback=true) {
 		this.controller.min(value)
+		if(noCallback) {
+			this.setValueNoCallback(Math.max(value, this.getValue()))
+		} else {
+			this.setValue(Math.max(value, this.getValue()))
+		}
 	}
 
 	step(value: number) {
@@ -117,10 +130,10 @@ export class Controller {
 
 export class GUI {
 	gui: any
-	controllers: Controller[]
+	nameToController: Map<string, Controller>
 
 	constructor(folder: DatFolder = null, options: any = null) {
-		this.controllers = []
+		this.nameToController = new Map<string, Controller>()
 		this.gui = folder != null ? folder : new dat.GUI(options)
 	}
 
@@ -130,16 +143,14 @@ export class GUI {
 	
 	add(object: any, propertyName: string, min: number = null, max: number = null, step: number = null): Controller {
 		let controller = new Controller( this.gui.add(object, propertyName, min, max, step) )
-		this.controllers.push(controller)
+		this.nameToController.set(propertyName, controller)
 		return controller
 	}
 
 	addButton(name: string, callback: (value?: any)=>any): Controller {
 		let object:any = {}
 		object[name] = callback
-		let controller = new Controller(this.gui.add(object, name))
-		this.controllers.push(controller)
-		return controller
+		return this.add(object, name)
 	}
 
 	addFileSelectorButton(name: string, fileType: string, callback: (event: any)=>any): Controller {	
@@ -168,7 +179,12 @@ export class GUI {
 		return new GUI(this.gui.addFolder(name))
 	}
 
+	getController(name: string): Controller {
+		return this.nameToController.get(name)
+	}
+
 	getControllers(): Controller[] {
-		return this.controllers
+		let keyValues = Array.from(this.nameToController)
+		return Array.from(keyValues, keyValue => keyValue[1])
 	}
 }

@@ -1,68 +1,86 @@
 import { Settings, settingsManager } from "../Settings"
 import { Interpreter } from "./Interpreter"
 
-
-const CMD_CHANGELENGTH = "C01,";
-const CMD_CHANGEPENWIDTH = "C02,";
-const CMD_CHANGEMOTORSPEED = "C03,";
-const CMD_CHANGEMOTORACCEL = "C04,";
-const CMD_DRAWPIXEL = "C05,";
-const CMD_DRAWSCRIBBLEPIXEL = "C06,";
-const CMD_DRAWRECT = "C07,";
-const CMD_CHANGEDRAWINGDIRECTION = "C08,";
-const CMD_SETPOSITION = "C09,";
-const CMD_TESTPATTERN = "C10,";
-const CMD_TESTPENWIDTHSQUARE = "C11,";
-const CMD_TESTPENWIDTHSCRIBBLE = "C12,";
-const CMD_PENDOWN = "C13,";
-const CMD_PENUP = "C14,";
-const CMD_DRAWSAWPIXEL = "C15,";
-const CMD_DRAWROUNDPIXEL = "C16,";
-const CMD_CHANGELENGTHDIRECT = "C17,";
-const CMD_TXIMAGEBLOCK = "C18,";
-const CMD_STARTROVE = "C19,";
-const CMD_STOPROVE = "C20,";
-const CMD_SET_ROVE_AREA = "C21,";
-const CMD_LOADMAGEFILE = "C23,";
-const CMD_CHANGEMACHINESIZE = "C24,";
-const CMD_CHANGEMACHINENAME = "C25,";
-const CMD_REQUESTMACHINESIZE = "C26,";
-const CMD_RESETMACHINE = "C27,";
-const CMD_DRAWDIRECTIONTEST = "C28,";
-const CMD_CHANGEMACHINEMMPERREV = "C29,";
-const CMD_CHANGEMACHINESTEPSPERREV = "C30,";
-const CMD_SETMOTORSPEED = "C31,";
-const CMD_SETMOTORACCEL = "C32,";
-const CMD_MACHINE_MODE_STORE_COMMANDS = "C33,";
-const CMD_MACHINE_MODE_EXEC_FROM_STORE = "C34,";
-const CMD_MACHINE_MODE_LIVE = "C35,";
-const CMD_RANDOM_DRAW = "C36,";
-const CMD_SETMACHINESTEPMULTIPLIER = "C37,";
-const CMD_START_TEXT = "C38,";
-const CMD_DRAW_SPRITE = "C39,";
-const CMD_CHANGELENGTH_RELATIVE = "C40,";
-const CMD_SWIRLING = "C41,";
-const CMD_DRAW_RANDOM_SPRITE = "C42,";
-const CMD_DRAW_NORWEGIAN = "C43,";
-const CMD_DRAW_NORWEGIAN_OUTLINE = "C44,";
-const CMD_SETPENLIFTRANGE = "C45,";
-const CMD_SELECT_ROVE_SOURCE_IMAGE = "C46";
-const CMD_RENDER_ROVE = "C47";
-
-const CMD_ACTIVATE_MACHINE_BUTTON = "C49";
-const CMD_DEACTIVATE_MACHINE_BUTTON = "C50";
-
+const commands = {
+	CMD_CHANGELENGTH: "C01,",
+	CMD_CHANGEPENWIDTH: "C02,",
+	CMD_CHANGEMOTORSPEED: "C03,",
+	CMD_CHANGEMOTORACCEL: "C04,",
+	CMD_DRAWPIXEL: "C05,",
+	CMD_DRAWSCRIBBLEPIXEL: "C06,",
+	CMD_DRAWRECT: "C07,",
+	CMD_CHANGEDRAWINGDIRECTION: "C08,",
+	CMD_SETPOSITION: "C09,",
+	CMD_TESTPATTERN: "C10,",
+	CMD_TESTPENWIDTHSQUARE: "C11,",
+	CMD_TESTPENWIDTHSCRIBBLE: "C12,",
+	CMD_PENDOWN: "C13,",
+	CMD_PENUP: "C14,",
+	CMD_DRAWSAWPIXEL: "C15,",
+	CMD_DRAWROUNDPIXEL: "C16,",
+	CMD_CHANGELENGTHDIRECT: "C17,",
+	CMD_TXIMAGEBLOCK: "C18,",
+	CMD_STARTROVE: "C19,",
+	CMD_STOPROVE: "C20,",
+	CMD_SET_ROVE_AREA: "C21,",
+	CMD_LOADMAGEFILE: "C23,",
+	CMD_CHANGEMACHINESIZE: "C24,",
+	CMD_CHANGEMACHINENAME: "C25,",
+	CMD_REQUESTMACHINESIZE: "C26,",
+	CMD_RESETMACHINE: "C27,",
+	CMD_DRAWDIRECTIONTEST: "C28,",
+	CMD_CHANGEMACHINEMMPERREV: "C29,",
+	CMD_CHANGEMACHINESTEPSPERREV: "C30,",
+	CMD_SETMOTORSPEED: "C31,",
+	CMD_SETMOTORACCEL: "C32,",
+	CMD_MACHINE_MODE_STORE_COMMANDS: "C33,",
+	CMD_MACHINE_MODE_EXEC_FROM_STORE: "C34,",
+	CMD_MACHINE_MODE_LIVE: "C35,",
+	CMD_RANDOM_DRAW: "C36,",
+	CMD_SETMACHINESTEPMULTIPLIER: "C37,",
+	CMD_START_TEXT: "C38,",
+	CMD_DRAW_SPRITE: "C39,",
+	CMD_CHANGELENGTH_RELATIVE: "C40,",
+	CMD_SWIRLING: "C41,",
+	CMD_DRAW_RANDOM_SPRITE: "C42,",
+	CMD_DRAW_NORWEGIAN: "C43,",
+	CMD_DRAW_NORWEGIAN_OUTLINE: "C44,",
+	CMD_SETPENLIFTRANGE: "C45,",
+	CMD_SELECT_ROVE_SOURCE_IMAGE: "C46",
+	CMD_RENDER_ROVE: "C47",
+	CMD_ACTIVATE_MACHINE_BUTTON: "C49",
+	CMD_DEACTIVATE_MACHINE_BUTTON: "C50"
+}
 
 export class Polargraph extends Interpreter {
 
 	connectionOpened(description: string) {
 		this.sendPenWidth(Settings.tipibot.penWidth)
-		this.sendTipibotSpecs()
+		this.sendSpecs()
 		this.sendSpeed()
+		this.sendSetPosition()
 	}
 
 	send(data: string) {
+		let commandCode = data.substr(0, 3)
+		for(let commandName in commands) {
+			let code: string = (<any>commands)[commandName].substr(0, 3)
+			if(code == commandCode) {
+				console.log("Send command: " + commandName)
+			}
+		}
 		super.send(data + String.fromCharCode(10))
+	}
+	
+	queue(data: string, callback: () => any = null) {
+		let commandCode = data.substr(0, 3)
+		for(let commandName in commands) {
+			let code: string = (<any>commands)[commandName].substr(0, 3)
+			if(code == commandCode) {
+				console.log("Queue command: " + commandName)
+			}
+		}
+		super.queue(data, callback)
 	}
 
 	getMaxSegmentLength() {
@@ -70,27 +88,27 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendMoveToNativePosition(direct: boolean, p: paper.Point, callback: () => any = null ) {
+		p = this.tipibot.cartesianToLengths(p)
+		p = this.tipibot.mmToSteps(p)
 		let command: string = null;
 		if (direct) {
-			command = CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
+			command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
 		}
 		else {
-			command = CMD_CHANGELENGTH + Math.round(p.x) + "," + Math.round(p.y) + ',END';
+			command = commands.CMD_CHANGELENGTH + Math.round(p.x) + "," + Math.round(p.y) + ',END';
 		}
 
 		this.queue(command, callback);
 	}
 
-    sendSetPosition(point: paper.Point) {
+    sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
+    	point = this.tipibot.cartesianToLengths(point)
 		let pointInSteps = this.tipibot.mmToSteps(point);
-		let command = CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
+		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		this.queue(command);
     }
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
-		// let position = this.tipibot.getPosition()
-		// let pointInSteps = this.tipibot.mmToSteps(point);
-		// TODO: Convert to lengths
 		this.sendMoveToNativePosition(true, point, callback);
 	}
 
@@ -99,19 +117,32 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
-		this.queue(CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END');
-		this.queue(CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END');
+		this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END');
+		this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END');
 	}
 	
-	sendTipibotSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
-		this.queue(CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END');
+	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
+		this.queue(commands.CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END');
+	}
+	
+	sendStepsPerRev(stepsPerRev: number=Settings.tipibot.stepsPerRev) {
+		
+		this.queue(commands.CMD_CHANGEMACHINESTEPSPERREV + stepsPerRev + ',END');
 	}
 
-	sendTipibotSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
-		this.queue(CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END');
-		this.queue(CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END');
-		this.queue(CMD_CHANGEMACHINESTEPSPERREV + stepsPerRev + ',END');
-		this.queue(CMD_SETMACHINESTEPMULTIPLIER + stepMultiplier + ',END');
+	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
+		this.queue(commands.CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END');
+	}
+
+	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+		this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + stepMultiplier + ',END');
+	}
+
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+		this.sendSize(tipibotWidth, tipibotHeight)
+		this.sendMmPerRev(mmPerRev)
+		this.sendStepsPerRev(stepsPerRev)
+		this.sendStepMultiplier(stepMultiplier)
 	}
 
 	sendPause(delay: number) {
@@ -120,8 +151,11 @@ export class Polargraph extends Interpreter {
 	sendMotorOff() {
 	}
 
-	sendPenLiftRange(servoDownValue: number, servoUpValue: number) {
-		this.queue(CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
+	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
+		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
+	}
+
+	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
 	}
 
 	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
@@ -130,7 +164,7 @@ export class Polargraph extends Interpreter {
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(CMD_PENDOWN + "END");
+		this.queue(commands.CMD_PENDOWN + "END");
 	}
 
 	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
@@ -139,13 +173,13 @@ export class Polargraph extends Interpreter {
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(CMD_PENUP + "END");
+		this.queue(commands.CMD_PENUP + "END");
 	}
 
 	sendStop() {
 	}
 
 	sendPenWidth(penWidth: number) {
-		this.queue(CMD_CHANGEPENWIDTH + penWidth.toFixed(2) + ',END')
+		this.queue(commands.CMD_CHANGEPENWIDTH + penWidth.toFixed(2) + ',END')
 	}
 }

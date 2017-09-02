@@ -116,10 +116,22 @@ export class Interpreter {
 	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
 	}
 
-	sendTipibotSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
+	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
 	}
 
-	sendTipibotSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	sendStepsPerRev(stepsPerRev: number=Settings.tipibot.stepsPerRev) {
+	}
+
+	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
+	}
+
+	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	}
+
+	sendPenWidth(penWidth: number=Settings.tipibot.penWidth) {
+	}
+
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
 	}
 
 	sendPause(delay: number) {
@@ -138,5 +150,11 @@ export class Interpreter {
 	}
 
 	sendStop() {
+	}
+
+	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
+	}
+
+	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
 	}
 }

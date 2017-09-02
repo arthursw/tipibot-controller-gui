@@ -3,12 +3,13 @@
 		"width": 1780,
 		"height": 2020,
 		"homeX": 890,
-		"homeY": 1608,
+		"homeY": 550,
 		"speed": 1440,
 		"acceleration": 400,
 		"stepsPerRev": 200,
-		"stepMultiplier": 32,
-		"mmPerRev": 96
+		"stepMultiplier": 16,
+		"mmPerRev": 96,
+		"penWidth": 2
 	},
 	"servo": {
 		"position": {
@@ -21,14 +22,14 @@
 		}
 	},
 	"drawArea": {
-		"x": 0,
-		"y": 388,
-		"width": 1780,
-		"height": 1220
+		"y": 550,
+		"width": 1000,
+		"height": 700
 	},
 	"plot": {
+		"flatten": true,
 		"flattenPrecision": 0.25,
 		"subdivide": false,
-		"maxSegmentLength": 2
+		"maxSegmentLength": 10
 	}
 }

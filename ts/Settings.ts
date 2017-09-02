@@ -34,7 +34,6 @@ export let Settings = {
 		}
 	},
 	drawArea: {
-		x: homeX,
 		y: homeY,
 		width: paperWidth,
 		height: paperHeight
@@ -79,8 +78,8 @@ export class SettingsManager {
 		this.tipibotFolder = gui.addFolder('Tipibot')
 		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
 		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
-		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, 1, Settings.tipibot.width).name('Home X')
-		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, 1, Settings.tipibot.height).name('Home Y')
+		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
+		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
 		this.tipibotFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
 		this.tipibotFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
 		this.tipibotFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
@@ -99,8 +98,8 @@ export class SettingsManager {
 		this.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
 
 		this.drawAreaFolder = gui.addFolder('Draw Area')
-		this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width, 1).name('X')
-		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height, 1).name('Y')
+		// this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width, 1).name('Offset X')
+		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height, 1).name('Offset Y')
 		this.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width, 1).name('Width')
 		this.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height, 1).name('Height')
 
@@ -109,7 +108,8 @@ export class SettingsManager {
 		for(let controller of controllers) {
 			let name = controller.getName()
 			let parentName = controller.getTopParentName()
-			controller.onChange( (value: any) => this.settingChanged(parentName, name, value) )
+			controller.onChange( (value: any) => this.settingChanged(parentName, name, value, false) )
+			controller.onFinishChange( (value: any) => this.settingChanged(parentName, name, value, true) )
 		}
 	}
 
@@ -118,20 +118,47 @@ export class SettingsManager {
 		this.tipibot.createGUI(this.tipibotFolder)
 	}
 
-	settingChanged(parentName: string, name: string, value: any=null) {
+	settingChanged(parentName: string, name: string, value: any=null, finishChanged=false) {
 
-		if(parentName == 'Tipibot' && (name == 'width' || name == 'height')) {
-			for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
-				if(controller.getName() == 'x' || controller.getName() == 'homeX') {
-					controller.max(Settings.tipibot.width)
-				}
-				if(controller.getName() == 'y' || controller.getName() == 'homeX') {
-					controller.max(Settings.tipibot.height)
-				}
+		// update sliders and transmit change to concerned object
+		if(parentName == 'Tipibot') {
+			if(name == 'width') {
+				this.tipibotFolder.getController('x').max(value, false)
+				this.drawAreaFolder.getController('width').max(value, finishChanged)
+			} else if(name == 'height') {
+				this.tipibotFolder.getController('y').max(value, false)
+				this.drawAreaFolder.getController('height').max(value, finishChanged)
+				this.drawAreaFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
+			} else if(name == 'homeX') {
+				this.tipibotFolder.getController('x').setValue(value, false)
+			} else if(name == 'homeY') {
+				this.tipibotFolder.getController('y').setValue(value, false)
+			} else if(name == 'speed' || name == 'acceleration') {
+				this.tipibot.speedChanged(finishChanged)
+			} else if(name == 'mmPerRev') {
+				this.tipibot.mmPerRevChanged(finishChanged)
+			} else if(name == 'stepsPerRev') {
+				this.tipibot.stepsPerRevChanged(finishChanged)
+			} else if(name == 'stepMultiplier') {
+				this.tipibot.stepMultiplierChanged(finishChanged)
+			} else if(name == 'penWidth') {
+				this.tipibot.penWidthChanged(finishChanged)
+			} else if(name == 'x') {
+				this.tipibot.setX(value, finishChanged)
+			} else if(name == 'y') {
+				this.tipibot.setY(value, finishChanged)
 			}
-		}
 
-		this.tipibot.settingChanged(parentName, name, value)
+			if(name == 'width' || name == 'height') {
+				this.tipibot.sizeChanged(finishChanged)
+			}
+		} else if(parentName == 'Servo') {
+			if(finishChanged) {
+				this.tipibot.servoChanged(finishChanged)
+			}
+		} else if(parentName == 'Draw Area') {
+			this.tipibot.drawAreaChanged(finishChanged)
+		}
 	}
 
 	settingsChanged() {
@@ -139,7 +166,7 @@ export class SettingsManager {
 			if(controller.getName() == 'x' || controller.getName() == 'homeX') {
 				controller.max(Settings.tipibot.width)
 			}
-			if(controller.getName() == 'y' || controller.getName() == 'homeX') {
+			if(controller.getName() == 'y' || controller.getName() == 'homeY') {
 				controller.max(Settings.tipibot.height)
 			}
 		}

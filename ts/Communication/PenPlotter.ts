@@ -19,12 +19,21 @@ export class PenPlotter extends Interpreter {
 		this.queue('G0 F' + speed + '\n')
 	}
 	
-	sendTipibotSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
+	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
 		// todo: test
 		this.queue('M4 X' + tipibotWidth + '\n')
 	}
+	
+	sendStepsPerRev(stepsPerRev: number=Settings.tipibot.stepsPerRev) {
+	}
 
-	sendTipibotSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
+	}
+
+	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	}
+
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
 		this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev*stepMultiplier) + ' P' + mmPerRev + '\n')
 	}
 
