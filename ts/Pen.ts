@@ -10,6 +10,7 @@ declare type Renderer = {
 
 
 export class Pen extends Draggable {
+	public static HOME_RADIUS = 10
 	public static RADIUS = 20
 
 	constructor(renderer: Renderer) {
@@ -23,12 +24,12 @@ export class Pen extends Draggable {
 		return this.item.position // will be overloaded
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
 		if(updateSliders) {
 			tipibot.setPositionSliders(point)
 		}
 		if(move) {
-			tipibot.moveDirect(point)
+			tipibot.moveDirect(point, callback)
 		}
 	}
 

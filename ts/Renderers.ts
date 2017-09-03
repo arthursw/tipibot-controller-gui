@@ -1,4 +1,4 @@
-import { Rectangle, Circle, ThreeRectangle, ThreeCircle, PaperRectangle, PaperCircle } from "./Shapes"
+import { Rectangle, Circle, Target, ThreeRectangle, ThreeCircle, PaperRectangle, PaperCircle, PaperTarget } from "./Shapes"
 import { Pen, ThreePen, PaperPen } from "./Pen"
 import { Communication } from "./Communication/Communication"
 
@@ -23,6 +23,10 @@ export class Renderer {
 	}
 
 	createPen(x: number, y:number, tipibotWidth: number): Pen {
+		return null
+	}
+
+	createTarget(x: number, y: number, radius: number): Target {
 		return null
 	}
 
@@ -110,6 +114,10 @@ export class PaperRenderer extends Renderer {
 		let pen = new PaperPen(this)
 		pen.initialize(x, y, tipibotWidth, this.tipibotLayer)
 		return pen
+	}
+
+	createTarget(x: number, y: number, radius: number): Target {
+		return new PaperTarget(x, y, radius, this.tipibotLayer)
 	}
 	
 	createDrawingLayer() {

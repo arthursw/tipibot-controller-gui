@@ -11,8 +11,8 @@ export interface TipibotInterface {
 	getPosition: ()=> paper.Point
 	setX: (x: number, sendChange?: boolean)=> void
 	setY: (y: number, sendChange?: boolean)=> void
-	settingChanged: (parentName: string, name: string, value: any)=> void
-	settingsChanged: ()=> void
+	toggleSetPosition: (setPosition?: boolean)=> void
+	setHome: (setPosition?: boolean)=> void
 
 	sizeChanged: (sendChange: boolean) => void
 	drawAreaChanged: (sendChange: boolean) => void

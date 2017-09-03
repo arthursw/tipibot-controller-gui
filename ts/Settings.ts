@@ -4,8 +4,8 @@ import { TipibotInterface } from "./TipibotInterface"
 let tipibotHeight = 2020
 let tipibotWidth = 1780
 
-let paperHeight = 1220
-let paperWidth = 1780
+let paperHeight = 900
+let paperWidth = 1200
 
 let homeX = 0
 let homeY = 388
@@ -50,90 +50,106 @@ declare let saveAs: any
 
 export class SettingsManager {
 	
-	settingsFolder: GUI = null
-	tipibotFolder: GUI = null
-	servoFolder: GUI = null
-	servoPositionFolder: GUI = null
-	servoDelayFolder: GUI = null
-	drawAreaFolder: GUI = null
+	gui: GUI = null
+	tipibotPositionFolder: GUI = null
+	drawAreaDimensionsFolder: GUI = null
 	tipibot: TipibotInterface
 
 	constructor() {
+		this.loadLocalStorage()
 	}
 
 	getControllers() {
-		let controllers = this.tipibotFolder.getControllers()
-		controllers = controllers.concat(this.servoPositionFolder.getControllers())
-		controllers = controllers.concat(this.servoDelayFolder.getControllers())
-		controllers = controllers.concat(this.drawAreaFolder.getControllers())
-		return controllers
+		return this.gui.getFolder('Settings').getAllControllers()
 	}
 
 	createGUI(gui: GUI) {
+		this.gui = gui
+		let settingsFolder = gui.addFolder('Settings')
+		settingsFolder.open()
 
-		this.settingsFolder = gui.addFolder('Settings')
-		this.settingsFolder.addFileSelectorButton('Load', 'application/json', this.handleFileSelect )
-		this.settingsFolder.add(this, 'save').name('Save')
+		let loadSaveFolder = settingsFolder.addFolder('Load & Save')
+		loadSaveFolder.addFileSelectorButton('Load', 'application/json', (event:any) => this.handleFileSelect(event) )
+		loadSaveFolder.add(this, 'save').name('Save')
 
-		this.tipibotFolder = gui.addFolder('Tipibot')
-		this.tipibotFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
-		this.tipibotFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
-		this.tipibotFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
-		this.tipibotFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
-		this.tipibotFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
-		this.tipibotFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
-		this.tipibotFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
-		this.tipibotFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier')
-		this.tipibotFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
-		this.tipibotFolder.add(Settings.tipibot, 'penWidth', 1, 20, 1).name('Pen width')
+		this.tipibotPositionFolder = settingsFolder.addFolder('Position')
+		this.tipibotPositionFolder.addButton('Set position', () => this.tipibot.toggleSetPosition() )
+		
+		let position = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
+		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X').onChange((value: number)=>{this.tipibot.setX(value)})
+		this.tipibotPositionFolder.add(position, 'y', 0, Settings.tipibot.height).name('Y').onChange((value: number)=>{this.tipibot.setY(value)})
 
-		this.servoFolder = gui.addFolder('Servo')
+		let homeFolder = settingsFolder.addFolder('Home')
+		homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
+		homeFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
+		homeFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
+		homeFolder.open()
 
-		this.servoPositionFolder = this.servoFolder.addFolder('Position')
-		this.servoPositionFolder.add(Settings.servo.position, 'up', 0, 3600, 1).name('Up')
-		this.servoPositionFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
+		let tipibotDimensionsFolder = settingsFolder.addFolder('Tipibot dimensions')
+		tipibotDimensionsFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
+		tipibotDimensionsFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
 
-		this.servoDelayFolder = this.servoFolder.addFolder('Delay')
-		this.servoDelayFolder.add(Settings.servo.delay, 'up', 0, 1000, 1).name('Up')
-		this.servoDelayFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
+		this.drawAreaDimensionsFolder = settingsFolder.addFolder('Draw area dimensions')
+		this.drawAreaDimensionsFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height, 1).name('Offset Y')
+		this.drawAreaDimensionsFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width, 1).name('Width')
+		this.drawAreaDimensionsFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height, 1).name('Height')
 
-		this.drawAreaFolder = gui.addFolder('Draw Area')
-		// this.drawAreaFolder.add(Settings.drawArea, 'x', 0, Settings.tipibot.width, 1).name('Offset X')
-		this.drawAreaFolder.add(Settings.drawArea, 'y', 0, Settings.tipibot.height, 1).name('Offset Y')
-		this.drawAreaFolder.add(Settings.drawArea, 'width', 0, Settings.tipibot.width, 1).name('Width')
-		this.drawAreaFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height, 1).name('Height')
+		let penFolder = settingsFolder.addFolder('Pen')
+		penFolder.add(Settings.tipibot, 'penWidth', 1, 20, 1).name('Pen width')
+
+		let anglesFolder = penFolder.addFolder('Angles')
+		anglesFolder.add(Settings.servo.position, 'up', 0, 3600, 1).name('Up')
+		anglesFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
+
+		let delaysFolder = penFolder.addFolder('Delays')
+		delaysFolder.add(Settings.servo.delay, 'up', 0, 1000, 1).name('Up')
+		delaysFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
+
+		let machineFolder = settingsFolder.addFolder('Machine')
+
+		machineFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
+		machineFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
+		machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
+		machineFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier')
+		machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
 
 		let controllers = this.getControllers()
 
 		for(let controller of controllers) {
 			let name = controller.getName()
-			let parentName = controller.getTopParentName()
-			controller.onChange( (value: any) => this.settingChanged(parentName, name, value, false) )
-			controller.onFinishChange( (value: any) => this.settingChanged(parentName, name, value, true) )
+			let parentNames = controller.getParentNames()
+			controller.onChange( (value: any) => this.settingChanged(parentNames, name, value, false) )
+			controller.onFinishChange( (value: any) => this.settingChanged(parentNames, name, value, true) )
 		}
 	}
 
-	addTipibotToGUI(tipibot: TipibotInterface) {
+	setTipibot(tipibot: TipibotInterface) {
 		this.tipibot = tipibot
-		this.tipibot.createGUI(this.tipibotFolder)
 	}
 
-	settingChanged(parentName: string, name: string, value: any=null, finishChanged=false) {
+	settingChanged(parentNames: string[], name: string, value: any=null, finishChanged=false) {
 
 		// update sliders and transmit change to concerned object
-		if(parentName == 'Tipibot') {
+		if(parentNames[0] == 'Tipibot dimensions') {
 			if(name == 'width') {
-				this.tipibotFolder.getController('x').max(value, false)
-				this.drawAreaFolder.getController('width').max(value, finishChanged)
+				this.tipibotPositionFolder.getController('x').max(value, false)
+				this.drawAreaDimensionsFolder.getController('width').max(value, finishChanged)
 			} else if(name == 'height') {
-				this.tipibotFolder.getController('y').max(value, false)
-				this.drawAreaFolder.getController('height').max(value, finishChanged)
-				this.drawAreaFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
-			} else if(name == 'homeX') {
-				this.tipibotFolder.getController('x').setValue(value, false)
+				this.tipibotPositionFolder.getController('y').max(value, false)
+				this.drawAreaDimensionsFolder.getController('height').max(value, finishChanged)
+				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
+			}
+		} else if(parentNames[0] == 'Home') {
+			if(name == 'homeX') {
+				this.tipibotPositionFolder.getController('x').setValue(value, true)
 			} else if(name == 'homeY') {
-				this.tipibotFolder.getController('y').setValue(value, false)
-			} else if(name == 'speed' || name == 'acceleration') {
+				this.tipibotPositionFolder.getController('y').setValue(value, true)
+			}
+			if(name == 'homeX' || name == 'homeY') {
+				this.tipibot.setHome(false)
+			}
+		} else if(parentNames[0] == 'Machine') {
+			if(name == 'speed' || name == 'acceleration') {
 				this.tipibot.speedChanged(finishChanged)
 			} else if(name == 'mmPerRev') {
 				this.tipibot.mmPerRevChanged(finishChanged)
@@ -143,42 +159,56 @@ export class SettingsManager {
 				this.tipibot.stepMultiplierChanged(finishChanged)
 			} else if(name == 'penWidth') {
 				this.tipibot.penWidthChanged(finishChanged)
-			} else if(name == 'x') {
+			}
+		} else if(parentNames[0] == 'Position') {
+			if(name == 'x') {
 				this.tipibot.setX(value, finishChanged)
 			} else if(name == 'y') {
 				this.tipibot.setY(value, finishChanged)
 			}
-
-			if(name == 'width' || name == 'height') {
-				this.tipibot.sizeChanged(finishChanged)
-			}
-		} else if(parentName == 'Servo') {
+		} else if(parentNames[1] == 'Pen') {
 			if(finishChanged) {
 				this.tipibot.servoChanged(finishChanged)
 			}
-		} else if(parentName == 'Draw Area') {
+		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(finishChanged)
 		}
+		this.save(false)
 	}
 
 	settingsChanged() {
-		for(let controller of this.drawAreaFolder.getControllers().concat(this.tipibotFolder.getControllers())) {
-			if(controller.getName() == 'x' || controller.getName() == 'homeX') {
-				controller.max(Settings.tipibot.width)
-			}
-			if(controller.getName() == 'y' || controller.getName() == 'homeY') {
-				controller.max(Settings.tipibot.height)
-			}
+
+		this.tipibotPositionFolder.getController('x').max(Settings.tipibot.width, false)
+		this.tipibotPositionFolder.getController('y').max(Settings.tipibot.height, false)
+		this.drawAreaDimensionsFolder.getController('width').max(Settings.tipibot.width, false)
+		this.drawAreaDimensionsFolder.getController('height').max(Settings.tipibot.height, false)
+		this.drawAreaDimensionsFolder.getController('y').max(Settings.tipibot.height - Settings.drawArea.height, false)
+		this.tipibotPositionFolder.getController('x').setValue(Settings.tipibot.homeX, false)
+		this.tipibotPositionFolder.getController('y').setValue(Settings.tipibot.homeY, false)
+
+		for(let controller of this.getControllers()) {
+			controller.updateDisplay()
 		}
 
-		this.tipibot.settingsChanged()
+		this.tipibot.speedChanged(true)
+		this.tipibot.mmPerRevChanged(true)
+		this.tipibot.stepsPerRevChanged(true)
+		this.tipibot.stepMultiplierChanged(true)
+		this.tipibot.penWidthChanged(true)
+		this.tipibot.servoChanged(true)
+		this.tipibot.sizeChanged(true)
+		this.tipibot.drawAreaChanged(true)
+		this.tipibot.setX(Settings.tipibot.homeX, false)
+		this.tipibot.setY(Settings.tipibot.homeY, true)
 	}
 
-	save() {
+	save(saveFile=true) {
 		let json = JSON.stringify(Settings, null, '\t')
-		var blob = new Blob([json], {type: "application/json"})
-		saveAs(blob, "settings.json")
 		localStorage.setItem('settings', json)
+		if(saveFile) {
+			var blob = new Blob([json], {type: "application/json"})
+			saveAs(blob, "settings.json")
+		}
 	}
 
 	updateSliders() {
@@ -189,12 +219,12 @@ export class SettingsManager {
 		}
 	}
 
-	copyObjectProperties(Target: any, Source: any) {
-		for(let property in Target) {
-			if(typeof(Target[property]) === 'object') {
-				this.copyObjectProperties(Target[property], Source[property])
+	copyObjectProperties(target: any, source: any) {
+		for(let property in target) {
+			if(typeof(target[property]) === 'object') {
+				this.copyObjectProperties(target[property], source[property])
 			} else {
-				Target[property] = Source[property]
+				target[property] = source[property]
 			}
 		}
 	}
@@ -212,7 +242,7 @@ export class SettingsManager {
 			let file = files.item(i)
 			
 			let reader = new FileReader()
-			reader.onload = this.onJsonLoad
+			reader.onload = (event:any) => this.onJsonLoad(event)
 			reader.readAsText(file)
 		}
 	}

@@ -1,6 +1,6 @@
 import { Communication, communication } from "./Communication/Communication"
 import { Settings, settingsManager } from "./Settings"
-import { Rectangle, Circle} from "./Shapes"
+import { Rectangle, Circle, Target} from "./Shapes"
 import { Renderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { GUI, Controller } from "./GUI"
@@ -8,19 +8,21 @@ import { TipibotInterface } from "./TipibotInterface"
 
 export class Tipibot implements TipibotInterface {
 
+	gui:GUI = null
+
 	isPenUp: boolean
 
 	area: Rectangle
 	paper: Rectangle
 	motorLeft: Circle
 	motorRight: Circle
+	home: Target
 	pen: Pen
 
-	xSlider: Controller = null
-	ySlider: Controller = null
-	setPositionButton: Controller = null
 	penStateButton: Controller = null
 	settingPosition: boolean = false
+
+	initialPosition: paper.Point = null
 
 	constructor() {
 		this.isPenUp = true
@@ -53,28 +55,36 @@ export class Tipibot implements TipibotInterface {
 	}
 	
 	createGUI(gui: GUI) {
-		let setHomeButton = gui.addButton('Set home', ()=> this.setHome())
+		this.gui = gui
+		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
+		gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> this.setX(value))
+		gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> this.setY(value))
+
 		let goHomeButton = gui.addButton('Go home', ()=> this.goHome())
 
-		let position = this.getPosition().clone()
-		this.xSlider = gui.add(position, 'x', 0, Settings.tipibot.width).name('X').onChange((value: number)=>{this.setX(value)})
-		this.ySlider = gui.add(position, 'y', 0, Settings.tipibot.height).name('Y').onChange((value: number)=>{this.setY(value)})
-
-		this.setPositionButton = gui.addButton('Set position', () => this.toggleSetPosition() )
 		this.penStateButton = gui.addButton('Pen down', () => this.changePenState() )
 		let motorsOffButton = gui.addButton('Motors off', ()=> this.motorsOff())
+
+		gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
+		gui.addButton('Stop & Clear queue', () => communication.interpreter.stopAndClearQueue() )
 	}
 
 	setPositionSliders(point: paper.Point) {
-		this.xSlider.setValueNoCallback(point.x)
-		this.ySlider.setValueNoCallback(point.y)
+		settingsManager.tipibotPositionFolder.getController('x').setValue(point.x, false)
+		settingsManager.tipibotPositionFolder.getController('y').setValue(point.y, false)
+		this.gui.getController('moveX').setValue(point.x, false)
+		this.gui.getController('moveY').setValue(point.y, false)
 	}
 
-	toggleSetPosition(setPosition: boolean = !this.settingPosition) {
+	toggleSetPosition(setPosition: boolean = !this.settingPosition, cancel=true) {
 		if(!setPosition) {
-			this.setPositionButton.setName('Set position')
+			settingsManager.tipibotPositionFolder.getController('Set position').setName('Set position')
+			if(cancel) {
+				this.setPositionSliders(this.initialPosition)
+			}
 		} else {
-			this.setPositionButton.setName('Cancel')
+			settingsManager.tipibotPositionFolder.getController('Set position').setName('Cancel')
+			this.initialPosition = this.getPosition()
 		}
 		this.settingPosition = setPosition
 	}
@@ -95,32 +105,17 @@ export class Tipibot implements TipibotInterface {
 		return new paper.Rectangle(Settings.tipibot.width / 2 - Settings.drawArea.width / 2, Settings.drawArea.y, Settings.drawArea.width, Settings.drawArea.height)
 	}
 
-	initialize(renderer: Renderer) {
+	initialize(renderer: Renderer, gui: GUI) {
 		this.area = renderer.createRectangle(this.tipibotRectangle())
 		this.paper = renderer.createRectangle(this.paperRectangle())
 		this.motorLeft = renderer.createCircle(0, 0, 50, 24)
 		this.motorRight = renderer.createCircle(Settings.tipibot.width, 0, 50, 24)
 		this.pen = renderer.createPen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width)
-		settingsManager.addTipibotToGUI(this)
+		this.home = renderer.createTarget(Settings.tipibot.homeX, Settings.tipibot.homeY, Pen.HOME_RADIUS)
+		settingsManager.setTipibot(this)
+		this.createGUI(gui)
 	}
 	
-	settingChanged(parentName: string, name: string, value: any) {
-
-	}
-
-	settingsChanged() {
-		this.xSlider.max(Settings.tipibot.width)
-		this.ySlider.max(Settings.tipibot.height)
-
-		this.xSlider.setValue(Settings.tipibot.homeX)
-		this.ySlider.setValue(Settings.tipibot.homeY)
-
-		this.area.updateRectangle(this.tipibotRectangle())
-		this.paper.updateRectangle(this.paperRectangle())
-		this.motorRight.update(Settings.tipibot.width, 0, 50)
-		this.pen.tipibotWidthChanged()
-	}
-
 	sizeChanged(sendChange: boolean) {
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
 		this.area.updateRectangle(this.tipibotRectangle())
@@ -146,12 +141,16 @@ export class Tipibot implements TipibotInterface {
 
 	setX(x: number, sendChange=true) {
 		let p = this.getPosition()
-		this.setPosition(new paper.Point(x, p.y), sendChange)
+		if(Math.abs(x - p.x) > 0.01) {
+			this.setPosition(new paper.Point(x, p.y), sendChange)
+		}
 	}
 
 	setY(y: number, sendChange=true) {
 		let p = this.getPosition()
-		this.setPosition(new paper.Point(p.x, y), sendChange)
+		if(Math.abs(y - p.y) > 0.01) {
+			this.setPosition(new paper.Point(p.x, y), sendChange)
+		}
 	}
 
     setPosition(point: paper.Point, sendChange=true) {
@@ -232,14 +231,18 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	setHome() {
-		this.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+	setHome(setPosition=true) {
+		let homePosition = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
+		this.home.setPosition(homePosition)
+		if(setPosition) {
+			this.setPosition(homePosition)
+		}
 	}
 
-	goHome() {
+	goHome(callback: ()=> any = null) {
 		this.penUp()
 		// The pen will make me (tipibot) move :-)
-		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true)
+		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, callback)
 	}
 
 	motorsOff() {

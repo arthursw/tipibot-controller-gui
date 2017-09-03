@@ -99,7 +99,7 @@ export class Communication {
 		let portNames = ['Disconnected', 'Refresh'].concat(this.serialPorts)
 
 		if(this.portController == null) {
-			this.portController = this.gui.add( {'Port': 'Disconnected'}, 'Port' )
+			this.portController = this.gui.add( {'Connection': 'Disconnected'}, 'Connection' )
 		} else {
 			this.portController = this.portController.options(portNames)
 		}

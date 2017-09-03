@@ -17,32 +17,35 @@ declare type DatController = {
 }
 
 declare type DatFolder = {
-	__controllers: Controller[]
+	__controllers: DatController[]
+	addFolder: (options: any)=> DatFolder
+	add: (object: any, propertyName: string, min?: number, max?: number, step?: number) => DatController
+	domElement: HTMLElement
+	open: ()=> void
+	close: ()=> void
 }
 
 export class Controller {
 	controller: DatController
+	gui: GUI
 	
-	constructor(controller: DatController) {
+	constructor(controller: DatController, gui: GUI) {
 		this.controller = controller
+		this.gui = gui
 	}
 
 	getDomElement(): HTMLElement {
 		return this.controller.domElement
 	}
 
-	getParent(): { name: string, parent: any } {
-		return this.controller.__gui
-	}
-
-	getTopParentName(): string {
-		let name = ''
-		let folder = this.getParent()
+	getParentNames(): string[] {
+		let names: string[] = []
+		let gui = this.gui
 		do {
-			name = folder.name
-			folder = folder.parent
-		} while(folder.name)
-		return name
+			names.push(gui.name)
+			gui = gui.parent
+		} while(gui != null)
+		return names
 	}
 
 	getParentDomElement(): HTMLElement {
@@ -50,7 +53,7 @@ export class Controller {
 	}
 
 	contains(element: HTMLElement): boolean {
-		return $.contains(this.getParentDomElement(), element)
+		return this.getParentDomElement().contains(element)
 	}
 
 	getProperty(): string {
@@ -75,11 +78,11 @@ export class Controller {
 		return this
 	}
 
-	setValue(value: number, noCallback=false) {
-		if(noCallback) {
-			return this.setValueNoCallback(value)
+	setValue(value: number, callback=true) {
+		if(callback) {
+			return this.controller.setValue(value)
 		}
-		this.controller.setValue(value)
+		this.setValueNoCallback(value)
 	}
 
 	setValueNoCallback(value: number) {
@@ -87,22 +90,14 @@ export class Controller {
 		this.controller.updateDisplay()
 	}
 
-	max(value: number, noCallback=true) {
+	max(value: number, callback=false) {
 		this.controller.max(value)
-		if(noCallback) {
-			this.setValueNoCallback(Math.min(value, this.getValue()))
-		} else {
-			this.setValue(Math.min(value, this.getValue()))
-		}
+		this.setValue(Math.min(value, this.getValue()), callback)
 	}
 
-	min(value: number, noCallback=true) {
+	min(value: number, callback=false) {
 		this.controller.min(value)
-		if(noCallback) {
-			this.setValueNoCallback(Math.max(value, this.getValue()))
-		} else {
-			this.setValue(Math.max(value, this.getValue()))
-		}
+		this.setValue(Math.max(value, this.getValue()), callback)
 	}
 
 	step(value: number) {
@@ -126,15 +121,29 @@ export class Controller {
 		this.controller.name(name)
 		return this
 	}
+
+	hide(): void {
+		$(this.getDomElement()).hide()
+	}
+
+	show(): void {
+		$(this.getDomElement()).show()
+	}
 }
 
 export class GUI {
-	gui: any
+	gui: DatFolder
+	parent: GUI
+	name: string
 	nameToController: Map<string, Controller>
+	nameToFolder: Map<string, GUI>
 
-	constructor(folder: DatFolder = null, options: any = null) {
+	constructor(options: any = null, name: string = null, parent: GUI = null) {
+		this.gui = parent != null && name != null ? parent.gui.addFolder(name) : new dat.GUI(options)
+		this.name = name
+		this.parent = parent
 		this.nameToController = new Map<string, Controller>()
-		this.gui = folder != null ? folder : new dat.GUI(options)
+		this.nameToFolder = new Map<string, GUI>()
 	}
 
 	getDomElement(): HTMLElement {
@@ -142,7 +151,7 @@ export class GUI {
 	}
 	
 	add(object: any, propertyName: string, min: number = null, max: number = null, step: number = null): Controller {
-		let controller = new Controller( this.gui.add(object, propertyName, min, max, step) )
+		let controller = new Controller( this.gui.add(object, propertyName, min, max, step), this )
 		this.nameToController.set(propertyName, controller)
 		return controller
 	}
@@ -176,7 +185,9 @@ export class GUI {
 	}
 
 	addFolder(name: string): GUI {
-		return new GUI(this.gui.addFolder(name))
+		let folder = new GUI(null, name, this)
+		this.nameToFolder.set(name, folder)
+		return folder
 	}
 
 	getController(name: string): Controller {
@@ -186,5 +197,39 @@ export class GUI {
 	getControllers(): Controller[] {
 		let keyValues = Array.from(this.nameToController)
 		return Array.from(keyValues, keyValue => keyValue[1])
+	}
+
+	getAllControllers(): Controller[] {
+		let controllers = this.getControllers()
+		for(let f of this.nameToFolder) {
+			let folder = f[1]
+			controllers = controllers.concat(folder.getAllControllers())
+		}
+		return controllers
+	}
+
+	getFolder(name: string): GUI {
+		return this.nameToFolder.get(name)
+	}
+
+	getFolders(): GUI[] {
+		let keyValues = Array.from(this.nameToFolder)
+		return Array.from(keyValues, keyValue => keyValue[1])
+	}
+
+	hide(): void {
+		$(this.gui.domElement).hide()
+	}
+
+	show(): void {
+		$(this.gui.domElement).show()
+	}
+
+	open() {
+		this.gui.open()
+	}
+
+	close() {
+		this.gui.close()
 	}
 }

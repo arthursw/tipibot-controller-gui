@@ -49,21 +49,24 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	function initialize() {
 
 		gui = new GUI()
+		
+		let communicationFolder = gui.addFolder('Communication')
+		communication = new Communication(communicationFolder)
+		communicationFolder.open()
 
-		communication = new Communication(gui)
+		let commandFolder = gui.addFolder('Commands')
+		commandFolder.open()
 
 		settingsManager.createGUI(gui)
-		Plot.createGUI(gui)
-		SVGPlot.createGUI(gui)
-
-		// gui.add(Settings.tipibot, 'speed', 0, 2000)
 		
-
+		SVGPlot.createGUI(gui)
+		Plot.createGUI(SVGPlot.gui)
+		
 		renderer = new PaperRenderer()
 		SVGPlot.renderer = renderer
-
-		tipibot.initialize(renderer)
+		
 		communication.setTipibot(tipibot)
+		tipibot.initialize(renderer, commandFolder)
 
 		renderer.centerOnTipibot(Settings.tipibot)
 		renderer.createDrawingLayer()
@@ -112,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		if(tipibot.settingPosition) {
 			let position = renderer.getWorldPosition(event)
 			if(positionPreview == null) {
-				positionPreview = renderer.createCircle(position.x, position.y, Pen.RADIUS)
+				positionPreview = renderer.createCircle(position.x, position.y, Pen.HOME_RADIUS)
 			}
 			positionPreview.setPosition(position)
 			tipibot.setPositionSliders(position)
@@ -126,13 +129,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			}
 		}
 		renderer.mouseUp(event)
-		if(tipibot.settingPosition && !tipibot.setPositionButton.contains(<HTMLElement>event.target) ) {
+		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position').contains(<HTMLElement>event.target) ) {
 			if(positionPreview != null) {
 				positionPreview.remove()
 				positionPreview = null
 			}
 			tipibot.setPosition(renderer.getWorldPosition(event))
-			tipibot.toggleSetPosition(false)
+			tipibot.toggleSetPosition(false, false)
 		}
 	}
 

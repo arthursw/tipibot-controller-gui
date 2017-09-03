@@ -11,12 +11,9 @@ declare type Renderer = {
 
 export class Plot extends Draggable {
 
-	static plotFolder: GUI = null
+	static gui: GUI = null
 
 	static currentPlot: Plot = null
-
-	static xSlider: Controller = null
-	static ySlider: Controller = null
 
 	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
 		return (value: any)=> { 
@@ -30,22 +27,27 @@ export class Plot extends Draggable {
 	}
 
 	public static createGUI(gui: GUI) {
-		Plot.plotFolder = gui.addFolder('Plot')
+		Plot.gui = gui
+		let filterFolder = gui.addFolder('Filter')
+		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.onFilterChange)
+		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.onFilterChange)
+		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.onFilterChange)
+		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.onFilterChange)
 
-		Plot.plotFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.onFilterChange)
-		Plot.plotFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.onFilterChange)
-		Plot.plotFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.onFilterChange)
-		Plot.plotFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.onFilterChange)
+		let transformFolder = gui.addFolder('Transform')
+		transformFolder.addSlider('X', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
+		transformFolder.addSlider('Y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
+		
+		transformFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX))
+		transformFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY))
 
-		Plot.plotFolder.addButton('Draw', Plot.createCallback(Plot.prototype.plot))
-		Plot.plotFolder.add({'Pause': false}, 'Pause').onChange((value)=>communication.interpreter.setPause(value))
-		Plot.plotFolder.addButton('Stop', Plot.createCallback(Plot.prototype.stop))
-		Plot.plotFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate))
-		Plot.plotFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX))
-		Plot.plotFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY))
+		transformFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate))
 
-		Plot.xSlider = Plot.plotFolder.addSlider('X', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
-		Plot.ySlider = Plot.plotFolder.addSlider('Y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
+		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange((value: number) => {
+			Plot.currentPlot.item.applyMatrix = false
+			Plot.currentPlot.item.scaling = new paper.Point(value, value)
+		})
+
 	}
 
 	public static onFilterChange() {
@@ -55,6 +57,7 @@ export class Plot extends Draggable {
 	}
 
 	originalItem: paper.Item 			// Not flattened
+	plotting = false
 
 	constructor(renderer: Renderer, item: paper.Item=null) {
 		super(renderer, item)
@@ -151,12 +154,17 @@ export class Plot extends Draggable {
 	}
 
 	plot() {
+		this.plotting = true
 		this.plotItem(this.item)			// to be overloaded. The draw button calls plot()
-		tipibot.goHome()
+		tipibot.goHome(()=> this.plotFinished())
 	}
 
 	plotItem(item: paper.Item) {
 
+	}
+
+	plotFinished() {
+		this.plotting = false
 	}
 
 	stop() {
@@ -198,6 +206,9 @@ export class SVGPlot extends Plot {
 	}
 
 	public static handleFileSelect(event: any) {
+		SVGPlot.gui.getController('Load SVG').hide()
+		SVGPlot.gui.getController('Clear SVG').show()
+
 		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
 
 		for (let i = 0; i < files.length; i++) {
@@ -215,16 +226,31 @@ export class SVGPlot extends Plot {
 		}
 	}
 
+	public static clearClicked(event: any) {
+		SVGPlot.gui.getController('Load SVG').show()
+		SVGPlot.gui.getController('Clear SVG').hide()
+		SVGPlot.svgPlot.item.remove()
+		SVGPlot.svgPlot = null
+		Plot.currentPlot = null
+	}
+
+	public static drawClicked(event: any) {
+		if(!Plot.currentPlot.plotting) {
+			SVGPlot.gui.getController('Draw').name('Stop & Clear queue')
+		} else {
+			SVGPlot.gui.getController('Draw').name('Draw')
+		}
+		Plot.currentPlot.plot()
+	}
+
 	public static createGUI(gui: GUI) {
-		SVGPlot.gui = gui
-		gui.addFileSelectorButton('Load SVG', 'image/svg+xml', SVGPlot.handleFileSelect)
+		SVGPlot.gui = gui.addFolder('SVG')
+		SVGPlot.gui.open()
 
-		let scaleController = gui.addSlider('Scale', 1, 0.1, 5)
-
-		scaleController.onChange((value: number) => {
-			SVGPlot.svgPlot.item.applyMatrix = false
-			SVGPlot.svgPlot.item.scaling = new paper.Point(value, value)
-		})
+		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', SVGPlot.handleFileSelect)
+		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
+		clearSVGButton.hide()
+		SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
 	}
 
 	constructor(svg: paper.Item, renderer: Renderer) {
@@ -233,6 +259,7 @@ export class SVGPlot extends Plot {
 		SVGPlot.svgPlot = this
 		paper.project.layers[0].addChild(svg)
 	}
+
 
 	mouseDown(event: MouseEvent) {
 		let hitResult = paper.project.hitTest(this.getWorldPosition(event))
@@ -244,8 +271,8 @@ export class SVGPlot extends Plot {
 
 	drag(delta: paper.Point) {
 		super.drag(delta)
-		Plot.xSlider.setValueNoCallback(this.item.position.x)
-		Plot.ySlider.setValueNoCallback(this.item.position.y)
+		Plot.gui.getFolder('Transform').getController('x').setValueNoCallback(this.item.position.x)
+		Plot.gui.getFolder('Transform').getController('y').setValueNoCallback(this.item.position.y)
 	}
 
 	plotItem(item: paper.Item) {
@@ -326,6 +353,12 @@ export class SVGPlot extends Plot {
 		if(item == this.item) {
 			this.clearData(item)
 		}
+	}
+	
+	plotFinished() {
+		SVGPlot.gui.getController('Draw').show()
+		SVGPlot.gui.getController('Stop & Clear queue').hide()
+		super.plotFinished()
 	}
 
 	clearData(item: paper.Item) {

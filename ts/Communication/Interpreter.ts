@@ -104,6 +104,11 @@ export class Interpreter {
 		this.commandQueue = []
 	}
 
+	stopAndClearQueue() {
+		this.commandQueue = []
+		this.sendStop()
+	}
+
     sendSetPosition(point: paper.Point) {
     }
 
