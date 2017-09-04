@@ -25,8 +25,13 @@ export class Communication {
 		this.gui = gui
 		this.portController = null
 		this.serialPorts = []
-		this.connectToArduinoCreateAgent()
+		// this.connectToArduinoCreateAgent()
 		this.interpreter = new Polargraph()
+		this.createGUI()
+	}
+
+	createGUI() {
+		this.gui.addButton('Connect to arduino agent', ()=> this.connectToArduinoCreateAgent())
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
@@ -91,6 +96,7 @@ export class Communication {
 	}
 
 	initializeSerialConnectionPorts(data: any) {
+		this.gui.getController('Connect to arduino agent').hide()
 		for(let port of data.Ports) {
 			if(this.serialPorts.indexOf(port.Name) < 0) {
 				this.serialPorts.push(port.Name)
