@@ -194,7 +194,9 @@ export class Plot extends Draggable {
 	}
 
 	clear() {
-		this.item.remove()
+		if(this.item != null) {
+			this.item.remove()
+		}
 		this.item = null
 	}
 }

@@ -1079,7 +1079,9 @@ class Plot extends Draggable_1.Draggable {
         this.item.position.y = y;
     }
     clear() {
-        this.item.remove();
+        if (this.item != null) {
+            this.item.remove();
+        }
         this.item = null;
     }
 }
