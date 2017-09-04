@@ -48,7 +48,6 @@ w.addPlugin = function(pluginName: string) {
 	if(pluginName == 'CommeUnDessein') {
 		let commeUnDessein = new CommeUnDessein()
 		commeUnDessein.createGUI(gui)
-		commeUnDessein.startRequesting()
 		w.commeUnDessein = commeUnDessein
 	}
 }

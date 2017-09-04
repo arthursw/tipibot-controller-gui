@@ -1,7 +1,8 @@
 import { Settings, settingsManager } from "../Settings"
 import { GUI } from "../GUI"
 import { SVGPlot } from "../Plot"
-import { } from "../Renderers"
+import { communication } from "../Communication/Communication"
+import { tipibot } from "../Tipibot"
 
 let scale = 1000
 
@@ -10,7 +11,8 @@ let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -Comme
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 
 let commeUnDesseinToDrawArea = function(point: paper.Point) {
-	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size)
+	let drawArea = tipibot.drawArea.getBounds()
+	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size).add(drawArea.topLeft)
 }
 
 let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
@@ -79,8 +81,19 @@ export class CommeUnDessein {
 	}
 
 	createGUI(gui: GUI) {
-		gui.add(this, 'mode')
-		gui.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
+		let commeUnDesseinGUI = gui.addFolder('Comme un dessein')
+		commeUnDesseinGUI.add(this, 'mode')
+		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
+		commeUnDesseinGUI.addButton('Start', ()=> this.startRequesting())
+		commeUnDesseinGUI.addButton('Stop & Clear', ()=> this.stopAndClear())
+	}
+
+	stopAndClear() {
+		clearInterval(this.requestDrawingInterval)
+		if(SVGPlot.svgPlot != null) {
+			SVGPlot.svgPlot.clear()
+		}
+		communication.interpreter.stopAndClearQueue()
 	}
 
 	requestNextDrawing() {

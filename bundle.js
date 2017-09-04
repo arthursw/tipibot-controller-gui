@@ -1428,12 +1428,15 @@ exports.GUI = GUI;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Plot_1 = __webpack_require__(5);
+const Communication_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(4);
 let scale = 1000;
 let CommeUnDesseinSize = new paper.Size(4000, 3000);
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize);
 let commeUnDesseinToDrawArea = function (point) {
-    return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size);
+    let drawArea = Tipibot_1.tipibot.drawArea.getBounds();
+    return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size).add(drawArea.topLeft);
 };
 let posOnPlanetToProject = function (point, planet) {
     if (point.x == null && point.y == null) {
@@ -1489,8 +1492,18 @@ class CommeUnDessein {
         this.requestDrawingInterval = setInterval(() => this.requestNextDrawing(), 2000);
     }
     createGUI(gui) {
-        gui.add(this, 'mode');
-        gui.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
+        let commeUnDesseinGUI = gui.addFolder('Comme un dessein');
+        commeUnDesseinGUI.add(this, 'mode');
+        commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
+        commeUnDesseinGUI.addButton('Start', () => this.startRequesting());
+        commeUnDesseinGUI.addButton('Stop & Clear', () => this.stopAndClear());
+    }
+    stopAndClear() {
+        clearInterval(this.requestDrawingInterval);
+        if (Plot_1.SVGPlot.svgPlot != null) {
+            Plot_1.SVGPlot.svgPlot.clear();
+        }
+        Communication_1.communication.interpreter.stopAndClearQueue();
     }
     requestNextDrawing() {
         clearInterval(this.requestDrawingInterval);
@@ -2127,7 +2140,6 @@ w.addPlugin = function (pluginName) {
     if (pluginName == 'CommeUnDessein') {
         let commeUnDessein = new CommeUnDessein_1.CommeUnDessein();
         commeUnDessein.createGUI(gui);
-        commeUnDessein.startRequesting();
         w.commeUnDessein = commeUnDessein;
     }
 };
