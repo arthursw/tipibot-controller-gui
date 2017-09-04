@@ -16,7 +16,7 @@ let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
 	return new paper.Point(x, y)
 }
 
-let commeundesseinAjaxURL = 'ajaxCall/'
+let commeundesseinAjaxURL = '/ajaxCall/'
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret'
 
 export class CommeUnDessein {
