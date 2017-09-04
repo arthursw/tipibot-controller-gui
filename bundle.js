@@ -1447,6 +1447,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
 const Tipibot_1 = __webpack_require__(4);
+const RequestTimeout = 2000;
 let scale = 1000;
 let CommeUnDesseinSize = new paper.Size(4000, 3000);
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
@@ -1495,46 +1496,58 @@ $.ajaxSetup({
         }
     }
 });
+var State;
+(function (State) {
+    State[State["NextDrawing"] = 0] = "NextDrawing";
+    State[State["RequestedNextDrawing"] = 1] = "RequestedNextDrawing";
+    State[State["Drawing"] = 2] = "Drawing";
+    State[State["SetStatus"] = 3] = "SetStatus";
+    State[State["RequestedSetStatus"] = 4] = "RequestedSetStatus";
+})(State || (State = {}));
 class CommeUnDessein {
     constructor() {
         this.mode = 'CommeUnDessein';
         this.secret = '******';
-        this.requestDrawingInterval = null;
+        this.state = State.NextDrawing;
         let secret = localStorage.getItem(CommeUnDesseinSecretKey);
         if (secret != null) {
             this.secret = secret;
         }
     }
-    startRequesting() {
-        this.requestDrawingInterval = setInterval(() => this.requestNextDrawing(), 2000);
-    }
     createGUI(gui) {
         let commeUnDesseinGUI = gui.addFolder('Comme un dessein');
         commeUnDesseinGUI.add(this, 'mode');
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
-        commeUnDesseinGUI.addButton('Start', () => this.startRequesting());
+        commeUnDesseinGUI.addButton('Start', () => this.requestNextDrawing());
         commeUnDesseinGUI.addButton('Stop & Clear', () => this.stopAndClear());
         commeUnDesseinGUI.open();
     }
     stopAndClear() {
-        clearInterval(this.requestDrawingInterval);
         if (Plot_1.SVGPlot.svgPlot != null) {
             Plot_1.SVGPlot.svgPlot.clear();
         }
         Communication_1.communication.interpreter.stopAndClearQueue();
+        this.state = State.NextDrawing;
     }
     requestNextDrawing() {
-        clearInterval(this.requestDrawingInterval);
-        this.requestDrawingInterval = null;
+        if (this.state != State.NextDrawing) {
+            console.error('CommeUnDessein trying to request next drawing while not in NextDrawing state');
+            return;
+        }
         let args = {
             city: { name: this.mode }
         };
         let data = {
             data: JSON.stringify({ function: 'getNextValidatedDrawing', args: args })
         };
+        this.state = State.RequestedNextDrawing;
         $.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
             if (results.message == 'no path') {
-                this.startRequesting();
+                setTimeout(() => this.requestNextDrawing(), RequestTimeout);
+                return;
+            }
+            if (this.state != State.RequestedNextDrawing) {
+                console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state');
                 return;
             }
             this.draw(results);
@@ -1542,13 +1555,18 @@ class CommeUnDessein {
         }).fail((results) => {
             console.error('getNextValidatedDrawing request failed');
             console.error(results);
-            this.startRequesting();
+            this.state = State.NextDrawing;
+            setTimeout(() => this.requestNextDrawing(), RequestTimeout);
         });
     }
     draw(results) {
         if (results.state == 'error') {
             console.log(results);
+            return;
         }
+        this.state = State.Drawing;
+        this.currentDrawing = results;
+        let drawing = new paper.Group();
         for (let itemJson of results.items) {
             let item = JSON.parse(itemJson);
             let pk = item._id.$oid;
@@ -1566,14 +1584,19 @@ class CommeUnDessein {
                 // controlPath.lastSegment.rtype = points[i+3]
             }
             controlPath.flatten(0.25);
-            if (Plot_1.SVGPlot.svgPlot != null) {
-                Plot_1.SVGPlot.svgPlot.clear();
-            }
-            Plot_1.SVGPlot.svgPlot = new Plot_1.SVGPlot(controlPath);
-            Plot_1.SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(pk));
+            drawing.addChild(controlPath);
         }
+        if (Plot_1.SVGPlot.svgPlot != null) {
+            Plot_1.SVGPlot.svgPlot.clear();
+        }
+        Plot_1.SVGPlot.svgPlot = new Plot_1.SVGPlot(drawing);
+        Plot_1.SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk));
     }
     setDrawingStatusDrawn(pk) {
+        if (this.state != State.Drawing) {
+            console.error('CommeUnDessein trying to setDrawingStatusDrawn while not in Drawing state');
+            return;
+        }
         let args = {
             pk: pk,
             secret: this.secret
@@ -1581,16 +1604,23 @@ class CommeUnDessein {
         let data = {
             data: JSON.stringify({ function: 'setDrawingStatusDrawn', args: args })
         };
+        this.state = State.RequestedSetStatus;
         $.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
             if (results.state == 'error') {
                 console.error(results);
                 return;
             }
-            this.startRequesting();
+            if (this.state != State.RequestedSetStatus) {
+                console.error('CommeUnDessein trying to requestNextDrawing while not in RequestedSetStatus state');
+                return;
+            }
+            this.state = State.NextDrawing;
+            this.requestNextDrawing();
             return;
         }).fail((results) => {
             console.error('setDrawingStatusDrawn request failed');
             console.error(results);
+            this.state = State.Drawing;
             this.setDrawingStatusDrawn(pk);
         });
     }
