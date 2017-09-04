@@ -1439,7 +1439,7 @@ let posOnPlanetToProject = function (point, planet) {
     y *= scale;
     return new paper.Point(x, y);
 };
-let commeundesseinAjaxURL = 'https://commeundessein.co/ajaxCall/';
+let commeundesseinAjaxURL = 'ajaxCall/';
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret';
 class CommeUnDessein {
     constructor() {
