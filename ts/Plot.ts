@@ -194,10 +194,14 @@ export class Plot extends Draggable {
 	}
 
 	clear() {
+		super.delete()
 		if(this.item != null) {
 			this.item.remove()
 		}
 		this.item = null
+		if(Plot.currentPlot == this) {
+			Plot.currentPlot = null
+		}
 	}
 }
 
@@ -391,5 +395,11 @@ export class SVGPlot extends Plot {
 				this.clearData(child)
 			}
 		}
+	}
+	clear() {
+		if(SVGPlot.svgPlot == this) {
+			SVGPlot.svgPlot = null
+		}
+		super.clear()
 	}
 }

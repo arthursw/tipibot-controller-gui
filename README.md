@@ -9,3 +9,7 @@
 Change settings in `ArduinoCreateAgent.app/Contents/MacOS` to add allowed origins :
  - https://arthursw.github.io/tipibot-controller/
  - http://localhost:8080/
+
+ # Todo
+
+  - refactor Plot (SVG plot is not relevant)

@@ -538,6 +538,9 @@ class Draggable {
     mouseLeave(event) {
         this.mouseStop(event);
     }
+    delete() {
+        Draggable.draggables.splice(Draggable.draggables.indexOf(this), 1);
+    }
 }
 Draggable.draggables = new Array();
 exports.Draggable = Draggable;
@@ -1079,10 +1082,14 @@ class Plot extends Draggable_1.Draggable {
         this.item.position.y = y;
     }
     clear() {
+        super.delete();
         if (this.item != null) {
             this.item.remove();
         }
         this.item = null;
+        if (Plot.currentPlot == this) {
+            Plot.currentPlot = null;
+        }
     }
 }
 Plot.gui = null;
@@ -1246,6 +1253,12 @@ class SVGPlot extends Plot {
                 this.clearData(child);
             }
         }
+    }
+    clear() {
+        if (SVGPlot.svgPlot == this) {
+            SVGPlot.svgPlot = null;
+        }
+        super.clear();
     }
 }
 SVGPlot.pen = null;

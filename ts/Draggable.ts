@@ -55,4 +55,8 @@ export class Draggable {
 	mouseLeave(event:MouseEvent) {
 		this.mouseStop(event)
 	}
+
+	delete() {
+		Draggable.draggables.splice(Draggable.draggables.indexOf(this), 1)
+	}
 }
