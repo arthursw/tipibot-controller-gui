@@ -1543,6 +1543,7 @@ class CommeUnDessein {
         this.state = State.RequestedNextDrawing;
         $.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
             if (results.message == 'no path') {
+                this.state = State.NextDrawing;
                 setTimeout(() => this.requestNextDrawing(), RequestTimeout);
                 return;
             }
@@ -1571,19 +1572,25 @@ class CommeUnDessein {
             let item = JSON.parse(itemJson);
             let pk = item._id.$oid;
             let id = item.clientId;
-            let date = item.date ? item.date.$date : null;
-            let data = item.data && item.data.length > 0 ? JSON.parse(item.data) : null;
+            let date = item.date != null ? item.date.$date : null;
+            let data = item.data != null && item.data.length > 0 ? JSON.parse(item.data) : null;
             let points = data.points;
             let planet = data.planet;
             let controlPath = new paper.Path();
             for (let i = 0; i < points.length; i += 4) {
                 let point = points[i];
-                controlPath.add(posOnPlanetToDrawArea(point, planet));
+                // points and handles in project coordinates
+                // do not convert in draw area cooredinates before flattening (to keep handle proportions)
+                controlPath.add(posOnPlanetToProject(point, planet));
                 controlPath.lastSegment.handleIn = new paper.Point(points[i + 1]);
                 controlPath.lastSegment.handleOut = new paper.Point(points[i + 2]);
                 // controlPath.lastSegment.rtype = points[i+3]
             }
             controlPath.flatten(0.25);
+            // now that controlPath is flattened: convert in draw area coordinates
+            for (let segment of controlPath.segments) {
+                segment.point = commeUnDesseinToDrawArea(segment.point);
+            }
             drawing.addChild(controlPath);
         }
         if (Plot_1.SVGPlot.svgPlot != null) {

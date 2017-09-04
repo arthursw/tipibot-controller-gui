@@ -12,12 +12,12 @@ let CommeUnDesseinSize = new paper.Size(4000, 3000)
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 
-let commeUnDesseinToDrawArea = function(point: paper.Point) {
+let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 	let drawArea = tipibot.drawArea.getBounds()
 	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size)
 }
 
-let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
+let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point): paper.Point {
 	if (point.x == null && point.y == null) {
 		point = new paper.Point(point)
 	}
@@ -118,6 +118,7 @@ export class CommeUnDessein {
 		this.state = State.RequestedNextDrawing
 		$.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
 			if (results.message == 'no path') {
+				this.state = State.NextDrawing
 				setTimeout(() => this.requestNextDrawing(), RequestTimeout)
 				return
 			}
@@ -150,8 +151,8 @@ export class CommeUnDessein {
 
 			let pk = item._id.$oid
 			let id = item.clientId
-			let date = item.date ? item.date.$date : null
-			let data = item.data && item.data.length > 0 ? JSON.parse(item.data) : null
+			let date = item.date != null ? item.date.$date : null
+			let data = item.data != null && item.data.length > 0 ? JSON.parse(item.data) : null
 
 			let points = data.points
 			let planet = data.planet
@@ -160,12 +161,18 @@ export class CommeUnDessein {
 
 			for (let i = 0; i < points.length; i += 4) {
 				let point = points[i]
-				controlPath.add(posOnPlanetToDrawArea(point, planet))
+				// points and handles in project coordinates
+				// do not convert in draw area cooredinates before flattening (to keep handle proportions)
+				controlPath.add(posOnPlanetToProject(point, planet))
 				controlPath.lastSegment.handleIn = new paper.Point(points[i + 1])
 				controlPath.lastSegment.handleOut = new paper.Point(points[i + 2])
 				// controlPath.lastSegment.rtype = points[i+3]
 			}
 			controlPath.flatten(0.25)
+			// now that controlPath is flattened: convert in draw area coordinates
+			for(let segment of controlPath.segments) {
+				segment.point = commeUnDesseinToDrawArea(segment.point)
+			}
 			drawing.addChild(controlPath)
 		}
 		if(SVGPlot.svgPlot != null) {
