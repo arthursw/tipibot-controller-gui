@@ -1441,6 +1441,30 @@ let posOnPlanetToProject = function (point, planet) {
 };
 let commeundesseinAjaxURL = '/ajaxCall/';
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret';
+$.ajaxSetup({
+    beforeSend: function (xhr, settings) {
+        let getCookie = function (name) {
+            var cookie, cookieValue, cookies, i;
+            cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                cookies = document.cookie.split(';');
+                i = 0;
+                while (i < cookies.length) {
+                    cookie = jQuery.trim(cookies[i]);
+                    if (cookie.substring(0, name.length + 1) === name + '=') {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                    i++;
+                }
+            }
+            return cookieValue;
+        };
+        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+        }
+    }
+});
 class CommeUnDessein {
     constructor() {
         this.mode = 'CommeUnDessein';
