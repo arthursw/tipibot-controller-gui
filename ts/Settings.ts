@@ -229,7 +229,7 @@ export class SettingsManager {
 		for(let property in target) {
 			if(typeof(target[property]) === 'object') {
 				this.copyObjectProperties(target[property], source[property])
-			} else {
+			} else if (source[property] != null) {
 				target[property] = source[property]
 			}
 		}

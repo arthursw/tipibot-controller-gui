@@ -279,7 +279,7 @@ class SettingsManager {
             if (typeof (target[property]) === 'object') {
                 this.copyObjectProperties(target[property], source[property]);
             }
-            else {
+            else if (source[property] != null) {
                 target[property] = source[property];
             }
         }
