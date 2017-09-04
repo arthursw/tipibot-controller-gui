@@ -12,7 +12,7 @@ const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, Comme
 
 let commeUnDesseinToDrawArea = function(point: paper.Point) {
 	let drawArea = tipibot.drawArea.getBounds()
-	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size).add(drawArea.topLeft)
+	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size)
 }
 
 let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
