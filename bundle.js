@@ -1446,7 +1446,10 @@ class CommeUnDessein {
         this.mode = 'CommeUnDessein';
         this.secret = '******';
         this.requestDrawingInterval = null;
-        this.secret = localStorage.getItem(CommeUnDesseinSecretKey);
+        let secret = localStorage.getItem(CommeUnDesseinSecretKey);
+        if (secret != null) {
+            this.secret = secret;
+        }
     }
     startRequesting() {
         this.requestDrawingInterval = setInterval(() => this.requestNextDrawing(), 2000);

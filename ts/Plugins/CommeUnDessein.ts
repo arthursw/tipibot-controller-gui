@@ -26,7 +26,10 @@ export class CommeUnDessein {
 	requestDrawingInterval: number = null
 
 	constructor() {
-		this.secret = localStorage.getItem(CommeUnDesseinSecretKey)
+		let secret = localStorage.getItem(CommeUnDesseinSecretKey)
+		if(secret != null) {
+			this.secret = secret
+		}
 	}
 
 	startRequesting() {
