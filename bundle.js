@@ -321,13 +321,13 @@ class Communication {
         this.gui = gui;
         this.portController = null;
         this.serialPorts = [];
-        // this.connectToArduinoCreateAgent()
+        this.connectToArduinoCreateAgent();
         this.interpreter = new Polargraph_1.Polargraph();
-        this.createGUI();
+        // this.createGUI()
     }
-    createGUI() {
-        this.gui.addButton('Connect to arduino agent', () => this.connectToArduinoCreateAgent());
-    }
+    // createGUI() {
+    // 	this.gui.addButton('Connect to arduino agent', ()=> this.connectToArduinoCreateAgent())
+    // }
     setTipibot(tipibot) {
         this.interpreter.setTipibot(tipibot);
     }
@@ -382,7 +382,7 @@ class Communication {
         }
     }
     initializeSerialConnectionPorts(data) {
-        this.gui.getController('Connect to arduino agent').hide();
+        // this.gui.getController('Connect to arduino agent').hide()
         for (let port of data.Ports) {
             if (this.serialPorts.indexOf(port.Name) < 0) {
                 this.serialPorts.push(port.Name);
