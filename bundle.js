@@ -272,6 +272,9 @@ class SettingsManager {
         }
     }
     copyObjectProperties(target, source) {
+        if (source == null) {
+            return;
+        }
         for (let property in target) {
             if (typeof (target[property]) === 'object') {
                 this.copyObjectProperties(target[property], source[property]);
@@ -281,10 +284,18 @@ class SettingsManager {
             }
         }
     }
+    copyObjectPropertiesFromJSON(target, jsonSource) {
+        if (jsonSource == null) {
+            return;
+        }
+        this.copyObjectProperties(target, JSON.parse(jsonSource));
+    }
     onJsonLoad(event) {
-        this.copyObjectProperties(exports.Settings, JSON.parse(event.target.result));
-        this.settingsChanged();
-        this.updateSliders();
+        if (event.target != null && event.target.result != null) {
+            this.copyObjectPropertiesFromJSON(exports.Settings, event.target.result);
+            this.settingsChanged();
+            this.updateSliders();
+        }
     }
     handleFileSelect(event) {
         let files = event.dataTransfer != null ? event.dataTransfer.files : event.target.files;
@@ -296,7 +307,7 @@ class SettingsManager {
         }
     }
     loadLocalStorage() {
-        exports.Settings = JSON.parse(localStorage.getItem('settings'));
+        this.copyObjectPropertiesFromJSON(exports.Settings, localStorage.getItem('settings'));
     }
 }
 exports.SettingsManager = SettingsManager;

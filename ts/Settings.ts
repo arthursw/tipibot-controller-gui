@@ -223,6 +223,9 @@ export class SettingsManager {
 	}
 
 	copyObjectProperties(target: any, source: any) {
+		if(source == null) {
+			return
+		}
 		for(let property in target) {
 			if(typeof(target[property]) === 'object') {
 				this.copyObjectProperties(target[property], source[property])
@@ -232,10 +235,19 @@ export class SettingsManager {
 		}
 	}
 
+	copyObjectPropertiesFromJSON(target: any, jsonSource: any) {
+		if(jsonSource == null) {
+			return
+		}
+		this.copyObjectProperties(target, JSON.parse(jsonSource))
+	}
+
 	onJsonLoad(event: any) {
-		this.copyObjectProperties(Settings, JSON.parse(event.target.result))
-		this.settingsChanged()
-		this.updateSliders()
+		if(event.target != null && event.target.result != null) {
+			this.copyObjectPropertiesFromJSON(Settings, event.target.result)
+			this.settingsChanged()
+			this.updateSliders()
+		}
 	}
 
 	handleFileSelect(event: any) {
@@ -251,7 +263,7 @@ export class SettingsManager {
 	}
 
 	loadLocalStorage() {
-		Settings = JSON.parse(localStorage.getItem('settings'))
+		this.copyObjectPropertiesFromJSON(Settings, localStorage.getItem('settings'))
 	}
 }
 
