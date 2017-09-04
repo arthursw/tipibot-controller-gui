@@ -1486,7 +1486,7 @@ class CommeUnDessein {
         clearInterval(this.requestDrawingInterval);
         this.requestDrawingInterval = null;
         let args = {
-            city: this.mode
+            city: { name: this.mode }
         };
         let data = {
             data: JSON.stringify({ function: 'getNextValidatedDrawing', args: args })
@@ -1508,8 +1508,8 @@ class CommeUnDessein {
         if (results.state == 'error') {
             console.log(results);
         }
-        for (let i of results.item) {
-            let item = JSON.parse(i);
+        for (let itemJson of results.items) {
+            let item = JSON.parse(itemJson);
             let pk = item._id.$oid;
             let id = item.clientId;
             let date = item.date ? item.date.$date : null;
