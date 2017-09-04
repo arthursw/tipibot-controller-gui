@@ -13,3 +13,4 @@ Change settings in `ArduinoCreateAgent.app/Contents/MacOS` to add allowed origin
  # Todo
 
   - refactor Plot (SVG plot is not relevant)
+  - Polargraph sends penUp() every 30 secs of inactivity to keep the tipibot awake, add this in settings?

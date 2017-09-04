@@ -1917,8 +1917,13 @@ class Interpreter {
                 if (this.commandQueue.length > 0) {
                     this.send(this.commandQueue[0].data);
                 }
+                else {
+                    this.queueEmpty();
+                }
             }
         }
+    }
+    queueEmpty() {
     }
     setPause(pause) {
         this.pause = pause;
@@ -2042,11 +2047,22 @@ const commands = {
     CMD_DEACTIVATE_MACHINE_BUTTON: "C50"
 };
 class Polargraph extends Interpreter_1.Interpreter {
+    constructor() {
+        super(...arguments);
+        this.keepTipibotAwakeInterval = null;
+    }
     connectionOpened(description) {
         this.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
         this.sendSpecs();
         this.sendSpeed();
         this.sendSetPosition();
+        this.startKeepingTipibotAwake();
+    }
+    startKeepingTipibotAwake() {
+        this.keepTipibotAwakeInterval = setTimeout(() => this.keepTipibotAwake(), 30000);
+    }
+    keepTipibotAwake() {
+        this.sendPenUp();
     }
     send(data) {
         let commandCode = data.substr(0, 3);
@@ -2059,6 +2075,8 @@ class Polargraph extends Interpreter_1.Interpreter {
         super.send(data + String.fromCharCode(10));
     }
     queue(data, callback = null) {
+        clearTimeout(this.keepTipibotAwakeInterval);
+        this.keepTipibotAwakeInterval = null;
         let commandCode = data.substr(0, 3);
         for (let commandName in commands) {
             let code = commands[commandName].substr(0, 3);
@@ -2067,6 +2085,9 @@ class Polargraph extends Interpreter_1.Interpreter {
             }
         }
         super.queue(data, callback);
+    }
+    queueEmpty() {
+        this.startKeepingTipibotAwake();
     }
     getMaxSegmentLength() {
         return 2;

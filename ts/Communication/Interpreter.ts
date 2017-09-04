@@ -76,9 +76,15 @@ export class Interpreter {
 				}
 				if(this.commandQueue.length > 0) {
 					this.send(this.commandQueue[0].data)
+				} else {
+					this.queueEmpty()
 				}
 			}
 		}
+	}
+
+	queueEmpty() {
+
 	}
 
 	setPause(pause: boolean) {
