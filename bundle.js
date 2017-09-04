@@ -605,10 +605,10 @@ class PaperPen extends Pen {
     getPosition() {
         return this.circle.position;
     }
-    setPosition(point, updateSliders = true, move = true) {
+    setPosition(point, updateSliders = true, move = true, callback = null) {
         this.circle.position = point;
         this.lines.segments[1].point = point;
-        super.setPosition(point, updateSliders, move);
+        super.setPosition(point, updateSliders, move, callback);
     }
     drag(delta) {
         this.setPosition(this.circle.position.add(delta), true, false);
@@ -648,13 +648,13 @@ class ThreePen extends Pen {
     getPosition() {
         return this.vectorToPoint(this.circle.position);
     }
-    setPosition(point, updateSliders = true, move = true) {
+    setPosition(point, updateSliders = true, move = true, callback = null) {
         let position = this.pointToVector(point);
         this.circle.position.copy(position);
         let geometry = this.lines.geometry;
         geometry.vertices[1].copy(position);
         geometry.verticesNeedUpdate = true;
-        super.setPosition(point, updateSliders, move);
+        super.setPosition(point, updateSliders, move, callback);
     }
     tipibotWidthChanged() {
         this.lines.geometry.vertices[2].x = Settings_1.Settings.tipibot.width;

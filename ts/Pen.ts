@@ -75,10 +75,10 @@ export class PaperPen extends Pen {
 		return this.circle.position
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
 		this.circle.position = point
 		this.lines.segments[1].point = point
-		super.setPosition(point, updateSliders, move)
+		super.setPosition(point, updateSliders, move, callback)
 	}
 
 	drag(delta: paper.Point) {
@@ -139,13 +139,13 @@ export class ThreePen extends Pen {
 		return this.vectorToPoint(this.circle.position)
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
 		let position = this.pointToVector(point)
 		this.circle.position.copy(position)
 		let geometry = <THREE.Geometry>this.lines.geometry
 		geometry.vertices[1].copy(position)
 		geometry.verticesNeedUpdate = true
-		super.setPosition(point, updateSliders, move)
+		super.setPosition(point, updateSliders, move, callback)
 	}
 	
 	tipibotWidthChanged() {
