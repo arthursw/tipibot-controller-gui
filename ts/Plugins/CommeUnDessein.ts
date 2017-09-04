@@ -5,6 +5,14 @@ import { } from "../Renderers"
 
 let scale = 1000
 
+let CommeUnDesseinSize = new paper.Size(4000, 3000)
+let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
+const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
+
+let commeUnDesseinToDrawArea = function(point: paper.Point) {
+	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size)
+}
+
 let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
 	if (point.x == null && point.y == null) {
 		point = new paper.Point(point)
@@ -14,6 +22,11 @@ let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point) {
 	x *= scale
 	y *= scale
 	return new paper.Point(x, y)
+}
+
+let posOnPlanetToDrawArea = function(point: paper.Point, planet: paper.Point) {
+	let posOnProject = posOnPlanetToProject(point, planet)
+	return commeUnDesseinToDrawArea(posOnProject)
 }
 
 let commeundesseinAjaxURL = '/ajaxCall/'
@@ -113,14 +126,16 @@ export class CommeUnDessein {
 
 			for (let i = 0; i < points.length; i += 4) {
 				let point = points[i]
-				controlPath.add(posOnPlanetToProject(point, planet))
+				controlPath.add(posOnPlanetToDrawArea(point, planet))
 				controlPath.lastSegment.handleIn = new paper.Point(points[i + 1])
 				controlPath.lastSegment.handleOut = new paper.Point(points[i + 2])
 				// controlPath.lastSegment.rtype = points[i+3]
 			}
 			controlPath.flatten(0.25)
 
-			SVGPlot.svgPlot.clear()
+			if(SVGPlot.svgPlot != null) {
+				SVGPlot.svgPlot.clear()
+			}
 			SVGPlot.svgPlot = new SVGPlot(controlPath)
 			SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(pk))
 		}

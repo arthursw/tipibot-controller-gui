@@ -1429,6 +1429,12 @@ exports.GUI = GUI;
 Object.defineProperty(exports, "__esModule", { value: true });
 const Plot_1 = __webpack_require__(5);
 let scale = 1000;
+let CommeUnDesseinSize = new paper.Size(4000, 3000);
+let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
+const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize);
+let commeUnDesseinToDrawArea = function (point) {
+    return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size);
+};
 let posOnPlanetToProject = function (point, planet) {
     if (point.x == null && point.y == null) {
         point = new paper.Point(point);
@@ -1438,6 +1444,10 @@ let posOnPlanetToProject = function (point, planet) {
     x *= scale;
     y *= scale;
     return new paper.Point(x, y);
+};
+let posOnPlanetToDrawArea = function (point, planet) {
+    let posOnProject = posOnPlanetToProject(point, planet);
+    return commeUnDesseinToDrawArea(posOnProject);
 };
 let commeundesseinAjaxURL = '/ajaxCall/';
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret';
@@ -1519,13 +1529,15 @@ class CommeUnDessein {
             let controlPath = new paper.Path();
             for (let i = 0; i < points.length; i += 4) {
                 let point = points[i];
-                controlPath.add(posOnPlanetToProject(point, planet));
+                controlPath.add(posOnPlanetToDrawArea(point, planet));
                 controlPath.lastSegment.handleIn = new paper.Point(points[i + 1]);
                 controlPath.lastSegment.handleOut = new paper.Point(points[i + 2]);
                 // controlPath.lastSegment.rtype = points[i+3]
             }
             controlPath.flatten(0.25);
-            Plot_1.SVGPlot.svgPlot.clear();
+            if (Plot_1.SVGPlot.svgPlot != null) {
+                Plot_1.SVGPlot.svgPlot.clear();
+            }
             Plot_1.SVGPlot.svgPlot = new Plot_1.SVGPlot(controlPath);
             Plot_1.SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(pk));
         }
