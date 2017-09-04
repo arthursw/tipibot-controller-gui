@@ -139,6 +139,9 @@ export class SettingsManager {
 				this.drawAreaDimensionsFolder.getController('height').max(value, finishChanged)
 				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
 			}
+			if(name == 'width' || name == 'height') {
+				this.tipibot.sizeChanged(finishChanged)
+			}
 		} else if(parentNames[0] == 'Home') {
 			if(name == 'homeX') {
 				this.tipibotPositionFolder.getController('x').setValue(value, true)

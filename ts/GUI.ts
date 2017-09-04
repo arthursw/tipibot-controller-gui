@@ -123,11 +123,11 @@ export class Controller {
 	}
 
 	hide(): void {
-		$(this.getDomElement()).hide()
+		$(this.getParentDomElement()).hide()
 	}
 
 	show(): void {
-		$(this.getDomElement()).show()
+		$(this.getParentDomElement()).show()
 	}
 }
 

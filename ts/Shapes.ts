@@ -10,6 +10,10 @@ export class Shape {
 	remove() {
 		this.group.remove()
 	}
+
+	getBounds() {
+		return this.group.bounds
+	}
 }
 
 export class Rectangle extends Shape {
@@ -57,7 +61,7 @@ export class PaperRectangle extends Rectangle {
 			layer = <paper.Layer>this.group.parent
 		}
 		if(this.group != null) {
-			this.group.remove()
+			this.group.removeChildren()
 		}
 		let position = new paper.Point(x, y)
 		let size = new paper.Size(width, height)
@@ -111,7 +115,7 @@ export class PaperTarget extends Target {
 			layer = <paper.Layer>this.group.parent
 		}
 		if(this.group != null) {
-			this.group.remove()
+			this.group.removeChildren()
 		}
 		let position = new paper.Point(x, y)
 		this.circle = paper.Path.Circle(position, radius)

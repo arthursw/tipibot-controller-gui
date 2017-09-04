@@ -2,8 +2,8 @@ import { Rectangle, Circle} from "./Shapes"
 import { GUI } from "./GUI"
 
 export interface TipibotInterface {
-	area: Rectangle
-	paper: Rectangle
+	tipibotArea: Rectangle
+	drawArea: Rectangle
 	isPenUp: boolean
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void }
 

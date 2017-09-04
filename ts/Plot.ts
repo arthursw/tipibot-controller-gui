@@ -61,6 +61,7 @@ export class Plot extends Draggable {
 
 	constructor(renderer: Renderer, item: paper.Item=null) {
 		super(renderer, item)
+		this.item.position = tipibot.drawArea.getBounds().topLeft.add(this.item.bounds.size.multiply(0.5))
 		this.originalItem = null
 		this.filter()
 	}
@@ -153,18 +154,19 @@ export class Plot extends Draggable {
 		this.filterItem(item, flattenPrecision, this.flattenPath)
 	}
 
-	plot() {
+	plot(callback: ()=> void = null) {
 		this.plotting = true
 		this.plotItem(this.item)			// to be overloaded. The draw button calls plot()
-		tipibot.goHome(()=> this.plotFinished())
+		tipibot.goHome(()=> this.plotFinished(callback))
 	}
 
 	plotItem(item: paper.Item) {
 
 	}
 
-	plotFinished() {
+	plotFinished(callback: ()=> void = null) {
 		this.plotting = false
+		callback()
 	}
 
 	stop() {
@@ -190,6 +192,11 @@ export class Plot extends Draggable {
 	setY(y: number) {
 		this.item.position.y = y
 	}
+
+	clear() {
+		this.item.remove()
+		this.item = null
+	}
 }
 
 export class SVGPlot extends Plot {
@@ -198,11 +205,10 @@ export class SVGPlot extends Plot {
 	static renderer: Renderer
 	static gui: GUI
 
-	currentItem: paper.Item
-	currentSegment: paper.Segment
-
 	public static onImageLoad(event: any) {
-		let svgPlot = new SVGPlot(paper.project.importSVG(event.target.result), SVGPlot.renderer)
+		let svg = paper.project.importSVG(event.target.result)
+		let svgPlot = new SVGPlot(svg)
+		SVGPlot.gui.getController('Draw').show()
 	}
 
 	public static handleFileSelect(event: any) {
@@ -221,7 +227,7 @@ export class SVGPlot extends Plot {
 			}
 
 			let reader = new FileReader()
-			reader.onload = SVGPlot.onImageLoad
+			reader.onload = (event)=> SVGPlot.onImageLoad(event)
 			reader.readAsText(file)
 		}
 	}
@@ -235,27 +241,39 @@ export class SVGPlot extends Plot {
 	}
 
 	public static drawClicked(event: any) {
-		if(!Plot.currentPlot.plotting) {
-			SVGPlot.gui.getController('Draw').name('Stop & Clear queue')
-		} else {
-			SVGPlot.gui.getController('Draw').name('Draw')
+		if(Plot.currentPlot != null) {
+			if(!Plot.currentPlot.plotting) {
+				SVGPlot.gui.getController('Draw').name('Stop & Clear queue')
+				Plot.currentPlot.plot()
+			} else {
+				SVGPlot.gui.getController('Draw').name('Draw')
+				communication.interpreter.stopAndClearQueue()
+			}
 		}
-		Plot.currentPlot.plot()
 	}
 
 	public static createGUI(gui: GUI) {
 		SVGPlot.gui = gui.addFolder('SVG')
 		SVGPlot.gui.open()
 
-		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', SVGPlot.handleFileSelect)
+		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
 		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
 		clearSVGButton.hide()
-		SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
+		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
+		drawButton.hide()
+
 	}
 
-	constructor(svg: paper.Item, renderer: Renderer) {
+	currentItem: paper.Item
+	currentSegment: paper.Segment
+
+	constructor(svg: paper.Item, renderer: Renderer=SVGPlot.renderer) {
 		super(renderer, svg)
 		Plot.currentPlot = this
+		if(SVGPlot.svgPlot != null) {
+			SVGPlot.svgPlot.clear()
+			SVGPlot.svgPlot = null
+		}
 		SVGPlot.svgPlot = this
 		paper.project.layers[0].addChild(svg)
 	}
@@ -271,24 +289,26 @@ export class SVGPlot extends Plot {
 
 	drag(delta: paper.Point) {
 		super.drag(delta)
-		Plot.gui.getFolder('Transform').getController('x').setValueNoCallback(this.item.position.x)
-		Plot.gui.getFolder('Transform').getController('y').setValueNoCallback(this.item.position.y)
+		Plot.gui.getFolder('Transform').getController('X').setValueNoCallback(this.item.position.x)
+		Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
 	}
 
 	plotItem(item: paper.Item) {
+		let matrix = item.globalMatrix
 		if(item.className == 'Path' || item.className == 'CompoundPath') {
 			let path: paper.Path = <paper.Path>item
 			for(let segment of path.segments) {
 				if(segment == path.firstSegment) {
-					if(!tipibot.getPosition().equals(segment.point)) {
+					if(!tipibot.getPosition().equals(segment.point.transform(matrix))) {
 						tipibot.penUp()
-						tipibot.moveDirect(segment.point)
+						tipibot.moveDirect(segment.point.transform(matrix))
 					}
 					tipibot.penDown()
 				} else {
-					tipibot.moveLinear(segment.point)
+					tipibot.moveLinear(segment.point.transform(matrix))
 				}
 			}
+			tipibot.moveLinear(path.firstSegment.point.transform(matrix))
 		}
 		if(item.children == null) {
 			return
@@ -298,67 +318,66 @@ export class SVGPlot extends Plot {
 		}
 	}
 
-	plotItemStep(): any {
-		let item = this.currentItem
+	// plotItemStep(): any {
+	// 	let item = this.currentItem
 
-		// if we didn't already plot the item: plot it along with its children
-		if(item.data.plotted == null || !item.data.plotted) {
+	// 	// if we didn't already plot the item: plot it along with its children
+	// 	if(item.data.plotted == null || !item.data.plotted) {
 
-			// plot path
-			if(item.className == 'Path' || item.className == 'CompoundPath') {
-				let path: paper.Path = <paper.Path>item
-				let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
-				if(segment == path.firstSegment) {
-					if(!tipibot.getPosition().equals(segment.point)) {
-						tipibot.penUp()
-						tipibot.moveDirect(segment.point, this.plotItemStep)
-					}
-					tipibot.penDown()
-				} else {
-					tipibot.moveLinear(segment.point, this.plotItemStep)
-				}
+	// 		// plot path
+	// 		if(item.className == 'Path' || item.className == 'CompoundPath') {
+	// 			let path: paper.Path = <paper.Path>item
+	// 			let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
+	// 			if(segment == path.firstSegment) {
+	// 				if(!tipibot.getPosition().equals(segment.point)) {
+	// 					tipibot.penUp()
+	// 					tipibot.moveDirect(segment.point, this.plotItemStep)
+	// 				}
+	// 				tipibot.penDown()
+	// 			} else {
+	// 				tipibot.moveLinear(segment.point, this.plotItemStep)
+	// 			}
 
-				// go to next segment
-				this.currentSegment = segment.next != path.firstSegment ? segment.next : null
+	// 			// go to next segment
+	// 			this.currentSegment = segment.next != path.firstSegment ? segment.next : null
 
-			} else if(item.className == 'Shape') {
-				console.error('A shape was found in the SVG to plot.')
-			}
+	// 		} else if(item.className == 'Shape') {
+	// 			console.error('A shape was found in the SVG to plot.')
+	// 		}
 
-			// plot children
-			if(item.children.length > 0) {
-				this.currentItem = item.firstChild
-				this.currentSegment = null
-				this.plotItemStep()
-				return
-			}
-			item.data.plotted = true
-		}
+	// 		// plot children
+	// 		if(item.children.length > 0) {
+	// 			this.currentItem = item.firstChild
+	// 			this.currentSegment = null
+	// 			this.plotItemStep()
+	// 			return
+	// 		}
+	// 		item.data.plotted = true
+	// 	}
 
-		// plot next siblings if any, or go up to parent
-		if(item != this.item && item.parent != null && item.index < item.parent.children.length - 1) {
-			if(item.index < item.parent.children.length - 1) {
-				this.currentItem = item.nextSibling
-				this.currentSegment = null
-				this.plotItemStep()
-				return
-			} else {
-				this.currentItem = item.parent
-				this.currentSegment = null
-				this.plotItemStep()
-				return
-			}
-		}
+	// 	// plot next siblings if any, or go up to parent
+	// 	if(item != this.item && item.parent != null && item.index < item.parent.children.length - 1) {
+	// 		if(item.index < item.parent.children.length - 1) {
+	// 			this.currentItem = item.nextSibling
+	// 			this.currentSegment = null
+	// 			this.plotItemStep()
+	// 			return
+	// 		} else {
+	// 			this.currentItem = item.parent
+	// 			this.currentSegment = null
+	// 			this.plotItemStep()
+	// 			return
+	// 		}
+	// 	}
 
-		if(item == this.item) {
-			this.clearData(item)
-		}
-	}
+	// 	if(item == this.item) {
+	// 		this.clearData(item)
+	// 	}
+	// }
 	
-	plotFinished() {
-		SVGPlot.gui.getController('Draw').show()
-		SVGPlot.gui.getController('Stop & Clear queue').hide()
-		super.plotFinished()
+	plotFinished(callback: ()=> void = null) {
+		SVGPlot.gui.getController('Draw').name('Draw')
+		super.plotFinished(callback)
 	}
 
 	clearData(item: paper.Item) {

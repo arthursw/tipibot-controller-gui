@@ -12,8 +12,8 @@ export class Tipibot implements TipibotInterface {
 
 	isPenUp: boolean
 
-	area: Rectangle
-	paper: Rectangle
+	tipibotArea: Rectangle
+	drawArea: Rectangle
 	motorLeft: Circle
 	motorRight: Circle
 	home: Target
@@ -90,24 +90,25 @@ export class Tipibot implements TipibotInterface {
 	}
 	
 	changePenState() {
+		let callback = ()=> console.log('pen state changed')
 		if(this.isPenUp) {
-			this.penDown()
+			this.penDown(null, null, callback)
 		} else {
-			this.penUp()
+			this.penUp(null, null, callback)
 		}
 	}
 
-	tipibotRectangle() {
+	computeTipibotArea(): paper.Rectangle {
 		return new paper.Rectangle(0, 0, Settings.tipibot.width, Settings.tipibot.height)
 	}
 	
-	paperRectangle() {
+	computeDrawArea(): paper.Rectangle {
 		return new paper.Rectangle(Settings.tipibot.width / 2 - Settings.drawArea.width / 2, Settings.drawArea.y, Settings.drawArea.width, Settings.drawArea.height)
 	}
 
 	initialize(renderer: Renderer, gui: GUI) {
-		this.area = renderer.createRectangle(this.tipibotRectangle())
-		this.paper = renderer.createRectangle(this.paperRectangle())
+		this.tipibotArea = renderer.createRectangle(this.computeTipibotArea())
+		this.drawArea = renderer.createRectangle(this.computeDrawArea())
 		this.motorLeft = renderer.createCircle(0, 0, 50, 24)
 		this.motorRight = renderer.createCircle(Settings.tipibot.width, 0, 50, 24)
 		this.pen = renderer.createPen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width)
@@ -118,15 +119,15 @@ export class Tipibot implements TipibotInterface {
 	
 	sizeChanged(sendChange: boolean) {
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
-		this.area.updateRectangle(this.tipibotRectangle())
-		this.paper.updateRectangle(this.paperRectangle())
+		this.tipibotArea.updateRectangle(this.computeTipibotArea())
+		this.drawArea.updateRectangle(this.computeDrawArea())
 		if(sendChange) {
 			communication.interpreter.sendSize()
 		}
 	}
 
 	drawAreaChanged(sendChange: boolean) {
-		this.paper.updateRectangle(this.paperRectangle())
+		this.drawArea.updateRectangle(this.computeDrawArea())
 	}
 
 	speedChanged(sendChange: boolean) {
@@ -215,17 +216,17 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendMotorOff()
 	}
 
-	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
+	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
 		if(!this.isPenUp) {
-			communication.interpreter.sendPenUp(servoUpValue, servoUpTempo)
+			communication.interpreter.sendPenUp(servoUpValue, servoUpTempo, callback)
 			this.penStateButton.setName('Pen down')
 			this.isPenUp = true
 		}
 	}
 
-	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
+	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
 		if(this.isPenUp) {
-			communication.interpreter.sendPenDown(servoDownValue, servoDownTempo)
+			communication.interpreter.sendPenDown(servoDownValue, servoDownTempo, callback)
 			this.penStateButton.setName('Pen up')
 			this.isPenUp = false
 		}
@@ -272,8 +273,8 @@ export class Tipibot implements TipibotInterface {
 
 	windowResize() {
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
-		this.area.updateRectangle(this.tipibotRectangle())
-		this.paper.updateRectangle(this.paperRectangle())
+		this.tipibotArea.updateRectangle(this.computeTipibotArea())
+		this.drawArea.updateRectangle(this.computeDrawArea())
 	}
 }
 

@@ -21,6 +21,7 @@ import { Communication } from "./Communication/Communication"
 import { Draggable } from "./Draggable"
 import { GUI } from "./GUI"
 import { Circle } from "./Shapes"
+import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 
 declare var addWheelListener: any
 
@@ -41,6 +42,15 @@ let w = <any>window
 
 w.send = function(message: string) {
 	communication.interpreter.send(message)
+}
+
+w.addPlugin = function(pluginName: string) {
+	if(pluginName == 'CommeUnDessein') {
+		let commeUnDessein = new CommeUnDessein()
+		commeUnDessein.createGUI(gui)
+		commeUnDessein.startRequesting()
+		w.commeUnDessein = commeUnDessein
+	}
 }
 
 document.addEventListener("DOMContentLoaded", function(event) { 

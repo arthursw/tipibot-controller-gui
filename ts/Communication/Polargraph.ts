@@ -113,7 +113,8 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendMoveLinear(point: paper.Point, callback: () => any = null) {
-		this.sendMoveToNativePosition(false, point, callback);
+		// this.sendMoveToNativePosition(false, point, callback);
+		this.sendMoveToNativePosition(true, point, callback);
 	}
 
 	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
@@ -158,22 +159,22 @@ export class Polargraph extends Interpreter {
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
 		if (servoUpValue != Settings.servo.position.up) {
 			Settings.servo.position.up = servoUpValue;
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(commands.CMD_PENDOWN + "END");
+		this.queue(commands.CMD_PENUP + "END", callback);
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
 		if (servoDownValue != Settings.servo.position.down) {
 			Settings.servo.position.down = servoDownValue;
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(commands.CMD_PENUP + "END");
+		this.queue(commands.CMD_PENDOWN + "END", callback);
 	}
 
 	sendStop() {

@@ -45,18 +45,18 @@ export class PenPlotter extends Interpreter {
 		this.queue('M84\n')
 	}
 
-	sendPenState(servoValue: number, servoTempo: number = 0) {
+	sendPenState(servoValue: number, servoTempo: number = 0, callback: ()=> void = null) {
 		this.queue('G4 P' + servoTempo + '\n')
 		this.queue('M340 P3 S' + servoValue + '\n')
-		this.queue('G4 P0\n')
+		this.queue('G4 P' + servoTempo + '\n', callback)
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up) {
-		this.sendPenState(servoUpValue, servoUpTempo)
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
+		this.sendPenState(servoUpValue, servoUpTempo, callback)
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down) {
-		this.sendPenState(servoDownValue, servoDownTempo)
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
+		this.sendPenState(servoDownValue, servoDownTempo, callback)
 	}
 
 	sendStop() {
