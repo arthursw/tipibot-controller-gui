@@ -216,16 +216,16 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendMotorOff()
 	}
 
-	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
-		if(!this.isPenUp) {
+	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null, force=false) {
+		if(!this.isPenUp || force) {
 			communication.interpreter.sendPenUp(servoUpValue, servoUpTempo, callback)
 			this.penStateButton.setName('Pen down')
 			this.isPenUp = true
 		}
 	}
 
-	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
-		if(this.isPenUp) {
+	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null, force=false) {
+		if(this.isPenUp || force) {
 			communication.interpreter.sendPenDown(servoDownValue, servoDownTempo, callback)
 			this.penStateButton.setName('Pen up')
 			this.isPenUp = false
@@ -241,7 +241,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	goHome(callback: ()=> any = null) {
-		this.penUp()
+		this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
 		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, callback)
 	}

@@ -865,15 +865,15 @@ class Tipibot {
     motorOff() {
         Communication_1.communication.interpreter.sendMotorOff();
     }
-    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempo = Settings_1.Settings.servo.delay.up, callback = null) {
-        if (!this.isPenUp) {
+    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempo = Settings_1.Settings.servo.delay.up, callback = null, force = false) {
+        if (!this.isPenUp || force) {
             Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempo, callback);
             this.penStateButton.setName('Pen down');
             this.isPenUp = true;
         }
     }
-    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null) {
-        if (this.isPenUp) {
+    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null, force = false) {
+        if (this.isPenUp || force) {
             Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempo, callback);
             this.penStateButton.setName('Pen up');
             this.isPenUp = false;
@@ -887,7 +887,7 @@ class Tipibot {
         }
     }
     goHome(callback = null) {
-        this.penUp();
+        this.penUp(null, null, null, true);
         // The pen will make me (tipibot) move :-)
         this.pen.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY), true, true, callback);
     }
