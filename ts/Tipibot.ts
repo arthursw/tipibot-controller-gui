@@ -60,7 +60,7 @@ export class Tipibot implements TipibotInterface {
 		gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> this.setX(value))
 		gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> this.setY(value))
 
-		let goHomeButton = gui.addButton('Go home', ()=> this.goHome())
+		let goHomeButton = gui.addButton('Go home', ()=> this.goHome(()=> console.log('I am home :-)')))
 
 		this.penStateButton = gui.addButton('Pen down', () => this.changePenState() )
 		let motorsOffButton = gui.addButton('Motors off', ()=> this.motorsOff())

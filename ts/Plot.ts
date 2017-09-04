@@ -310,7 +310,9 @@ export class SVGPlot extends Plot {
 					tipibot.moveLinear(segment.point.transform(matrix))
 				}
 			}
-			tipibot.moveLinear(path.firstSegment.point.transform(matrix))
+			if(path.closed) {
+				tipibot.moveLinear(path.firstSegment.point.transform(matrix))
+			}
 		}
 		if(item.children == null) {
 			return

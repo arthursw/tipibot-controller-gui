@@ -113,6 +113,7 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendMoveLinear(point: paper.Point, callback: () => any = null) {
+		// Just like in Polagraph controller:
 		// this.sendMoveToNativePosition(false, point, callback);
 		this.sendMoveToNativePosition(true, point, callback);
 	}

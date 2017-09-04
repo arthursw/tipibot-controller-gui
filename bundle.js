@@ -731,7 +731,7 @@ class Tipibot {
         let position = { moveX: Settings_1.Settings.tipibot.homeX, moveY: Settings_1.Settings.tipibot.homeY };
         gui.add(position, 'moveX', 0, Settings_1.Settings.tipibot.width).name('Move X').onFinishChange((value) => this.setX(value));
         gui.add(position, 'moveY', 0, Settings_1.Settings.tipibot.height).name('Move Y').onFinishChange((value) => this.setY(value));
-        let goHomeButton = gui.addButton('Go home', () => this.goHome());
+        let goHomeButton = gui.addButton('Go home', () => this.goHome(() => console.log('I am home :-)')));
         this.penStateButton = gui.addButton('Pen down', () => this.changePenState());
         let motorsOffButton = gui.addButton('Motors off', () => this.motorsOff());
         gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
@@ -1175,7 +1175,9 @@ class SVGPlot extends Plot {
                     Tipibot_1.tipibot.moveLinear(segment.point.transform(matrix));
                 }
             }
-            Tipibot_1.tipibot.moveLinear(path.firstSegment.point.transform(matrix));
+            if (path.closed) {
+                Tipibot_1.tipibot.moveLinear(path.firstSegment.point.transform(matrix));
+            }
         }
         if (item.children == null) {
             return;
@@ -2041,6 +2043,7 @@ class Polargraph extends Interpreter_1.Interpreter {
         this.sendMoveToNativePosition(true, point, callback);
     }
     sendMoveLinear(point, callback = null) {
+        // Just like in Polagraph controller:
         // this.sendMoveToNativePosition(false, point, callback);
         this.sendMoveToNativePosition(true, point, callback);
     }
