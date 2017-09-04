@@ -86,6 +86,7 @@ export class CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		commeUnDesseinGUI.addButton('Start', ()=> this.startRequesting())
 		commeUnDesseinGUI.addButton('Stop & Clear', ()=> this.stopAndClear())
+		commeUnDesseinGUI.open()
 	}
 
 	stopAndClear() {

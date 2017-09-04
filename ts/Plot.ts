@@ -61,7 +61,7 @@ export class Plot extends Draggable {
 
 	constructor(renderer: Renderer, item: paper.Item=null) {
 		super(renderer, item)
-		this.item.position = tipibot.drawArea.getBounds().topLeft.add(this.item.bounds.size.multiply(0.5))
+		this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.filter()
 	}

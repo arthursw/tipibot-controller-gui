@@ -934,7 +934,7 @@ class Plot extends Draggable_1.Draggable {
     constructor(renderer, item = null) {
         super(renderer, item);
         this.plotting = false;
-        this.item.position = Tipibot_1.tipibot.drawArea.getBounds().topLeft.add(this.item.bounds.size.multiply(0.5));
+        this.item.position = this.item.position.add(Tipibot_1.tipibot.drawArea.getBounds().topLeft);
         this.originalItem = null;
         this.filter();
     }
@@ -1497,6 +1497,7 @@ class CommeUnDessein {
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
         commeUnDesseinGUI.addButton('Start', () => this.startRequesting());
         commeUnDesseinGUI.addButton('Stop & Clear', () => this.stopAndClear());
+        commeUnDesseinGUI.open();
     }
     stopAndClear() {
         clearInterval(this.requestDrawingInterval);
