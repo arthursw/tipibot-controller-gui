@@ -22,6 +22,7 @@ import { Draggable } from "./Draggable"
 import { GUI } from "./GUI"
 import { Circle } from "./Shapes"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
+import { Telescreen } from "./Plugins/Telescreen"
 
 declare var addWheelListener: any
 
@@ -46,9 +47,17 @@ w.send = function(message: string) {
 
 w.addPlugin = function(pluginName: string) {
 	if(pluginName == 'CommeUnDessein') {
+		
 		let commeUnDessein = new CommeUnDessein()
 		commeUnDessein.createGUI(gui)
 		w.commeUnDessein = commeUnDessein
+
+	} else if(pluginName == 'Telescreen') {
+
+		let telescreen = new Telescreen()
+		telescreen.createGUI(gui)
+		w.telescreen = telescreen
+
 	}
 }
 

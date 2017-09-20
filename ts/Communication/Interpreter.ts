@@ -68,6 +68,9 @@ export class Interpreter {
 
 	processMessage(message: string) {
 		console.log(message)
+		
+		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
+
 		if(message.indexOf(this.continueMessage) == 0) {
 			if(this.commandQueue.length > 0) {
 				let command = this.commandQueue.shift()

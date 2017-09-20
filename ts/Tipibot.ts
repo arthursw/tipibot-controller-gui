@@ -49,7 +49,7 @@ export class Tipibot implements TipibotInterface {
 		let r1 = lengths.x
 		let r2 = lengths.y
 		let w = Settings.tipibot.width
-		let x = ( r2 * r2 + w * w - r1 * r1 ) / (2 * w)
+		let x = ( r1 * r1 - r2 * r2 + w * w ) / (2 * w)
 		let y = Math.sqrt( r1 * r1 - x * x )
 		return new paper.Point(x, y)
 	}
@@ -62,7 +62,7 @@ export class Tipibot implements TipibotInterface {
 
 		let goHomeButton = gui.addButton('Go home', ()=> this.goHome(()=> console.log('I am home :-)')))
 
-		this.penStateButton = gui.addButton('Pen down', () => this.changePenState() )
+		this.penStateButton = gui.addButton('Pen down', () => this.togglePenState() )
 		let motorsOffButton = gui.addButton('Motors off', ()=> this.motorsOff())
 
 		gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
@@ -89,7 +89,7 @@ export class Tipibot implements TipibotInterface {
 		this.settingPosition = setPosition
 	}
 	
-	changePenState() {
+	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
 		if(this.isPenUp) {
 			this.penDown(null, null, callback)
@@ -140,6 +140,10 @@ export class Tipibot implements TipibotInterface {
 		return this.pen.getPosition()
 	}
 
+	getLengths() {
+		return this.cartesianToLengths(this.getPosition())
+	}
+
 	setX(x: number, sendChange=true) {
 		let p = this.getPosition()
 		if(Math.abs(x - p.x) > 0.01) {
@@ -155,18 +159,24 @@ export class Tipibot implements TipibotInterface {
 	}
 
     setPosition(point: paper.Point, sendChange=true) {
-    	this.pen.setPosition(point, false, false)
-    	if(sendChange) {
-    		communication.interpreter.sendSetPosition(point)
-    	}
+		this.pen.setPosition(point, false, false)
+		if(sendChange) {
+			communication.interpreter.sendSetPosition(point)
+		}
     }
 
-	moveDirect(point: paper.Point, callback: () => any = null) {
+	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
 		communication.interpreter.sendMoveDirect(point, callback)
+		if(movePen) {
+			this.pen.setPosition(point, true, false)
+		}
 	}
 
-	moveLinear(point: paper.Point, callback: () => any = null) {
+	moveLinear(point: paper.Point, callback: () => any = null, movePen=true) {
 		communication.interpreter.sendMoveLinear(point, callback)
+		if(movePen) {
+			this.pen.setPosition(point, true, false)
+		}
 	}
 
 	setSpeed(speed: number) {

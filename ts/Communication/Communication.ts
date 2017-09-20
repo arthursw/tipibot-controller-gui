@@ -7,7 +7,7 @@ import { Polargraph } from "./Polargraph"
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
-const SERIAL_COMMUNICATION_SPEED = 57600
+export const SERIAL_COMMUNICATION_SPEED = 57600
 
 declare var io: any
 
@@ -85,12 +85,15 @@ export class Communication {
 	serialConnectionPortChanged(value: string) {
 		if(value == 'Disconnected') {
 			this.socket.emit('command', 'close ' + this.interpreter.serialPort)
+			
+			document.dispatchEvent(new CustomEvent('Disconnect'))
 		}
 		else if(value == 'Refresh') {
 			this.serialPorts = []
 			this.socket.emit('command', 'list')
 		} else {
 			this.interpreter.setSerialPort(value);
+			document.dispatchEvent(new CustomEvent('Connect', { detail: value }))
 			this.socket.emit('command', 'open ' + value + ' ' + SERIAL_COMMUNICATION_SPEED)
 		}
 	}
@@ -102,6 +105,7 @@ export class Communication {
 				this.serialPorts.push(port.Name)
 			}
 		}
+
 		let portNames = ['Disconnected', 'Refresh'].concat(this.serialPorts)
 
 		if(this.portController == null) {
