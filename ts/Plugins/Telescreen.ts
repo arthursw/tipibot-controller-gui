@@ -4,111 +4,139 @@ import { SVGPlot } from "../Plot"
 import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
 
-interface Move {
-	positiveLeft(speed: number): void
-	negativeLeft(speed: number): void
-	positiveRight(speed: number): void
-	negativeRight(speed: number): void
+class Move {
+	
+	telescreen: Telescreen
+	timeoutID = -1
+	
+	constructor(telescreen: Telescreen) {
+		this.telescreen = telescreen
+	}
+
+	moveTipibot(moveType: string) {
+		this.timeoutID = null
+		if(moveType == 'linear') {
+			tipibot.moveLinear(this.telescreen.position)
+		} else if(moveType == 'direct') {
+			tipibot.moveDirect(this.telescreen.position)
+		}
+	}
+
+	moveTipibotDeferred(moveType: string) {
+		this.clearTimeout()
+		this.timeoutID = setTimeout(()=> this.moveTipibot(moveType), 500)
+	}
+
+	clearTimeout() {
+		if(this.timeoutID != null) {
+			clearTimeout(this.timeoutID)
+			this.timeoutID = null
+		}
+	}
+
+	positiveLeft(): void {}
+	negativeLeft(): void {}
+	positiveRight(): void {}
+	negativeRight(): void {}
 }
 
-class OrthographicMove implements Move {
-
-	positiveLeft(speed: number) {
-		let position = tipibot.getPosition()
-		position.x += speed
-		tipibot.moveLinear(position)
+class OrthographicMove extends Move {
+	
+	positiveLeft() {
+		this.telescreen.position.x += this.telescreen.speed
+		this.moveTipibotDeferred('linear')
 	}
 
-	negativeLeft(speed: number) {
-		let position = tipibot.getPosition()
-		position.x -= speed
-		tipibot.moveLinear(position)
+	negativeLeft() {
+		this.telescreen.position.x -= this.telescreen.speed
+		this.moveTipibotDeferred('linear')
 	}
 
-	positiveRight(speed: number) {
-		let position = tipibot.getPosition()
-		position.y += speed
-		tipibot.moveLinear(position)
+	positiveRight() {
+		this.telescreen.position.y += this.telescreen.speed
+		this.moveTipibotDeferred('linear')
 	}
 
-	negativeRight(speed: number) {
-		let position = tipibot.getPosition()
-		position.y -= speed
-		tipibot.moveLinear(position)
-	}
-}
-
-class PolarMove implements Move {
-
-	positiveLeft(speed: number) {
-		let lengths = tipibot.getLengths()
-		lengths.x += speed
-		let position = tipibot.lengthsToCartesian(lengths)
-		tipibot.moveDirect(position)
-	}
-
-	negativeLeft(speed: number) {
-		let lengths = tipibot.getLengths()
-		lengths.x -= speed
-		let position = tipibot.lengthsToCartesian(lengths)
-		tipibot.moveDirect(position)
-	}
-
-	positiveRight(speed: number) {
-		let lengths = tipibot.getLengths()
-		lengths.y += speed
-		let position = tipibot.lengthsToCartesian(lengths)
-		tipibot.moveDirect(position)
-	}
-
-	negativeRight(speed: number) {
-		let lengths = tipibot.getLengths()
-		lengths.y -= speed
-		let position = tipibot.lengthsToCartesian(lengths)
-		tipibot.moveDirect(position)
+	negativeRight() {
+		this.telescreen.position.y -= this.telescreen.speed
+		this.moveTipibotDeferred('linear')
 	}
 }
 
-class DirectionMove implements Move {
+class PolarMove extends Move {
+	
+	positiveLeft() {
+		let lengths = tipibot.cartesianToLengths(this.telescreen.position)
+		lengths.x += this.telescreen.speed
+		this.telescreen.position = tipibot.lengthsToCartesian(lengths)
+		this.moveTipibotDeferred('direct')
+	}
+
+	negativeLeft() {
+		let lengths = tipibot.cartesianToLengths(this.telescreen.position)
+		lengths.x -= this.telescreen.speed
+		this.telescreen.position = tipibot.lengthsToCartesian(lengths)
+		this.moveTipibotDeferred('direct')
+	}
+
+	positiveRight() {
+		let lengths = tipibot.cartesianToLengths(this.telescreen.position)
+		lengths.y += this.telescreen.speed
+		this.telescreen.position = tipibot.lengthsToCartesian(lengths)
+		this.moveTipibotDeferred('direct')
+	}
+
+	negativeRight() {
+		let lengths = tipibot.cartesianToLengths(this.telescreen.position)
+		lengths.y -= this.telescreen.speed
+		this.telescreen.position = tipibot.lengthsToCartesian(lengths)
+		this.moveTipibotDeferred('direct')
+	}
+}
+
+class DirectionMove extends Move {
 
 	direction = new paper.Point(1, 0)
 
-	positiveLeft(speed: number) {
+	positiveLeft() {
 		this.direction.angle += 360/30
 	}
 
-	negativeLeft(speed: number) {
+	negativeLeft() {
 		this.direction.angle -= 360/30
 	}
 
-	positiveRight(speed: number) {
-		let position = tipibot.getPosition()
-		tipibot.moveLinear(position.add(this.direction.multiply(speed)))
+	positiveRight() {
+		this.telescreen.position = this.telescreen.position.add(this.direction.multiply(this.telescreen.speed))
+		this.moveTipibotDeferred('linear')
 	}
 
-	negativeRight(speed: number) {
-		let position = tipibot.getPosition()
-		tipibot.moveLinear(position.add(this.direction.multiply(-speed)))
+	negativeRight() {
+		this.telescreen.position = this.telescreen.position.subtract(this.direction.multiply(this.telescreen.speed))
+		this.moveTipibotDeferred('linear')
 	}
 }
 
 export class Telescreen {
 	
 	speed: number = 1
-	moves = { 
-		Orthographic: new OrthographicMove(),
-		Polar: new PolarMove(),
-		Direction: new DirectionMove()
-	}
+	position: paper.Point
+	moves: Map<string, Move>
 
 	move: Move = null
 	modeController: Controller
 
 	constructor() {
+		this.moves = new Map<string, Move>()
+		this.moves.set('Orthographic', new OrthographicMove(this))
+		this.moves.set('Polar', new PolarMove(this))
+		this.moves.set('Direction', new DirectionMove(this))
+
 		document.addEventListener('Disconnect', ()=> this.disconnect(), false)
 		document.addEventListener('Connect', (event: CustomEvent)=> this.connect(event.detail), false)
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.messageReceived(event.detail), false)
-		this.move = this.moves.Orthographic
+		this.move = this.moves.get('Orthographic')
+		this.position = tipibot.getPosition()
 	}
 
 	createGUI(gui: GUI) {
@@ -118,26 +146,32 @@ export class Telescreen {
 		telescreenGUI.open()
 	}
 
+	changeMode(mode: string) {
+		for(let m of this.moves) {
+			m[1].clearTimeout()
+		}
+		this.move = this.moves.get(mode)
+	}
+
 	modeChanged(mode: string) {
-		this.move = (<any>this.moves)[mode]
+		this.changeMode(mode)
 	}
 
 	cycleMode() {
-		let moveNames = []
-		for(let moveName in this.moves) {
-			moveNames.push(moveName)
-		}
-		let i=0
-		for(let moveName in this.moves) {
-			if(this.move == (<any>this.moves)[moveName]) {
-				let newMoveName = moveNames[ i + 1 < moveNames.length ? i + 1 : 0 ]
-				this.move = (<any>this.moves)[newMoveName]
-				this.modeController.setValue(<any>newMoveName)
-				this.modeController.updateDisplay()
-				break
+		let movesList = []
+		let i = 0
+		let currentMoveIndex = 0
+		for(let m of this.moves) {
+			if(m[1] == this.move) {
+				currentMoveIndex = i
 			}
+			movesList.push(m[0])
 			i++
 		}
+		let newMove = movesList[ i+1 < movesList.length ? i+1 : 0]
+		this.changeMode(newMove)
+		this.modeController.setValue(<any>newMove)
+		this.modeController.updateDisplay()
 	}
 
 	connect(port: string) {
@@ -160,17 +194,17 @@ export class Telescreen {
 		let position = tipibot.getPosition()
 		if(message.indexOf('left') == 0) {
 			if(message.indexOf('+') > 0) {
-				this.move.positiveLeft(this.speed)
+				this.move.positiveLeft()
 			} else if(message.indexOf('-') > 0) {
-				this.move.negativeLeft(this.speed)
+				this.move.negativeLeft()
 			} else if(message.indexOf('OFF') > 0) {
 				tipibot.togglePenState()
 			}
 		} else if(message.indexOf('right') == 0) {
 			if(message.indexOf('+') > 0) {
-				this.move.positiveRight(this.speed)
+				this.move.positiveRight()
 			} else if(message.indexOf('-') > 0) {
-				this.move.negativeRight(this.speed)
+				this.move.negativeRight()
 			} else if(message.indexOf('OFF') > 0) {
 				this.cycleMode()
 			}
