@@ -92,9 +92,9 @@ export class Tipibot implements TipibotInterface {
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
 		if(this.isPenUp) {
-			this.penDown(undefined, undefined, callback)
+			this.penDown(Settings.servo.delay.down, Settings.servo.delay.down, callback)
 		} else {
-			this.penUp(undefined, undefined, callback)
+			this.penUp(Settings.servo.position.up, Settings.servo.delay.up, callback)
 		}
 	}
 

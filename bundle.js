@@ -568,10 +568,10 @@ class Tipibot {
     togglePenState() {
         let callback = () => console.log('pen state changed');
         if (this.isPenUp) {
-            this.penDown(undefined, undefined, callback);
+            this.penDown(Settings_1.Settings.servo.delay.down, Settings_1.Settings.servo.delay.down, callback);
         }
         else {
-            this.penUp(undefined, undefined, callback);
+            this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up, callback);
         }
     }
     computeTipibotArea() {
