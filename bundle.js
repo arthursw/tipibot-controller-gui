@@ -2094,18 +2094,33 @@ class Interpreter {
         console.log('Serial input: ', data);
         if (data.indexOf("C13,") == 0) {
             this.tempoNextCommand = true;
-            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 200);
+            console.log('wait 0.2 sec...' + data);
+            setTimeout(() => {
+                console.log('send: ' + data);
+                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+            }, 200);
         }
         else if (data.indexOf("C14,") == 0) {
             this.tempoNextCommand = true;
-            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 500);
+            console.log('wait 0.5 sec...' + data);
+            setTimeout(() => {
+                console.log('send: ' + data);
+                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+                return;
+            }, 500);
         }
         else {
             if (this.tempoNextCommand) {
                 this.tempoNextCommand = false;
-                setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 10000);
+                console.log('wait 10 sec... : ' + data);
+                setTimeout(() => {
+                    console.log('send: ' + data);
+                    this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+                    return;
+                }, 10000);
             }
             else {
+                console.log('send: ' + data);
                 this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
             }
         }
