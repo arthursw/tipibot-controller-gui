@@ -2123,7 +2123,7 @@ class Interpreter {
                     console.log('send: ' + data);
                     this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
                     return;
-                }, 10000);
+                }, 500);
             }
             else {
                 console.log('send: ' + data);
