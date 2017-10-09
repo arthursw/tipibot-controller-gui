@@ -170,6 +170,7 @@ export class SettingsManager {
 				this.tipibot.setY(value, finishChanged)
 			}
 		} else if(parentNames[1] == 'Pen') {
+			console.log(Settings.servo.position.down, Settings.servo.position.up)
 			if(finishChanged) {
 				this.tipibot.servoChanged(finishChanged)
 			}

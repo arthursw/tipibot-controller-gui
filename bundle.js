@@ -226,6 +226,7 @@ class SettingsManager {
             }
         }
         else if (parentNames[1] == 'Pen') {
+            console.log(exports.Settings.servo.position.down, exports.Settings.servo.position.up);
             if (finishChanged) {
                 this.tipibot.servoChanged(finishChanged);
             }
@@ -568,7 +569,7 @@ class Tipibot {
     togglePenState() {
         let callback = () => console.log('pen state changed');
         if (this.isPenUp) {
-            this.penDown(Settings_1.Settings.servo.delay.down, Settings_1.Settings.servo.delay.down, callback);
+            this.penDown(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.delay.down, callback);
         }
         else {
             this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up, callback);
