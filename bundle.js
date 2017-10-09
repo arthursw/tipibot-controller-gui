@@ -2358,7 +2358,8 @@ class Polargraph extends Interpreter_1.Interpreter {
             Settings_1.settingsManager.updateSliders();
             this.sendPenLiftRange(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.position.up);
         }
-        this.queue(commands.CMD_PENUP + "END", callback);
+        this.queue(commands.CMD_PENDOWN + "END", callback);
+        // this.queue(commands.CMD_PENUP + "END", callback);
     }
     sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null) {
         if (servoDownValue != Settings_1.Settings.servo.position.down) {
@@ -2366,7 +2367,8 @@ class Polargraph extends Interpreter_1.Interpreter {
             Settings_1.settingsManager.updateSliders();
             this.sendPenLiftRange(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.position.up);
         }
-        this.queue(commands.CMD_PENDOWN + "END", callback);
+        // this.queue(commands.CMD_PENDOWN + "END", callback);
+        this.queue(commands.CMD_PENUP + "END", callback);
     }
     sendStop() {
     }
