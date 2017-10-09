@@ -2091,7 +2091,15 @@ class Interpreter {
             return;
         }
         console.log('Serial input: ', data);
-        this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+        if (data.indexOf("C13,") == 0) {
+            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000);
+        }
+        else if (data.indexOf("C14,") == 0) {
+            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000);
+        }
+        else {
+            this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+        }
     }
     messageReceived(message) {
         this.serialInput += message;
