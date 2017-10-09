@@ -2074,6 +2074,7 @@ class Interpreter {
         this.commandQueue = [];
         this.pause = false;
         this.serialInput = '';
+        this.tempoNextCommand = false;
     }
     setSerialPort(serialPort) {
         this.serialPort = serialPort;
@@ -2092,13 +2093,20 @@ class Interpreter {
         }
         console.log('Serial input: ', data);
         if (data.indexOf("C13,") == 0) {
-            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000);
+            this.tempoNextCommand = true;
+            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 200);
         }
         else if (data.indexOf("C14,") == 0) {
-            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000);
+            setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 500);
         }
         else {
-            this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+            if (this.tempoNextCommand) {
+                this.tempoNextCommand = false;
+                setTimeout(() => this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000);
+            }
+            else {
+                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
+            }
         }
     }
     messageReceived(message) {
