@@ -51,12 +51,13 @@ export class Interpreter {
 			this.tempoNextCommand = true
 			setTimeout(()=> this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 200)
 		} else if(data.indexOf("C14,") == 0) {
+			this.tempoNextCommand = true
 			setTimeout(()=> this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 500)
 		}
 		else {
 			if(this.tempoNextCommand) {
 				this.tempoNextCommand = false
-				setTimeout(()=> this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 2000)
+				setTimeout(()=> this.socket.emit('command', 'send ' + this.serialPort + ' ' + data), 10000)
 			} else {
 				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 			}
