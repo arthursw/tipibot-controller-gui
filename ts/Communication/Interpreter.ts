@@ -78,7 +78,7 @@ export class Interpreter {
 					console.log('send: ' + data)
 					this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 					return
-				}, 500)
+				}, 1000)
 			} else {
 				console.log('send: ' + data)
 				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
