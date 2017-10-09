@@ -16,6 +16,7 @@ export class Interpreter {
 	tipibot: TipibotInterface
 	pause: boolean
 	tempoNextCommand: boolean
+	waiting: boolean
 	serialInput: string
 	readonly continueMessage = 'READY'
 
@@ -50,15 +51,19 @@ export class Interpreter {
 		if(data.indexOf("C13,") == 0) {
 			this.tempoNextCommand = true
 			console.log('wait 0.2 sec...' + data)
+			this.waiting = true
 			setTimeout(()=> {
 				console.log('send: ' + data)
+				this.waiting = false
 				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 			}, 200)
 		} else if(data.indexOf("C14,") == 0) {
 			this.tempoNextCommand = true
+			this.waiting = true
 			console.log('wait 0.5 sec...' + data)
 			setTimeout(()=> {
 				console.log('send: ' + data)
+				this.waiting = false
 				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 				return
 			}, 500)
@@ -66,8 +71,10 @@ export class Interpreter {
 		else {
 			if(this.tempoNextCommand) {
 				this.tempoNextCommand = false
+				this.waiting = true
 				console.log('wait 10 sec... : ' + data)
 				setTimeout(()=> {
+					this.waiting = false
 					console.log('send: ' + data)
 					this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 					return
@@ -108,7 +115,7 @@ export class Interpreter {
 				if(command.callback != null) {
 					command.callback()
 				}
-				if(this.commandQueue.length > 0) {
+				if(this.commandQueue.length > 0 && !this.waiting) {
 					this.send(this.commandQueue[0].data)
 				} else {
 					this.queueEmpty()
@@ -135,7 +142,7 @@ export class Interpreter {
 
 		this.commandQueue.push({ data: data, callback: callback })
 
-		if(this.commandQueue.length == 1) {
+		if(this.commandQueue.length == 1 && !this.waiting) {
 			this.send(data)
 		}
 	}
