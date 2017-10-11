@@ -45,10 +45,10 @@ w.send = function(message: string) {
 	communication.interpreter.send(message)
 }
 
-w.addPlugin = function(pluginName: string) {
+w.addPlugin = function(pluginName: string, testMode: boolean) {
 	if(pluginName == 'CommeUnDessein') {
 		
-		let commeUnDessein = new CommeUnDessein()
+		let commeUnDessein = new CommeUnDessein(testMode)
 		commeUnDessein.createGUI(gui)
 		w.commeUnDessein = commeUnDessein
 

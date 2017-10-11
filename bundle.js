@@ -98,8 +98,14 @@ exports.Settings = {
             down: 1500,
         },
         delay: {
-            up: 150,
-            down: 150,
+            up: {
+                before: 0,
+                after: 0,
+            },
+            down: {
+                before: 1000,
+                after: 2000,
+            },
         }
     },
     drawArea: {
@@ -154,8 +160,12 @@ class SettingsManager {
         anglesFolder.add(exports.Settings.servo.position, 'up', 0, 3600, 1).name('Up');
         anglesFolder.add(exports.Settings.servo.position, 'down', 0, 3600, 1).name('Down');
         let delaysFolder = penFolder.addFolder('Delays');
-        delaysFolder.add(exports.Settings.servo.delay, 'up', 0, 1000, 1).name('Up');
-        delaysFolder.add(exports.Settings.servo.delay, 'down', 0, 1000, 1).name('Down');
+        let delaysUpFolder = delaysFolder.addFolder('Up');
+        delaysUpFolder.add(exports.Settings.servo.delay.up, 'before', 0, 3000, 1).name('Before');
+        delaysUpFolder.add(exports.Settings.servo.delay.up, 'after', 0, 3000, 1).name('After');
+        let delaysDownFolder = delaysFolder.addFolder('Down');
+        delaysDownFolder.add(exports.Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before');
+        delaysDownFolder.add(exports.Settings.servo.delay.down, 'after', 0, 3000, 1).name('After');
         let machineFolder = settingsFolder.addFolder('Machine');
         machineFolder.add(exports.Settings.tipibot, 'speed', 100, 10000, 1).name('Speed');
         machineFolder.add(exports.Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration');
@@ -281,7 +291,9 @@ class SettingsManager {
                 this.copyObjectProperties(target[property], source[property]);
             }
             else if (source[property] != null) {
-                target[property] = source[property];
+                if (typeof target[property] == typeof source[property]) {
+                    target[property] = source[property];
+                }
             }
         }
     }
@@ -569,10 +581,10 @@ class Tipibot {
     togglePenState() {
         let callback = () => console.log('pen state changed');
         if (this.isPenUp) {
-            this.penDown(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.delay.down, callback);
+            this.penDown(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.delay.down.before, Settings_1.Settings.servo.delay.down.after, callback);
         }
         else {
-            this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up, callback);
+            this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, callback);
         }
     }
     computeTipibotArea() {
@@ -681,16 +693,16 @@ class Tipibot {
     motorOff() {
         Communication_1.communication.interpreter.sendMotorOff();
     }
-    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempo = Settings_1.Settings.servo.delay.up, callback = null, force = false) {
+    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null, force = false) {
         if (!this.isPenUp || force) {
-            Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempo, callback);
+            Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
             this.penStateButton.setName('Pen down');
             this.isPenUp = true;
         }
     }
-    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null, force = false) {
+    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null, force = false) {
         if (this.isPenUp || force) {
-            Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempo, callback);
+            Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
             this.penStateButton.setName('Pen up');
             this.isPenUp = false;
         }
@@ -703,7 +715,8 @@ class Tipibot {
         }
     }
     goHome(callback = null) {
-        this.penUp(null, null, null, true);
+        this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, null, true);
+        // this.penUp(null, null, null, true)
         // The pen will make me (tipibot) move :-)
         this.pen.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY), true, true, callback);
     }
@@ -711,18 +724,19 @@ class Tipibot {
         Communication_1.communication.interpreter.sendMotorOff();
     }
     keyDown(event) {
+        let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;
         switch (event.keyCode) {
             case 37:
-                this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)));
+                this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)));
                 break;
             case 38:
-                this.moveDirect(this.getPosition().add(new paper.Point(0, -1)));
+                this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)));
                 break;
             case 39:
-                this.moveDirect(this.getPosition().add(new paper.Point(1, 0)));
+                this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)));
                 break;
             case 40:
-                this.moveDirect(this.getPosition().add(new paper.Point(0, 1)));
+                this.moveDirect(this.getPosition().add(new paper.Point(0, amount)));
                 break;
             default:
                 break;
@@ -1456,6 +1470,7 @@ exports.GUI = GUI;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
 const Tipibot_1 = __webpack_require__(2);
@@ -1517,17 +1532,22 @@ var State;
     State[State["RequestedSetStatus"] = 4] = "RequestedSetStatus";
 })(State || (State = {}));
 class CommeUnDessein {
-    constructor() {
+    constructor(testMode = false) {
         this.mode = 'CommeUnDessein';
         this.secret = '******';
         this.state = State.NextDrawing;
+        this.testMode = testMode;
         let secret = localStorage.getItem(CommeUnDesseinSecretKey);
         if (secret != null) {
             this.secret = secret;
         }
     }
     createGUI(gui) {
-        let commeUnDesseinGUI = gui.addFolder('Comme un dessein');
+        let folderName = 'Comme un dessein';
+        if (this.testMode) {
+            folderName += ' (Test mode)';
+        }
+        let commeUnDesseinGUI = gui.addFolder(folderName);
         commeUnDesseinGUI.add(this, 'mode');
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
         commeUnDesseinGUI.addButton('Start', () => this.requestNextDrawing());
@@ -1547,13 +1567,22 @@ class CommeUnDessein {
             return;
         }
         let args = {
-            city: { name: this.mode }
+            city: { name: this.mode, secret: this.secret }
         };
+        let functionName = this.testMode ? 'getNextTestDrawing' : 'getNextValidatedDrawing';
         let data = {
-            data: JSON.stringify({ function: 'getNextValidatedDrawing', args: args })
+            data: JSON.stringify({ function: functionName, args: args })
         };
         this.state = State.RequestedNextDrawing;
-        $.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
+        if (this.testMode) {
+            console.log('requestNextDrawing');
+        }
+        let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL;
+        // $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
+        $.ajax({ method: "POST", url: url, data: data }).done((results) => {
+            if (this.testMode) {
+                console.log(results);
+            }
             if (results.message == 'no path') {
                 this.state = State.NextDrawing;
                 setTimeout(() => this.requestNextDrawing(), RequestTimeout);
@@ -1598,7 +1627,7 @@ class CommeUnDessein {
                 controlPath.lastSegment.handleOut = new paper.Point(points[i + 2]);
                 // controlPath.lastSegment.rtype = points[i+3]
             }
-            controlPath.flatten(0.25);
+            controlPath.flatten(Settings_1.Settings.plot.flattenPrecision);
             // now that controlPath is flattened: convert in draw area coordinates
             for (let segment of controlPath.segments) {
                 segment.point = commeUnDesseinToDrawArea(segment.point);
@@ -1620,11 +1649,19 @@ class CommeUnDessein {
             pk: pk,
             secret: this.secret
         };
+        let functionName = this.testMode ? 'setDrawingStatusDrawnTest' : 'setDrawingStatusDrawn';
         let data = {
-            data: JSON.stringify({ function: 'setDrawingStatusDrawn', args: args })
+            data: JSON.stringify({ function: functionName, args: args })
         };
         this.state = State.RequestedSetStatus;
-        $.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
+        if (this.testMode) {
+            console.log('setDrawingStatusDrawn');
+        }
+        let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL;
+        $.ajax({ method: "POST", url: url, data: data }).done((results) => {
+            if (this.testMode) {
+                console.log(results);
+            }
             if (results.state == 'error') {
                 console.error(results);
                 return;
@@ -2091,45 +2128,7 @@ class Interpreter {
         if (this.pause) {
             return;
         }
-        console.log('Serial input: ', data);
-        if (data.indexOf("C13,") == 0) {
-            this.tempoNextCommand = true;
-            console.log('wait 0.2 sec...' + data);
-            this.waiting = true;
-            setTimeout(() => {
-                console.log('send: ' + data);
-                this.waiting = false;
-                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
-            }, 200);
-        }
-        else if (data.indexOf("C14,") == 0) {
-            this.tempoNextCommand = true;
-            this.waiting = true;
-            console.log('wait 0.5 sec...' + data);
-            setTimeout(() => {
-                console.log('send: ' + data);
-                this.waiting = false;
-                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
-                return;
-            }, 500);
-        }
-        else {
-            if (this.tempoNextCommand) {
-                this.tempoNextCommand = false;
-                this.waiting = true;
-                console.log('wait 10 sec... : ' + data);
-                setTimeout(() => {
-                    this.waiting = false;
-                    console.log('send: ' + data);
-                    this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
-                    return;
-                }, 1000);
-            }
-            else {
-                console.log('send: ' + data);
-                this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
-            }
-        }
+        this.socket.emit('command', 'send ' + this.serialPort + ' ' + data);
     }
     messageReceived(message) {
         this.serialInput += message;
@@ -2148,6 +2147,9 @@ class Interpreter {
     }
     processMessage(message) {
         console.log(message);
+        // if(message.indexOf('++')==0) {
+        // 	console.log(message)
+        // }
         document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }));
         if (message.indexOf(this.continueMessage) == 0) {
             if (this.commandQueue.length > 0) {
@@ -2155,7 +2157,7 @@ class Interpreter {
                 if (command.callback != null) {
                     command.callback();
                 }
-                if (this.commandQueue.length > 0 && !this.waiting) {
+                if (this.commandQueue.length > 0) {
                     this.send(this.commandQueue[0].data);
                 }
                 else {
@@ -2177,7 +2179,7 @@ class Interpreter {
             return;
         }
         this.commandQueue.push({ data: data, callback: callback });
-        if (this.commandQueue.length == 1 && !this.waiting) {
+        if (this.commandQueue.length == 1) {
             this.send(data);
         }
     }
@@ -2214,15 +2216,15 @@ class Interpreter {
     }
     sendPenState(servoValue, servoTempo = 0) {
     }
-    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempo = Settings_1.Settings.servo.delay.up, callback = null) {
+    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
     }
-    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null) {
+    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
     }
     sendStop() {
     }
     sendPenLiftRange(servoDownValue = Settings_1.Settings.servo.position.down, servoUpValue = Settings_1.Settings.servo.position.up) {
     }
-    sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down, servoUpDelay = Settings_1.Settings.servo.delay.up) {
+    sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down.before, servoUpDelay = Settings_1.Settings.servo.delay.up.before) {
     }
 }
 exports.Interpreter = Interpreter;
@@ -2285,7 +2287,8 @@ const commands = {
     CMD_SELECT_ROVE_SOURCE_IMAGE: "C46",
     CMD_RENDER_ROVE: "C47",
     CMD_ACTIVATE_MACHINE_BUTTON: "C49",
-    CMD_DEACTIVATE_MACHINE_BUTTON: "C50"
+    CMD_DEACTIVATE_MACHINE_BUTTON: "C50",
+    CMD_DELAY: "C60,"
 };
 class Polargraph extends Interpreter_1.Interpreter {
     constructor() {
@@ -2297,14 +2300,14 @@ class Polargraph extends Interpreter_1.Interpreter {
         this.sendSpecs();
         this.sendSpeed();
         this.sendSetPosition();
-        this.startKeepingTipibotAwake();
+        // this.startKeepingTipibotAwake()
     }
-    startKeepingTipibotAwake() {
-        this.keepTipibotAwakeInterval = setTimeout(() => this.keepTipibotAwake(), 30000);
-    }
-    keepTipibotAwake() {
-        this.sendPenUp();
-    }
+    // startKeepingTipibotAwake() {
+    // 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
+    // }
+    // keepTipibotAwake() {
+    // 	this.sendPenUp()
+    // }
     send(data) {
         let commandCode = data.substr(0, 3);
         for (let commandName in commands) {
@@ -2316,8 +2319,8 @@ class Polargraph extends Interpreter_1.Interpreter {
         super.send(data + String.fromCharCode(10));
     }
     queue(data, callback = null) {
-        clearTimeout(this.keepTipibotAwakeInterval);
-        this.keepTipibotAwakeInterval = null;
+        // clearTimeout(this.keepTipibotAwakeInterval)
+        // this.keepTipibotAwakeInterval = null
         let commandCode = data.substr(0, 3);
         for (let commandName in commands) {
             let code = commands[commandName].substr(0, 3);
@@ -2328,7 +2331,7 @@ class Polargraph extends Interpreter_1.Interpreter {
         super.queue(data, callback);
     }
     queueEmpty() {
-        this.startKeepingTipibotAwake();
+        // this.startKeepingTipibotAwake()
     }
     getMaxSegmentLength() {
         return 2;
@@ -2388,25 +2391,37 @@ class Polargraph extends Interpreter_1.Interpreter {
     sendPenLiftRange(servoDownValue = Settings_1.Settings.servo.position.down, servoUpValue = Settings_1.Settings.servo.position.up) {
         this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
     }
-    sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down, servoUpDelay = Settings_1.Settings.servo.delay.up) {
+    sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down.before, servoUpDelay = Settings_1.Settings.servo.delay.up.before) {
     }
-    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempo = Settings_1.Settings.servo.delay.up, callback = null) {
+    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
         if (servoUpValue != Settings_1.Settings.servo.position.up) {
             Settings_1.Settings.servo.position.up = servoUpValue;
             Settings_1.settingsManager.updateSliders();
             this.sendPenLiftRange(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.position.up);
         }
-        this.queue(commands.CMD_PENDOWN + "END", callback);
+        if (servoUpTempoBefore > 0) {
+            this.queue(commands.CMD_DELAY + servoUpTempoBefore + ",END", callback);
+        }
+        this.queue(commands.CMD_PENUP + Settings_1.Settings.servo.position.up + ",END", callback);
         // this.queue(commands.CMD_PENUP + "END", callback);
+        if (servoUpTempoAfter > 0) {
+            this.queue(commands.CMD_DELAY + servoUpTempoAfter + ",END", callback);
+        }
     }
-    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempo = Settings_1.Settings.servo.delay.down, callback = null) {
+    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
         if (servoDownValue != Settings_1.Settings.servo.position.down) {
             Settings_1.Settings.servo.position.down = servoDownValue;
             Settings_1.settingsManager.updateSliders();
             this.sendPenLiftRange(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.position.up);
         }
+        if (servoDownTempoBefore > 0) {
+            this.queue(commands.CMD_DELAY + servoDownTempoBefore + ",END", callback);
+        }
+        this.queue(commands.CMD_PENDOWN + Settings_1.Settings.servo.position.down + ",END", callback);
         // this.queue(commands.CMD_PENDOWN + "END", callback);
-        this.queue(commands.CMD_PENUP + "END", callback);
+        if (servoDownTempoAfter > 0) {
+            this.queue(commands.CMD_DELAY + servoDownTempoAfter + ",END", callback);
+        }
     }
     sendStop() {
     }
@@ -2457,9 +2472,9 @@ let w = window;
 w.send = function (message) {
     communication.interpreter.send(message);
 };
-w.addPlugin = function (pluginName) {
+w.addPlugin = function (pluginName, testMode) {
     if (pluginName == 'CommeUnDessein') {
-        let commeUnDessein = new CommeUnDessein_1.CommeUnDessein();
+        let commeUnDessein = new CommeUnDessein_1.CommeUnDessein(testMode);
         commeUnDessein.createGUI(gui);
         w.commeUnDessein = commeUnDessein;
     }

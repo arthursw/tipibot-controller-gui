@@ -4,6 +4,7 @@ import { SVGPlot } from "../Plot"
 import { communication } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
 
+
 const RequestTimeout = 2000
 
 let scale = 1000
@@ -78,8 +79,10 @@ export class CommeUnDessein {
 	secret: string = '******'
 	currentDrawing: { items: any[], pk: string }
 	state: State = State.NextDrawing
+	testMode: boolean
 
-	constructor() {
+	constructor(testMode=false) {
+		this.testMode = testMode
 		let secret = localStorage.getItem(CommeUnDesseinSecretKey)
 		if (secret != null) {
 			this.secret = secret
@@ -87,7 +90,11 @@ export class CommeUnDessein {
 	}
 
 	createGUI(gui: GUI) {
-		let commeUnDesseinGUI = gui.addFolder('Comme un dessein')
+		let folderName = 'Comme un dessein'
+		if(this.testMode) {
+			folderName += ' (Test mode)'
+		}
+		let commeUnDesseinGUI = gui.addFolder(folderName)
 		commeUnDesseinGUI.add(this, 'mode')
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		commeUnDesseinGUI.addButton('Start', ()=> this.requestNextDrawing())
@@ -110,13 +117,24 @@ export class CommeUnDessein {
 		}
 
 		let args = {
-			city: { name: this.mode }
+			city: { name: this.mode, secret: this.secret }
 		}
+		let functionName: String = this.testMode ? 'getNextTestDrawing' : 'getNextValidatedDrawing'
 		let data = {
-			data: JSON.stringify({ function: 'getNextValidatedDrawing', args: args })
+			data: JSON.stringify({ function: functionName, args: args })
 		}
 		this.state = State.RequestedNextDrawing
-		$.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
+		
+		if(this.testMode) {
+			console.log('requestNextDrawing')
+		}
+
+		let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
+		// $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
+		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
+			if(this.testMode) {
+				console.log(results)
+			}
 			if (results.message == 'no path') {
 				this.state = State.NextDrawing
 				setTimeout(() => this.requestNextDrawing(), RequestTimeout)
@@ -168,7 +186,7 @@ export class CommeUnDessein {
 				controlPath.lastSegment.handleOut = new paper.Point(points[i + 2])
 				// controlPath.lastSegment.rtype = points[i+3]
 			}
-			controlPath.flatten(0.25)
+			controlPath.flatten(Settings.plot.flattenPrecision)
 			// now that controlPath is flattened: convert in draw area coordinates
 			for(let segment of controlPath.segments) {
 				segment.point = commeUnDesseinToDrawArea(segment.point)
@@ -193,11 +211,21 @@ export class CommeUnDessein {
 			pk: pk,
 			secret: this.secret
 		}
+		let functionName: String = this.testMode ? 'setDrawingStatusDrawnTest' : 'setDrawingStatusDrawn'
 		let data = {
-			data: JSON.stringify({ function: 'setDrawingStatusDrawn', args: args })
+			data: JSON.stringify({ function: functionName, args: args })
 		}
 		this.state = State.RequestedSetStatus
-		$.ajax({ method: "POST", url: commeundesseinAjaxURL, data: data }).done((results) => {
+
+		if(this.testMode) {
+			console.log('setDrawingStatusDrawn')
+		}
+
+		let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
+		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
+			if(this.testMode) {
+				console.log(results)
+			}
 			if (results.state == 'error') {
 				console.error(results)
 				return

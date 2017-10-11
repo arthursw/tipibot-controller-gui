@@ -29,8 +29,14 @@ export let Settings = {
 			down: 1500,
 		},
 		delay: {
-			up: 150,
-			down: 150,
+			up: {
+				before: 0,
+				after: 0,
+			},
+			down: {
+				before: 1000,
+				after: 2000,
+			},
 		}
 	},
 	drawArea: {
@@ -102,8 +108,13 @@ export class SettingsManager {
 		anglesFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
 
 		let delaysFolder = penFolder.addFolder('Delays')
-		delaysFolder.add(Settings.servo.delay, 'up', 0, 1000, 1).name('Up')
-		delaysFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
+		let delaysUpFolder = delaysFolder.addFolder('Up')
+		delaysUpFolder.add(Settings.servo.delay.up, 'before', 0, 3000, 1).name('Before')
+		delaysUpFolder.add(Settings.servo.delay.up, 'after', 0, 3000, 1).name('After')
+
+		let delaysDownFolder = delaysFolder.addFolder('Down')
+		delaysDownFolder.add(Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before')
+		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
 
 		let machineFolder = settingsFolder.addFolder('Machine')
 
@@ -231,7 +242,9 @@ export class SettingsManager {
 			if(typeof(target[property]) === 'object') {
 				this.copyObjectProperties(target[property], source[property])
 			} else if (source[property] != null) {
-				target[property] = source[property]
+				if(typeof target[property] == typeof source[property]) {
+					target[property] = source[property]
+				}
 			}
 		}
 	}

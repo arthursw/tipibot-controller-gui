@@ -16,7 +16,6 @@ export class Interpreter {
 	tipibot: TipibotInterface
 	pause: boolean
 	tempoNextCommand: boolean
-	waiting: boolean
 	serialInput: string
 	readonly continueMessage = 'READY'
 
@@ -47,43 +46,7 @@ export class Interpreter {
 		if(this.pause) {
 			return
 		}
-		console.log('Serial input: ', data)
-		if(data.indexOf("C13,") == 0) {
-			this.tempoNextCommand = true
-			console.log('wait 0.2 sec...' + data)
-			this.waiting = true
-			setTimeout(()=> {
-				console.log('send: ' + data)
-				this.waiting = false
-				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
-			}, 200)
-		} else if(data.indexOf("C14,") == 0) {
-			this.tempoNextCommand = true
-			this.waiting = true
-			console.log('wait 0.5 sec...' + data)
-			setTimeout(()=> {
-				console.log('send: ' + data)
-				this.waiting = false
-				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
-				return
-			}, 500)
-		}
-		else {
-			if(this.tempoNextCommand) {
-				this.tempoNextCommand = false
-				this.waiting = true
-				console.log('wait 10 sec... : ' + data)
-				setTimeout(()=> {
-					this.waiting = false
-					console.log('send: ' + data)
-					this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
-					return
-				}, 1000)
-			} else {
-				console.log('send: ' + data)
-				this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
-			}
-		}
+		this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
 	}
 
 	messageReceived(message: string) {
@@ -106,6 +69,9 @@ export class Interpreter {
 
 	processMessage(message: string) {
 		console.log(message)
+		// if(message.indexOf('++')==0) {
+		// 	console.log(message)
+		// }
 		
 		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
 
@@ -115,7 +81,7 @@ export class Interpreter {
 				if(command.callback != null) {
 					command.callback()
 				}
-				if(this.commandQueue.length > 0 && !this.waiting) {
+				if(this.commandQueue.length > 0) {
 					this.send(this.commandQueue[0].data)
 				} else {
 					this.queueEmpty()
@@ -142,7 +108,7 @@ export class Interpreter {
 
 		this.commandQueue.push({ data: data, callback: callback })
 
-		if(this.commandQueue.length == 1 && !this.waiting) {
+		if(this.commandQueue.length == 1) {
 			this.send(data)
 		}
 	}
@@ -195,10 +161,10 @@ export class Interpreter {
 	sendPenState(servoValue: number, servoTempo: number = 0) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
 	sendStop() {
@@ -207,6 +173,6 @@ export class Interpreter {
 	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
 	}
 
-	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
+	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
 	}
 }

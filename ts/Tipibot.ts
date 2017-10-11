@@ -92,9 +92,9 @@ export class Tipibot implements TipibotInterface {
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
 		if(this.isPenUp) {
-			this.penDown(Settings.servo.position.down, Settings.servo.delay.down, callback)
+			this.penDown(Settings.servo.position.down, Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback)
 		} else {
-			this.penUp(Settings.servo.position.up, Settings.servo.delay.up, callback)
+			this.penUp(Settings.servo.position.up, Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback)
 		}
 	}
 
@@ -226,17 +226,17 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendMotorOff()
 	}
 
-	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null, force=false) {
+	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
 		if(!this.isPenUp || force) {
-			communication.interpreter.sendPenUp(servoUpValue, servoUpTempo, callback)
+			communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 			this.penStateButton.setName('Pen down')
 			this.isPenUp = true
 		}
 	}
 
-	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null, force=false) {
+	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
 		if(this.isPenUp || force) {
-			communication.interpreter.sendPenDown(servoDownValue, servoDownTempo, callback)
+			communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 			this.penStateButton.setName('Pen up')
 			this.isPenUp = false
 		}
@@ -251,7 +251,8 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	goHome(callback: ()=> any = null) {
-		this.penUp(null, null, null, true)
+		this.penUp(Settings.servo.position.up, Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
+		// this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
 		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, callback)
 	}
@@ -261,19 +262,19 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	keyDown(event:KeyboardEvent) {
-
+		let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1
 		switch (event.keyCode) {
 			case 37: 			// left arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)))
+				this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
 				break;
 			case 38: 			// up arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(0, -1)))
+				this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)))
 				break;
 			case 39: 			// right arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(1, 0)))
+				this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)))
 				break;
 			case 40: 			// down arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(0, 1)))
+				this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
 				break;
 			
 			default:
