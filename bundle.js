@@ -1577,7 +1577,8 @@ class CommeUnDessein {
         if (this.testMode) {
             console.log('requestNextDrawing');
         }
-        let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL;
+        // let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
+        let url = commeundesseinAjaxURL;
         // $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
         $.ajax({ method: "POST", url: url, data: data }).done((results) => {
             if (this.testMode) {
@@ -1657,7 +1658,7 @@ class CommeUnDessein {
         if (this.testMode) {
             console.log('setDrawingStatusDrawn');
         }
-        let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL;
+        let url = commeundesseinAjaxURL;
         $.ajax({ method: "POST", url: url, data: data }).done((results) => {
             if (this.testMode) {
                 console.log(results);
