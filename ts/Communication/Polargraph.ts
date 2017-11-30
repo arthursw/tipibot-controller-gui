@@ -1,5 +1,5 @@
 import { Settings, settingsManager } from "../Settings"
-import { Interpreter } from "./Interpreter"
+import { Interpreter, Command } from "./Interpreter"
 
 const commands = {
 	CMD_CHANGELENGTH: "C01,",
@@ -74,15 +74,16 @@ export class Polargraph extends Interpreter {
 	// 	this.sendPenUp()
 	// }
 
-	send(data: string) {
-		let commandCode = data.substr(0, 3)
-		for(let commandName in commands) {
-			let code: string = (<any>commands)[commandName].substr(0, 3)
-			if(code == commandCode) {
-				console.log("Send command: " + commandName)
-			}
-		}
-		super.send(data + String.fromCharCode(10))
+	send(command: Command) {
+		// let commandCode = command.data.substr(0, 3)
+		// for(let commandName in commands) {
+		// 	let code: string = (<any>commands)[commandName].substr(0, 3)
+		// 	if(code == commandCode) {
+		// 		console.log("Send command: " + commandName)
+		// 	}
+		// }
+		command.data += String.fromCharCode(10)
+		super.send(command)
 	}
 	
 	queue(data: string, callback: () => any = null) {

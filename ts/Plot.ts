@@ -1,15 +1,13 @@
 import { Tipibot, tipibot } from "./Tipibot"
 import { Settings } from "./Settings"
-import { Draggable } from "./Draggable"
+import { InteractiveItem } from "./InteractiveItem"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
+import { Renderer } from "./RendererInterface"
+import { Pen } from './Pen'
 
 
-declare type Renderer = {
-	getWorldPosition(event: MouseEvent): paper.Point
-}
-
-export class Plot extends Draggable {
+export class Plot extends InteractiveItem {
 
 	static gui: GUI = null
 
@@ -57,18 +55,21 @@ export class Plot extends Draggable {
 	}
 
 	originalItem: paper.Item 			// Not flattened
+	item: paper.Item
 	plotting = false
 
 	constructor(renderer: Renderer, item: paper.Item=null) {
-		super(renderer, item)
-		this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
+		super(renderer, null, true)
+		this.item = item
+		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.filter()
 	}
 
-	mouseDown(event:MouseEvent) {
-		super.mouseDown(event)
+	mouseDown(event:MouseEvent): boolean {
+		let result = super.mouseDown(event)
 		this.item.selected = this.dragging
+		return result
 	}
 
 	itemMustBeDrawn(item: paper.Path | paper.Shape) {
@@ -88,6 +89,14 @@ export class Plot extends Draggable {
 		paper.project.activeLayer.addChild(this.item)	// <- insert here
 	}
 
+	updateShape() {
+		if(this.shape != null) {
+			this.shape.remove()
+		}
+		this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
+		this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+	}
+
 	filter() {
 		if(this.originalItem == null && (Settings.plot.subdivide || Settings.plot.flatten)) {
 			this.saveItem()
@@ -96,9 +105,13 @@ export class Plot extends Draggable {
 		}
 		this.flatten()
 		this.subdivide()
+		this.updateShape()
 	}
 
 	filterItem(item: paper.Item, amount: number, filter: (item: paper.Item, amount: number) => void) {
+		if(!item.visible) {
+			return
+		}
 		if(item.className == 'Path' || item.className == 'CompoundPath') {
 			let path = <paper.Path>item
 			filter.call(this, path, amount)
@@ -127,11 +140,13 @@ export class Plot extends Draggable {
 	}
 	
 	subdividePath(path: paper.Path, maxSegmentLength: number) {
-		for(let segment of path.segments) {
-			let curve = segment.curve
-			do{
-				curve = curve.divideAt(maxSegmentLength)
-			}while(curve != null);
+		if(path.segments != null) {
+			for(let segment of path.segments) {
+				let curve = segment.curve
+				do{
+					curve = curve.divideAt(maxSegmentLength)
+				}while(curve != null);
+			}
 		}
 	}
 
@@ -166,7 +181,9 @@ export class Plot extends Draggable {
 
 	plotFinished(callback: ()=> void = null) {
 		this.plotting = false
-		callback()
+		if(callback != null) {
+			callback()
+		}
 	}
 
 	stop() {
@@ -175,26 +192,35 @@ export class Plot extends Draggable {
 
 	rotate() {
 		this.item.rotate(90)
+		this.updateShape()
 	}
 
 	flipX() {
 		this.item.scale(-1, 1)
+		this.updateShape()
 	}
 	
 	flipY() {
 		this.item.scale(1, -1)
+		this.updateShape()
 	}
 	
 	setX(x: number) {
 		this.item.position.x = x
+		this.shape.setPosition(this.item.position)
 	}
 	
 	setY(y: number) {
 		this.item.position.y = y
+		this.shape.setPosition(this.item.position)
 	}
 
 	clear() {
 		super.delete()
+		if(this.shape != null) {
+			this.shape.remove()
+		}
+		this.shape = null
 		if(this.item != null) {
 			this.item.remove()
 		}
@@ -206,7 +232,6 @@ export class Plot extends Draggable {
 }
 
 export class SVGPlot extends Plot {
-	static pen: paper.Item = null
 	static svgPlot: SVGPlot = null
 	static renderer: Renderer
 	static gui: GUI
@@ -214,6 +239,8 @@ export class SVGPlot extends Plot {
 	public static onImageLoad(event: any) {
 		let svg = paper.project.importSVG(event.target.result)
 		let svgPlot = new SVGPlot(svg)
+		svg.remove()
+		paper.project.clear()
 		SVGPlot.gui.getController('Draw').show()
 	}
 
@@ -239,11 +266,12 @@ export class SVGPlot extends Plot {
 	}
 
 	public static clearClicked(event: any) {
+		communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
 		SVGPlot.gui.getController('Clear SVG').hide()
-		SVGPlot.svgPlot.item.remove()
+		SVGPlot.svgPlot.clear()
 		SVGPlot.svgPlot = null
-		Plot.currentPlot = null
+		SVGPlot.gui.getController('Draw').name('Draw')
 	}
 
 	public static drawClicked(event: any) {
@@ -281,41 +309,51 @@ export class SVGPlot extends Plot {
 			SVGPlot.svgPlot = null
 		}
 		SVGPlot.svgPlot = this
-		paper.project.layers[0].addChild(svg)
+		// paper.project.layers[0].addChild(svg)
 	}
 
 
-	mouseDown(event: MouseEvent) {
-		let hitResult = paper.project.hitTest(this.getWorldPosition(event))
-		if(hitResult != null && hitResult.item == tipibot.pen.item) {
-			return
+	mouseDown(event: MouseEvent): boolean {
+		// let hitResult = paper.project.hitTest(this.getWorldPosition(event))
+		// if(hitResult != null && hitResult.item == tipibot.pen.item) {
+		// 	return
+		// }
+		if(tipibot.pen.getPosition().getDistance(this.getWorldPosition(event)) < Pen.RADIUS) {
+			return false
 		}
 		super.mouseDown(event)
 	}
 
 	drag(delta: paper.Point) {
 		super.drag(delta)
-		Plot.gui.getFolder('Transform').getController('X').setValueNoCallback(this.item.position.x)
-		Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
+		// Plot.gui.getFolder('Transform').getController('X').setValueNoCallback(this.item.position.x)
+		// Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
 	}
 
 	plotItem(item: paper.Item) {
+		if(!item.visible) {
+			return
+		}
 		let matrix = item.globalMatrix
-		if(item.className == 'Path' || item.className == 'CompoundPath') {
+		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
 			let path: paper.Path = <paper.Path>item
-			for(let segment of path.segments) {
-				if(segment == path.firstSegment) {
-					if(!tipibot.getPosition().equals(segment.point.transform(matrix))) {
-						tipibot.penUp()
-						tipibot.moveDirect(segment.point.transform(matrix))
+			if(path.segments != null) {
+				for(let segment of path.segments) {
+					let point = segment.point.transform(matrix)
+					if(segment == path.firstSegment) {
+						if(!tipibot.getPosition().equals(point)) {
+							tipibot.penUp()
+							tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						}
+						tipibot.penDown()
+					} else {
+						tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
 					}
-					tipibot.penDown()
-				} else {
-					tipibot.moveLinear(segment.point.transform(matrix))
 				}
-			}
-			if(path.closed) {
-				tipibot.moveLinear(path.firstSegment.point.transform(matrix))
+				if(path.closed) {
+					let point = path.firstSegment.point.transform(matrix)
+					tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+				}
 			}
 		}
 		if(item.children == null) {

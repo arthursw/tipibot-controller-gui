@@ -1,7 +1,8 @@
 import { Communication, communication } from "./Communication/Communication"
 import { Settings, settingsManager } from "./Settings"
 import { Rectangle, Circle, Target} from "./Shapes"
-import { Renderer } from "./Renderers"
+import { Renderer } from "./RendererInterface"
+import { InteractiveItem } from "./InteractiveItem"
 import { Pen } from "./Pen"
 import { GUI, Controller } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
@@ -9,11 +10,13 @@ import { TipibotInterface } from "./TipibotInterface"
 export class Tipibot implements TipibotInterface {
 
 	gui:GUI = null
+	renderer: Renderer = null
 
 	isPenUp: boolean
 
 	tipibotArea: Rectangle
 	drawArea: Rectangle
+	moveToButtons: InteractiveItem[]
 	motorLeft: Circle
 	motorRight: Circle
 	home: Target
@@ -26,6 +29,7 @@ export class Tipibot implements TipibotInterface {
 
 	constructor() {
 		this.isPenUp = true
+		this.moveToButtons = []
 	}
 
 	mmPerSteps() {
@@ -107,23 +111,37 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	initialize(renderer: Renderer, gui: GUI) {
+		this.renderer = renderer
 		this.tipibotArea = renderer.createRectangle(this.computeTipibotArea())
 		this.drawArea = renderer.createRectangle(this.computeDrawArea())
 		this.motorLeft = renderer.createCircle(0, 0, 50, 24)
 		this.motorRight = renderer.createCircle(Settings.tipibot.width, 0, 50, 24)
 		this.pen = renderer.createPen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width)
 		this.home = renderer.createTarget(Settings.tipibot.homeX, Settings.tipibot.homeY, Pen.HOME_RADIUS)
+		let moveButtonSize = 25
+		let drawAreaBounds = this.drawArea.getBounds()
+		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
+		let moveToButtonClicked = (event: MouseEvent, moveToButton: InteractiveItem)=> {
+			this.moveDirect(moveToButton.shape.getBounds().getCenter())
+		}
+		this.moveToButtons.push(new InteractiveItem(renderer, renderer.createRectangle(new paper.Rectangle(drawAreaBounds.topLeft().subtract(moveButtonSize), drawAreaBounds.topLeft().add(moveButtonSize))), false, moveToButtonClicked))
+		this.moveToButtons.push(new InteractiveItem(renderer, renderer.createRectangle(new paper.Rectangle(drawAreaBounds.topRight().subtract(moveButtonSize), drawAreaBounds.topRight().add(moveButtonSize))), false, moveToButtonClicked))
+		this.moveToButtons.push(new InteractiveItem(renderer, renderer.createRectangle(new paper.Rectangle(drawAreaBounds.bottomLeft().subtract(moveButtonSize), drawAreaBounds.bottomLeft().add(moveButtonSize))), false, moveToButtonClicked))
+		this.moveToButtons.push(new InteractiveItem(renderer, renderer.createRectangle(new paper.Rectangle(drawAreaBounds.bottomRight().subtract(moveButtonSize), drawAreaBounds.bottomRight().add(moveButtonSize))), false, moveToButtonClicked))
+		this.moveToButtons.push(new InteractiveItem(renderer, renderer.createRectangle(new paper.Rectangle(homePoint.subtract(moveButtonSize), homePoint.add(moveButtonSize))), false, moveToButtonClicked))
 		settingsManager.setTipibot(this)
 		this.createGUI(gui)
 	}
-	
+
 	sizeChanged(sendChange: boolean) {
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
 		this.tipibotArea.updateRectangle(this.computeTipibotArea())
 		this.drawArea.updateRectangle(this.computeDrawArea())
+		this.pen.tipibotWidthChanged()
 		if(sendChange) {
 			communication.interpreter.sendSize()
 		}
+		this.renderer.centerOnTipibot(this.tipibotArea.getBounds(), true)
 	}
 
 	drawAreaChanged(sendChange: boolean) {

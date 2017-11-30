@@ -1,68 +1,7 @@
-import { Rectangle, Circle, Target, ThreeRectangle, ThreeCircle, PaperRectangle, PaperCircle, PaperTarget } from "./Shapes"
+import { Shape, Rectangle, Circle, Target, ThreeRectangle, ThreeCircle, ThreeTarget, ThreeShape, PaperRectangle, PaperCircle, PaperTarget, PaperShape } from "./Shapes"
 import { Pen, ThreePen, PaperPen } from "./Pen"
+import { Renderer } from "./RendererInterface"
 import { Communication } from "./Communication/Communication"
-
-export class Renderer {
-	constructor() {
-
-	}
-
-	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
-	}
-
-	getDomElement(): any {
-		return null
-	}
-
-	createRectangle(rectangle: paper.Rectangle): Rectangle {
-		return null
-	}
-
-	createCircle(x: number, y:number, radius:number, nSegments:number = 12): Circle {
-		return null
-	}
-
-	createPen(x: number, y:number, tipibotWidth: number): Pen {
-		return null
-	}
-
-	createTarget(x: number, y: number, radius: number): Target {
-		return null
-	}
-
-	createDrawingLayer() {
-
-	}
-
-	getMousePosition(event: MouseEvent): paper.Point {
-		return new paper.Point(event.clientX, event.clientY)
-	}
-
-	getWorldPosition(event: MouseEvent): paper.Point {
-		return paper.view.viewToProject(this.getMousePosition(event))
-	}
-
-	windowResize(){
-	}
-
-	mouseDown(event: MouseEvent) {
-	}
-
-	mouseMove(event: MouseEvent) {
-	}
-
-	mouseUp(event: MouseEvent) {
-	}
-
-	mouseLeave(event: MouseEvent) {
-	}
-	
-	mouseWheel(event: WheelEvent) {
-	}
-
-	render() {
-	}
-}
 
 export class PaperRenderer extends Renderer {
 	
@@ -75,9 +14,10 @@ export class PaperRenderer extends Renderer {
 	constructor() {
 		super()
 		this.canvas = document.createElement('canvas')
-		this.canvas.width = window.innerWidth
-		this.canvas.height = window.innerHeight
-		document.body.appendChild(this.canvas)
+		let containerJ = $('#canvas')
+		this.canvas.width = containerJ.width()
+		this.canvas.height = containerJ.height()
+		containerJ.get(0).appendChild(this.canvas)
 
 		paper.setup(<any>this.canvas)
 
@@ -91,7 +31,7 @@ export class PaperRenderer extends Renderer {
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
 		if(zoom) {
 			let margin = 100
-			let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
+			let ratio = Math.max((tipibot.width + margin) / this.canvas.width, (tipibot.height + margin) / this.canvas.height)
 			paper.view.zoom = 1 / ratio
 		}
 
@@ -119,6 +59,10 @@ export class PaperRenderer extends Renderer {
 	createTarget(x: number, y: number, radius: number): Target {
 		return new PaperTarget(x, y, radius, this.tipibotLayer)
 	}
+
+	createShape(item: paper.Item): Shape {
+		return new PaperShape(item)
+	}
 	
 	createDrawingLayer() {
 		this.drawingLayer = new paper.Layer()
@@ -126,10 +70,13 @@ export class PaperRenderer extends Renderer {
 	}
 
 	windowResize(){
+		let containerJ = $('#canvas')
+		let width = containerJ.width()
+		let height = containerJ.height()
 		let canvasJ = $(this.canvas)
-		canvasJ.width(window.innerWidth)
-		canvasJ.height(window.innerHeight)
-		paper.view.viewSize = new paper.Size(window.innerWidth, window.innerHeight)
+		canvasJ.width(width)
+		canvasJ.height(height)
+		paper.view.viewSize = new paper.Size(width, height)
 	}
 
 	mouseDown(event: MouseEvent) {
@@ -167,6 +114,7 @@ export class PaperRenderer extends Renderer {
 }
 
 export class ThreeRenderer extends Renderer {
+
 	camera: THREE.OrthographicCamera
 	scene: THREE.Scene
 	renderer: THREE.WebGLRenderer
@@ -177,23 +125,32 @@ export class ThreeRenderer extends Renderer {
 
 	constructor() {
 		super()
+
+		// Setup paper to be able to call paper.project.importSVG()
+
+		let paperCanvas = document.createElement('canvas')
+		paper.setup(paperCanvas)
+
 		this.dragging = false
 		this.previousPosition = new THREE.Vector2()
 
-		this.camera = new THREE.OrthographicCamera( 0, window.innerWidth, 0, window.innerHeight, - 500, 1000 )
+		let containerJ = $('#canvas')
+		let width = containerJ.width()
+		let height = containerJ.height()
+
+		this.camera = new THREE.OrthographicCamera( 0, width, 0, height, - 500, 1000 )
 		this.scene = new THREE.Scene()
 		this.lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff })
 
 		let ambientLight = new THREE.AmbientLight( Math.random() * 0x10 )
 		this.scene.add( ambientLight )
 
-		this.renderer = new THREE.WebGLRenderer( { preserveDrawingBuffer: true } )
+		this.renderer = new THREE.WebGLRenderer( { preserveDrawingBuffer: true, antialias: true } )
 		this.renderer.setPixelRatio( window.devicePixelRatio )
-		this.renderer.setSize( window.innerWidth, window.innerHeight )
+		console.log(width, height)
+		this.renderer.setSize( width, height )
 
-		let container = document.createElement( 'div' )
-		document.body.appendChild( container )
-		container.appendChild( this.getDomElement() )
+		containerJ.append( this.renderer.domElement )
 	}
 
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
@@ -201,7 +158,8 @@ export class ThreeRenderer extends Renderer {
 		
 		if(zoom) {
 			let margin = 100
-			let ratio = Math.max((tipibot.width + margin) / window.innerWidth, (tipibot.height + margin) / window.innerHeight)
+			let size = this.renderer.getSize()
+			let ratio = Math.max((tipibot.width + margin) / size.width, (tipibot.height + margin) / size.height)
 			this.camera.zoom = 1 / ratio
 			this.camera.updateProjectionMatrix()
 		}
@@ -225,14 +183,24 @@ export class ThreeRenderer extends Renderer {
 		return pen
 	}
 
+	createTarget(x: number, y: number, radius: number): Target {
+		return new ThreeTarget(x, y, radius, 12, this.scene)
+	}
+
+	createShape(item: paper.Item, material = this.lineMaterial): Shape {
+		return new ThreeShape(item, this.scene, material)
+	}
+
 	setCameraCenterTo(point: THREE.Vector3) {
-		this.camera.position.x = point.x - window.innerWidth / 2
-		this.camera.position.y = point.y - window.innerHeight / 2
+		let size = this.renderer.getSize()
+		this.camera.position.x = point.x - size.width / 2
+		this.camera.position.y = point.y - size.height / 2
 		this.camera.position.z = point.z
 	}
 
 	getWorldPosition(event: MouseEvent) {
-		let windowCenter = new paper.Point(window.innerWidth / 2, window.innerHeight / 2)
+		let size = this.renderer.getSize()
+		let windowCenter = new paper.Point(size.width / 2, size.height / 2)
 		let windowOrigin = windowCenter.subtract(windowCenter.divide(this.camera.zoom).subtract(this.camera.position))
 		let delta = this.getMousePosition(event).divide(this.camera.zoom)
 
@@ -240,13 +208,17 @@ export class ThreeRenderer extends Renderer {
 	}
 
 	windowResize(){
+		let containerJ = $('#canvas')
+		let width = containerJ.width()
+		let height = containerJ.height()
+
 		this.camera.left = 0
-		this.camera.right = window.innerWidth
+		this.camera.right = width
 		this.camera.top = 0
-		this.camera.bottom = window.innerHeight
+		this.camera.bottom = height
 		this.camera.updateProjectionMatrix()
 
-		this.renderer.setSize( window.innerWidth, window.innerHeight )
+		this.renderer.setSize( width, height )
 	}
 
 	mouseDown(event: MouseEvent) {
@@ -256,7 +228,7 @@ export class ThreeRenderer extends Renderer {
 	}
 
 	mouseMove(event: MouseEvent) {
-		if(event.buttons == 4 && this.dragging) { 											// wheel button
+		if(event.buttons == 4 || event.shiftKey && this.dragging) { 											// wheel button
 			this.camera.position.x += (this.previousPosition.x - event.clientX) / this.camera.zoom
 			this.camera.position.y += (this.previousPosition.y - event.clientY) / this.camera.zoom
 			this.previousPosition.x = event.clientX

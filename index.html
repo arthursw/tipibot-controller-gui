@@ -5,27 +5,17 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link rel="icon" type="image/x-icon" href="favicon.ico" />
-
-		<style>
-			body {
-				background-color: #f0f0f0;
-				overflow: hidden;
-				margin: 0;
-			}
-			.noselect {
-			  -webkit-touch-callout: none; /* iOS Safari */
-			    -webkit-user-select: none; /* Safari */
-			     -khtml-user-select: none; /* Konqueror HTML */
-			       -moz-user-select: none; /* Firefox */
-			        -ms-user-select: none; /* Internet Explorer/Edge */
-			            user-select: none; /* Non-prefixed version, currently
-			                                  supported by Chrome and Opera */
-			}
-		</style>
+		<link rel="stylesheet" type="text/css" href="styles.css">
 
 	</head>
 	<body class="noselect">
 
+		<div id="canvas">
+			
+		</div>
+		<div id="gui">
+			
+		</div>
 <!-- 		<script src="node_modules/three/build/three.js"></script>
 		<script src="node_modules/paper/dist/paper-full.min.js"></script>
 		<script src="node_modules/file-saver/FileSaver.min.js"></script>
@@ -33,7 +23,7 @@
 		<script src="node_modules/socket.io-client/dist/socket.io.slim.js"></script> -->
 		
 		<script src="libs/three.js"></script>
-		<script src="libs/paper-full.min.js"></script>
+		<script src="libs/paper-full.js"></script>
 		<script src="libs/FileSaver.min.js"></script>
 		<script src="libs/jquery.min.js"></script>
 		<script src="libs/socket.io.slim.js"></script>

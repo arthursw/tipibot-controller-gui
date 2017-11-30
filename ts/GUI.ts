@@ -7,7 +7,7 @@ declare type DatController = {
 	__gui: { name: string, parent: any }
 	onChange: (value: any) => any
 	onFinishChange: (value: any) => any
-	setValue: (value: number) => any
+	setValue: (value: number | string) => any
 	max: (value: number) => any
 	min: (value: number) => any
 	step: (value: number) => any
@@ -19,7 +19,7 @@ declare type DatController = {
 declare type DatFolder = {
 	__controllers: DatController[]
 	addFolder: (options: any)=> DatFolder
-	add: (object: any, propertyName: string, min?: number, max?: number, step?: number) => DatController
+	add: (object: any, propertyName: string, min?: number | string[], max?: number, step?: number) => DatController
 	domElement: HTMLElement
 	open: ()=> void
 	close: ()=> void
@@ -78,14 +78,14 @@ export class Controller {
 		return this
 	}
 
-	setValue(value: number, callback=true) {
+	setValue(value: number | string, callback=true) {
 		if(callback) {
 			return this.controller.setValue(value)
 		}
 		this.setValueNoCallback(value)
 	}
 
-	setValueNoCallback(value: number) {
+	setValueNoCallback(value: number | string) {
 		this.controller.object[this.controller.property] = value
 		this.controller.updateDisplay()
 	}
@@ -150,7 +150,7 @@ export class GUI {
 		return this.gui.domElement
 	}
 	
-	add(object: any, propertyName: string, min: number = null, max: number = null, step: number = null): Controller {
+	add(object: any, propertyName: string, min: number | string[] = null, max: number = null, step: number = null): Controller {
 		let controller = new Controller( this.gui.add(object, propertyName, min, max, step), this )
 		this.nameToController.set(propertyName, controller)
 		return controller
@@ -160,6 +160,10 @@ export class GUI {
 		let object:any = {}
 		object[name] = callback
 		return this.add(object, name)
+	}
+
+	setName(name: string) {
+		$(this.getDomElement()).find('li.title').text(name)
 	}
 
 	addFileSelectorButton(name: string, fileType: string, callback: (event: any)=>any): Controller {	

@@ -14,11 +14,13 @@
 
 import { Settings, settingsManager } from "./Settings"
 import { Tipibot, tipibot } from "./Tipibot"
-import { Renderer, ThreeRenderer, PaperRenderer } from "./Renderers"
+import { Renderer } from "./RendererInterface"
+import { ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from "./Pen"
 import { Plot, SVGPlot } from "./Plot"
 import { Communication } from "./Communication/Communication"
-import { Draggable } from "./Draggable"
+import { CommandDisplay } from "./Communication/CommandDisplay"
+import { InteractiveItem } from "./InteractiveItem"
 import { GUI } from "./GUI"
 import { Circle } from "./Shapes"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
@@ -42,7 +44,7 @@ let drawing = {
 let w = <any>window
 
 w.send = function(message: string) {
-	communication.interpreter.send(message)
+	communication.interpreter.send({ id: -1, data: message, callback: ()=> console.log('Command' + message + ' done.') })
 }
 
 w.addPlugin = function(pluginName: string, testMode: boolean) {
@@ -66,7 +68,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function initialize() {
 
-		gui = new GUI()
+		gui = new GUI({ autoPlace: false })
+
+		let customContainer = document.getElementById('gui')
+		customContainer.appendChild(gui.getDomElement())
 		
 		let communicationFolder = gui.addFolder('Communication')
 		communication = new Communication(communicationFolder)
@@ -80,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		SVGPlot.createGUI(gui)
 		Plot.createGUI(SVGPlot.gui)
 		
-		renderer = new PaperRenderer()
+		renderer = new ThreeRenderer()
 		SVGPlot.renderer = renderer
 		
 		communication.setTipibot(tipibot)
@@ -89,17 +94,22 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		renderer.centerOnTipibot(Settings.tipibot)
 		renderer.createDrawingLayer()
 
+		let commandDisplay = new CommandDisplay()
+		commandDisplay.createGUI(gui)
+
 		// debug
 		w.tipibot = tipibot
 		w.settingsManager = settingsManager
 		w.gui = gui
 		w.renderer = renderer
 		w.communication = communication
+		w.commandDisplay = commandDisplay
 	}
 
 	initialize()
 	
 	let animate = () => {
+		w.nCall = 0
 		requestAnimationFrame( animate )
 		renderer.render()
 	}
@@ -117,17 +127,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function mouseDown(event: MouseEvent) {
 		if(!eventWasOnGUI(event)) {
-			for(let draggable of Draggable.draggables) {
-				draggable.mouseDown(event)
-			}
+			InteractiveItem.mouseDown(event)
 		}
 		renderer.mouseDown(event)
 	}
 
 	function mouseMove(event: MouseEvent) {
-		for(let draggable of Draggable.draggables) {
-			draggable.mouseMove(event)
-		}
+		InteractiveItem.mouseMove(event)
 		renderer.mouseMove(event)
 
 		if(tipibot.settingPosition) {
@@ -142,9 +148,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function mouseUp(event: MouseEvent) {
 		if(!eventWasOnGUI(event)) {
-			for(let draggable of Draggable.draggables) {
-				draggable.mouseUp(event)
-			}
+			InteractiveItem.mouseUp(event)
 		}
 		renderer.mouseUp(event)
 		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position').contains(<HTMLElement>event.target) ) {
@@ -158,9 +162,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseLeave(event: MouseEvent) {
-		for(let draggable of Draggable.draggables) {
-			draggable.mouseLeave(event)
-		}
+		InteractiveItem.mouseLeave(event)
 		renderer.mouseLeave(event)
 	}
 
