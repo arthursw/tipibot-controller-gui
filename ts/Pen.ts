@@ -95,14 +95,14 @@ export class PaperPen extends Pen {
 export class ThreePen extends Pen {
 
 	circle: THREE.Mesh
-	camera: THREE.OrthographicCamera
+	camera: THREE.Camera
 	lines: THREE.Line
 
 	constructor(renderer: Renderer) {
 		super(renderer)
 	}
 
-	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.OrthographicCamera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
+	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.Camera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
 		let geometry = new THREE.CircleGeometry( Pen.RADIUS, 32 )
 		let material = new THREE.MeshBasicMaterial( { color: 0x4274f4, opacity: 0.7, transparent: true } )
 		this.circle = new THREE.Mesh( geometry, material )

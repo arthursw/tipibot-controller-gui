@@ -28,6 +28,10 @@ export class Renderer {
 		return null
 	}
 
+	createSprite(canvas: HTMLCanvasElement): Shape {
+		return null
+	}
+
 	createShape(item: paper.Item, material: THREE.LineBasicMaterial = null): Shape {
 		return null
 	}

@@ -1,4 +1,4 @@
-import { Shape, Rectangle, Circle, Target, ThreeRectangle, ThreeCircle, ThreeTarget, ThreeShape, PaperRectangle, PaperCircle, PaperTarget, PaperShape } from "./Shapes"
+import { Shape, Rectangle, Circle, Target, ThreeRectangle, ThreeCircle, ThreeTarget, ThreeSprite, ThreeShape, PaperRectangle, PaperCircle, PaperTarget, PaperSprite, PaperShape } from "./Shapes"
 import { Pen, ThreePen, PaperPen } from "./Pen"
 import { Renderer } from "./RendererInterface"
 import { Communication } from "./Communication/Communication"
@@ -58,6 +58,10 @@ export class PaperRenderer extends Renderer {
 
 	createTarget(x: number, y: number, radius: number): Target {
 		return new PaperTarget(x, y, radius, this.tipibotLayer)
+	}
+
+	createSprite(canvas: HTMLCanvasElement) {
+		return new PaperSprite(canvas)
 	}
 
 	createShape(item: paper.Item): Shape {
@@ -138,6 +142,8 @@ export class ThreeRenderer extends Renderer {
 		let width = containerJ.width()
 		let height = containerJ.height()
 
+
+		// this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 		this.camera = new THREE.OrthographicCamera( 0, width, 0, height, - 500, 1000 )
 		this.scene = new THREE.Scene()
 		this.lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff })
@@ -151,6 +157,13 @@ export class ThreeRenderer extends Renderer {
 		this.renderer.setSize( width, height )
 
 		containerJ.append( this.renderer.domElement )
+
+		// var spriteMap = new THREE.TextureLoader().load( "out.png" );
+		// spriteMap.minFilter = THREE.LinearFilter;
+		// var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
+		// let sprite = new THREE.Sprite( spriteMaterial );
+		// sprite.scale.set(500, 500, 1)
+		// this.scene.add( sprite );
 	}
 
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
@@ -181,6 +194,10 @@ export class ThreeRenderer extends Renderer {
 		let pen = new ThreePen(this)
 		pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial)
 		return pen
+	}
+
+	createSprite(canvas: HTMLCanvasElement) {
+		return new ThreeSprite(this.scene, canvas)
 	}
 
 	createTarget(x: number, y: number, radius: number): Target {

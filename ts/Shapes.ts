@@ -1,3 +1,6 @@
+declare let MeshLine: any
+declare let MeshLineMaterial: any
+
 export class Rect {
 	x: number
 	y: number
@@ -231,6 +234,45 @@ export class PaperTarget extends Target {
 	}
 }
 
+export class PaperSprite extends Shape {
+	
+	rectangle: Rect
+	raster: paper.Raster
+
+	constructor(canvas: HTMLCanvasElement) {
+		super()
+
+		this.raster = new paper.Raster(canvas)
+		this.rectangle = new Rect(0, 0, canvas.width, canvas.height)
+	}
+
+	update() {
+
+	}
+	
+	getPosition() {
+		return this.rectangle.getCenter()
+	}
+
+	setPosition(position: paper.Point) {
+		this.raster.position = new paper.Point(position.x - this.rectangle.width / 2, position.y - this.rectangle.height / 2)
+		this.rectangle.setCenter(position)
+	}
+
+	remove() {
+		if(this.raster != null) {
+			this.raster.remove()
+		}
+		this.raster = null
+		this.rectangle = null
+	}
+
+	getBounds() {
+		return this.rectangle
+	}
+
+
+}
 export class PaperShape extends Shape {
 	item: paper.Item
 
@@ -451,10 +493,15 @@ export class ThreeSprite extends Shape {
 
 		this.scene = scene
 
-		var spriteMap = new THREE.CanvasTexture(canvas);
-		var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
+		var spriteMap = new THREE.TextureLoader().load( canvas.toDataURL() );
+		var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff, rotation: Math.PI } );
 		this.sprite = new THREE.Sprite( spriteMaterial );
+		this.sprite.scale.set(-canvas.width, canvas.height, 1);
 		scene.add( this.sprite );
+		(<any>window).sprite = this.sprite
+
+		// this.rectangle = new Rect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height)
+		this.rectangle = new Rect(0, 0, canvas.width, canvas.height)
 	}
 
 	update() {
@@ -462,12 +509,14 @@ export class ThreeSprite extends Shape {
 	}
 	
 	getPosition() {
-		return this.rectangle.getCenter()
+		return this.rectangle.topLeft()
 	}
 
 	setPosition(position: paper.Point) {
 		this.sprite.position.set(position.x - this.rectangle.width / 2, position.y - this.rectangle.height / 2, 0)
-		this.rectangle.setCenter(position)
+		// this.rectangle.setCenter(position)
+		this.rectangle.x = position.x
+		this.rectangle.y = position.y
 	}
 
 	remove() {
@@ -485,6 +534,8 @@ export class ThreeSprite extends Shape {
 
 export class ThreeShape extends Shape {
 	lineGroup: THREE.Group
+	lines: THREE.LineSegments
+	mesh: THREE.Mesh
 	scene: THREE.Scene
 	rectangle: Rect
 	item: paper.Item
@@ -498,7 +549,42 @@ export class ThreeShape extends Shape {
 		
 	}
 
-	createMesh(item: paper.Item, material: THREE.LineBasicMaterial) {
+	createMeshLineMeshes(item: paper.Item, material: any) {
+		if(!item.visible) {
+			return
+		}
+		let matrix = item.globalMatrix
+		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
+			let path: paper.Path = <paper.Path>item
+			// let geometry = new THREE.Geometry()
+			// let line = new THREE.Line(geometry, material)
+			let geometry = new THREE.Geometry()
+			let line = new MeshLine()
+
+			if(path.segments != null) {
+				for(let segment of path.segments) {
+					let point = segment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(point.x, point.y))
+				}
+				if(path.closed) {
+					let point = path.firstSegment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(point.x, point.y))
+				}
+			}
+			
+			line.setGeometry( geometry )
+			let mesh = new THREE.Mesh(line.geometry, material)
+			this.lineGroup.add(mesh)
+		}
+		if(item.children == null) {
+			return
+		}
+		for(let child of item.children) {
+			this.createMeshLineMeshes(child, material)
+		}
+	}
+
+	createMeshLineGroup(item: paper.Item, material: THREE.LineBasicMaterial) {
 		if(!item.visible) {
 			return
 		}
@@ -524,20 +610,95 @@ export class ThreeShape extends Shape {
 			return
 		}
 		for(let child of item.children) {
-			this.createMesh(child, material)
+			this.createMeshLineGroup(child, material)
+		}
+	}
+
+	createMeshLineSegments(item: paper.Item, geometry: THREE.Geometry) {
+		if(!item.visible) {
+			return
+		}
+		let matrix = item.globalMatrix
+		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
+			let path: paper.Path = <paper.Path>item
+
+			if(path.segments != null) {
+				for(let segment of path.segments) {
+					let point = segment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(point.x, point.y))
+					if(segment != path.firstSegment && segment != path.lastSegment) {
+						geometry.vertices.push(geometry.vertices[geometry.vertices.length-1])
+					}
+				}
+				if(path.closed) {
+					let lastPoint = path.lastSegment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(lastPoint.x, lastPoint.y))
+					let firstPoint = path.firstSegment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(firstPoint.x, firstPoint.y))
+
+				}
+			}
+		}
+		if(item.children == null) {
+			return
+		}
+		for(let child of item.children) {
+			this.createMeshLineSegments(child, geometry)
+		}
+	}
+
+	createMesh(item: paper.Item, geometry: THREE.Geometry) {
+		if(!item.visible) {
+			return
+		}
+		let matrix = item.globalMatrix
+		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
+			let path: paper.Path = <paper.Path>item
+
+			if(path.segments != null) {
+				for(let segment of path.segments) {
+					let point = segment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(point.x, point.y))
+				}
+				if(path.closed) {
+					let point = path.firstSegment.point.transform(matrix)
+					geometry.vertices.push(new THREE.Vector3(point.x, point.y))
+				}
+			}
+		}
+		if(item.children == null) {
+			return
+		}
+		for(let child of item.children) {
+			this.createMesh(child, geometry)
 		}
 	}
 
 	update(item: paper.Item, material: THREE.LineBasicMaterial = null) {
 		this.rectangle = Rect.fromPaperRect(item.bounds)
 
-		if(this.lineGroup != null) {
-			this.scene.remove(this.lineGroup)
-		}
-		this.lineGroup = new THREE.Group()
-		let mat = material != null ? material : new THREE.LineBasicMaterial({ color: 0xffffff })
-		this.createMesh(item, mat)
-		this.scene.add(this.lineGroup)
+		// if(this.mesh != null) {
+		// 	this.scene.remove(this.mesh)
+		// }
+
+		// if(this.lines != null) {
+		// 	this.scene.remove(this.lines)
+		// }
+
+		// if(this.lineGroup != null) {
+		// 	this.scene.remove(this.lineGroup)
+		// }
+		// this.lineGroup = new THREE.Group()
+		
+		// let mat = new MeshLineMaterial( { color: new THREE.Color(0xffffff), resolution: new THREE.Vector2(window.innerWidth, window.innerHeight), sizeAttenuation: true, lineWidth: 0.004, near: 0, far: 500 } )
+
+		let mat = material != null ? material : new THREE.LineBasicMaterial({ color: 0xffffff })		
+		let geometry = new THREE.Geometry()
+		this.lines = new THREE.LineSegments(geometry, mat)
+		
+		this.createMeshLineSegments(item, geometry)
+		
+		this.scene.add(this.lines)
 	}
 	
 	getPosition() {
@@ -545,14 +706,15 @@ export class ThreeShape extends Shape {
 	}
 
 	setPosition(position: paper.Point) {
-		this.lineGroup.position.set(position.x - this.rectangle.width / 2, position.y - this.rectangle.height / 2, 0)
+		this.lines.position.set(position.x - this.rectangle.width / 2, position.y - this.rectangle.height / 2, 0)
 		this.rectangle.setCenter(position)
 	}
 
 	remove() {
-		this.scene.remove(this.lineGroup)
+		// this.scene.remove(this.lineGroup)
+		this.scene.remove(this.lines)
 		this.item.remove()
-		this.lineGroup = null
+		this.lines = null
 		this.rectangle = null
 	}
 

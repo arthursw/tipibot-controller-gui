@@ -16,7 +16,8 @@
     "jquery": "^3.2.1",
     "paper": "^0.11.3",
     "socketio": "^1.0.0",
-    "three": "^0.83.0"
+    "three": "^0.83.0",
+    "three.meshline": "^1.0.3"
   },
   "devDependencies": {
     "@types/file-saver": "0.0.1",

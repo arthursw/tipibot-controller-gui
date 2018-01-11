@@ -140,7 +140,7 @@ export class SettingsManager {
 		this.tipibot = tipibot
 	}
 
-	updateHomePosition(homePositionName: string, updateSliders = false) {
+	updateHomePosition(homePositionName: string, updateSliders = true) {
 		if(homePositionName == 'Top') {
 			Settings.tipibot.homeX = Settings.tipibot.width / 2
 			Settings.tipibot.homeY = Settings.drawArea.y
@@ -194,7 +194,7 @@ export class SettingsManager {
 			}
 		} else if(parentNames[0] == 'Home') {
 			if(name == 'Position') {
-				this.updateHomePosition(value)
+				this.updateHomePosition(value, true)
 			}
 			if(name == 'homeX' || name == 'homeY') {
 				this.homeFolder.getController('Position').setValueNoCallback('Custom')

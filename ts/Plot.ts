@@ -93,7 +93,29 @@ export class Plot extends InteractiveItem {
 		if(this.shape != null) {
 			this.shape.remove()
 		}
-		this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
+		// this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
+		// this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+
+		// paper.project.clear()
+		paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000))
+		paper.project.activeLayer.addChild(this.item)
+		paper.project.deselectAll()
+		this.item.selected = false
+		paper.view.setCenter(this.item.bounds.center)
+
+		let margin = 100
+		let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height)
+		paper.view.zoom = 1 / ratio
+
+		// var image = new Image()
+		// image.src = paper.view.element.toDataURL()
+
+		// let w = window.open("")
+		// w.document.write(image.outerHTML)
+
+		this.shape = this.renderer.createSprite(paper.view.element)
+		// paper.project.clear()
+		
 		this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
 	}
 
