@@ -501,205 +501,9 @@ exports.communication = null;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-class Draggable {
-    constructor(renderer, item = null) {
-        this.renderer = renderer;
-        this.dragging = false;
-        this.previousPosition = new paper.Point(0, 0);
-        this.item = item;
-        Draggable.draggables.push(this);
-    }
-    drag(delta) {
-        this.item.position = this.item.position.add(delta);
-    }
-    getWorldPosition(event) {
-        return this.renderer.getWorldPosition(event);
-    }
-    mouseDown(event) {
-        let position = this.getWorldPosition(event);
-        if (this.item.bounds.contains(position)) {
-            this.dragging = true;
-            this.previousPosition = position.clone();
-        }
-    }
-    mouseMove(event) {
-        let position = this.getWorldPosition(event);
-        if (this.dragging) {
-            this.drag(position.subtract(this.previousPosition));
-            this.previousPosition = position.clone();
-        }
-    }
-    mouseStop(event) {
-        this.dragging = false;
-    }
-    mouseUp(event) {
-        this.mouseStop(event);
-    }
-    mouseLeave(event) {
-        this.mouseStop(event);
-    }
-    delete() {
-        Draggable.draggables.splice(Draggable.draggables.indexOf(this), 1);
-    }
-}
-Draggable.draggables = new Array();
-exports.Draggable = Draggable;
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const Draggable_1 = __webpack_require__(2);
-const Settings_1 = __webpack_require__(0);
-const Tipibot_1 = __webpack_require__(4);
-class Pen extends Draggable_1.Draggable {
-    constructor(renderer) {
-        super(renderer);
-    }
-    tipibotWidthChanged() {
-    }
-    getPosition() {
-        return this.item.position; // will be overloaded
-    }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
-        if (updateSliders) {
-            Tipibot_1.tipibot.setPositionSliders(point);
-        }
-        if (move) {
-            Tipibot_1.tipibot.moveDirect(point, callback);
-        }
-    }
-    mouseStop(event) {
-        super.mouseStop(event);
-    }
-}
-Pen.HOME_RADIUS = 10;
-Pen.RADIUS = 20;
-exports.Pen = Pen;
-class PaperPen extends Pen {
-    constructor(renderer) {
-        super(renderer);
-    }
-    initialize(x, y, tipibotWidth, layer = null) {
-        this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
-        this.circle.strokeWidth = 1;
-        this.circle.strokeColor = 'black';
-        this.circle.fillColor = 'black';
-        this.item = this.circle;
-        this.lines = new paper.Path();
-        this.lines.add(new paper.Point(0, 0));
-        this.lines.add(new paper.Point(x, y));
-        this.lines.add(new paper.Point(tipibotWidth, 0));
-        this.lines.strokeWidth = 1;
-        this.lines.strokeColor = 'black';
-        this.previousPosition = new paper.Point(0, 0);
-        if (layer) {
-            layer.addChild(this.circle);
-            layer.addChild(this.lines);
-        }
-    }
-    getPosition() {
-        return this.circle.position;
-    }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
-        this.circle.position = point;
-        this.lines.segments[1].point = point;
-        super.setPosition(point, updateSliders, move, callback);
-    }
-    drag(delta) {
-        this.setPosition(this.circle.position.add(delta), true, false);
-    }
-    mouseStop(event) {
-        if (this.dragging) {
-            this.setPosition(this.circle.position);
-        }
-        super.mouseStop(event);
-    }
-    tipibotWidthChanged() {
-        this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
-    }
-}
-exports.PaperPen = PaperPen;
-class ThreePen extends Pen {
-    constructor(renderer) {
-        super(renderer);
-    }
-    initialize(x, y, tipibotWidth, camera, scene = null, lineMat = null) {
-        let geometry = new THREE.CircleGeometry(Pen.RADIUS, 32);
-        let material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        this.circle = new THREE.Mesh(geometry, material);
-        this.circle.position.x = x;
-        this.circle.position.y = y;
-        this.circle.rotation.x = Math.PI;
-        let lineGeometry = new THREE.Geometry();
-        let lineMaterial = lineMat != null ? lineMat : new THREE.LineBasicMaterial({ color: 0xffffff });
-        lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, y, 0), new THREE.Vector3(tipibotWidth, 0, 0));
-        this.lines = new THREE.Line(lineGeometry, lineMaterial);
-        this.camera = camera;
-        if (scene) {
-            scene.add(this.lines);
-            scene.add(this.circle);
-        }
-    }
-    getPosition() {
-        return this.vectorToPoint(this.circle.position);
-    }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
-        let position = this.pointToVector(point);
-        this.circle.position.copy(position);
-        let geometry = this.lines.geometry;
-        geometry.vertices[1].copy(position);
-        geometry.verticesNeedUpdate = true;
-        super.setPosition(point, updateSliders, move, callback);
-    }
-    tipibotWidthChanged() {
-        this.lines.geometry.vertices[2].x = Settings_1.Settings.tipibot.width;
-    }
-    pointToVector(point) {
-        return new THREE.Vector3(point.x, point.y, 0);
-    }
-    vectorToPoint(point) {
-        return new paper.Point(point.x, point.y);
-    }
-    mouseDown(event) {
-        let position = this.getWorldPosition(event);
-        if (position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
-            this.dragging = true;
-            this.previousPosition = position.clone();
-        }
-    }
-    mouseMove(event) {
-        let position = this.getWorldPosition(event);
-        if (this.dragging) {
-            let circlePosition = this.vectorToPoint(this.circle.position);
-            this.setPosition(circlePosition.add(position.subtract(this.previousPosition)), true, false);
-            this.previousPosition = position.clone();
-        }
-    }
-    mouseUp(event) {
-        this.mouseStop(event);
-    }
-    mouseLeave(event) {
-        this.mouseStop(event);
-    }
-}
-exports.ThreePen = ThreePen;
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
 const Communication_1 = __webpack_require__(1);
 const Settings_1 = __webpack_require__(0);
-const Pen_1 = __webpack_require__(3);
+const Pen_1 = __webpack_require__(4);
 class Tipibot {
     constructor() {
         this.gui = null;
@@ -896,16 +700,16 @@ class Tipibot {
     }
     keyDown(event) {
         switch (event.keyCode) {
-            case 37:
+            case 37:// left arrow
                 this.moveDirect(this.getPosition().add(new paper.Point(-1, 0)));
                 break;
-            case 38:
+            case 38:// up arrow
                 this.moveDirect(this.getPosition().add(new paper.Point(0, -1)));
                 break;
-            case 39:
+            case 39:// right arrow
                 this.moveDirect(this.getPosition().add(new paper.Point(1, 0)));
                 break;
-            case 40:
+            case 40:// down arrow
                 this.moveDirect(this.getPosition().add(new paper.Point(0, 1)));
                 break;
             default:
@@ -923,15 +727,211 @@ exports.tipibot = new Tipibot();
 
 
 /***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class Draggable {
+    constructor(renderer, item = null) {
+        this.renderer = renderer;
+        this.dragging = false;
+        this.previousPosition = new paper.Point(0, 0);
+        this.item = item;
+        Draggable.draggables.push(this);
+    }
+    drag(delta) {
+        this.item.position = this.item.position.add(delta);
+    }
+    getWorldPosition(event) {
+        return this.renderer.getWorldPosition(event);
+    }
+    mouseDown(event) {
+        let position = this.getWorldPosition(event);
+        if (this.item.bounds.contains(position)) {
+            this.dragging = true;
+            this.previousPosition = position.clone();
+        }
+    }
+    mouseMove(event) {
+        let position = this.getWorldPosition(event);
+        if (this.dragging) {
+            this.drag(position.subtract(this.previousPosition));
+            this.previousPosition = position.clone();
+        }
+    }
+    mouseStop(event) {
+        this.dragging = false;
+    }
+    mouseUp(event) {
+        this.mouseStop(event);
+    }
+    mouseLeave(event) {
+        this.mouseStop(event);
+    }
+    delete() {
+        Draggable.draggables.splice(Draggable.draggables.indexOf(this), 1);
+    }
+}
+Draggable.draggables = new Array();
+exports.Draggable = Draggable;
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Draggable_1 = __webpack_require__(3);
+const Settings_1 = __webpack_require__(0);
+const Tipibot_1 = __webpack_require__(2);
+class Pen extends Draggable_1.Draggable {
+    constructor(renderer) {
+        super(renderer);
+    }
+    tipibotWidthChanged() {
+    }
+    getPosition() {
+        return this.item.position; // will be overloaded
+    }
+    setPosition(point, updateSliders = true, move = true, callback = null) {
+        if (updateSliders) {
+            Tipibot_1.tipibot.setPositionSliders(point);
+        }
+        if (move) {
+            Tipibot_1.tipibot.moveDirect(point, callback);
+        }
+    }
+    mouseStop(event) {
+        super.mouseStop(event);
+    }
+}
+Pen.HOME_RADIUS = 10;
+Pen.RADIUS = 20;
+exports.Pen = Pen;
+class PaperPen extends Pen {
+    constructor(renderer) {
+        super(renderer);
+    }
+    initialize(x, y, tipibotWidth, layer = null) {
+        this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
+        this.circle.strokeWidth = 1;
+        this.circle.strokeColor = 'black';
+        this.circle.fillColor = 'black';
+        this.item = this.circle;
+        this.lines = new paper.Path();
+        this.lines.add(new paper.Point(0, 0));
+        this.lines.add(new paper.Point(x, y));
+        this.lines.add(new paper.Point(tipibotWidth, 0));
+        this.lines.strokeWidth = 1;
+        this.lines.strokeColor = 'black';
+        this.previousPosition = new paper.Point(0, 0);
+        if (layer) {
+            layer.addChild(this.circle);
+            layer.addChild(this.lines);
+        }
+    }
+    getPosition() {
+        return this.circle.position;
+    }
+    setPosition(point, updateSliders = true, move = true, callback = null) {
+        this.circle.position = point;
+        this.lines.segments[1].point = point;
+        super.setPosition(point, updateSliders, move, callback);
+    }
+    drag(delta) {
+        this.setPosition(this.circle.position.add(delta), true, false);
+    }
+    mouseStop(event) {
+        if (this.dragging) {
+            this.setPosition(this.circle.position);
+        }
+        super.mouseStop(event);
+    }
+    tipibotWidthChanged() {
+        this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
+    }
+}
+exports.PaperPen = PaperPen;
+class ThreePen extends Pen {
+    constructor(renderer) {
+        super(renderer);
+    }
+    initialize(x, y, tipibotWidth, camera, scene = null, lineMat = null) {
+        let geometry = new THREE.CircleGeometry(Pen.RADIUS, 32);
+        let material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        this.circle = new THREE.Mesh(geometry, material);
+        this.circle.position.x = x;
+        this.circle.position.y = y;
+        this.circle.rotation.x = Math.PI;
+        let lineGeometry = new THREE.Geometry();
+        let lineMaterial = lineMat != null ? lineMat : new THREE.LineBasicMaterial({ color: 0xffffff });
+        lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, y, 0), new THREE.Vector3(tipibotWidth, 0, 0));
+        this.lines = new THREE.Line(lineGeometry, lineMaterial);
+        this.camera = camera;
+        if (scene) {
+            scene.add(this.lines);
+            scene.add(this.circle);
+        }
+    }
+    getPosition() {
+        return this.vectorToPoint(this.circle.position);
+    }
+    setPosition(point, updateSliders = true, move = true, callback = null) {
+        let position = this.pointToVector(point);
+        this.circle.position.copy(position);
+        let geometry = this.lines.geometry;
+        geometry.vertices[1].copy(position);
+        geometry.verticesNeedUpdate = true;
+        super.setPosition(point, updateSliders, move, callback);
+    }
+    tipibotWidthChanged() {
+        this.lines.geometry.vertices[2].x = Settings_1.Settings.tipibot.width;
+    }
+    pointToVector(point) {
+        return new THREE.Vector3(point.x, point.y, 0);
+    }
+    vectorToPoint(point) {
+        return new paper.Point(point.x, point.y);
+    }
+    mouseDown(event) {
+        let position = this.getWorldPosition(event);
+        if (position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
+            this.dragging = true;
+            this.previousPosition = position.clone();
+        }
+    }
+    mouseMove(event) {
+        let position = this.getWorldPosition(event);
+        if (this.dragging) {
+            let circlePosition = this.vectorToPoint(this.circle.position);
+            this.setPosition(circlePosition.add(position.subtract(this.previousPosition)), true, false);
+            this.previousPosition = position.clone();
+        }
+    }
+    mouseUp(event) {
+        this.mouseStop(event);
+    }
+    mouseLeave(event) {
+        this.mouseStop(event);
+    }
+}
+exports.ThreePen = ThreePen;
+
+
+/***/ }),
 /* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Tipibot_1 = __webpack_require__(4);
+const Tipibot_1 = __webpack_require__(2);
 const Settings_1 = __webpack_require__(0);
-const Draggable_1 = __webpack_require__(2);
+const Draggable_1 = __webpack_require__(3);
 const Communication_1 = __webpack_require__(1);
 class Plot extends Draggable_1.Draggable {
     constructor(renderer, item = null) {
@@ -1446,10 +1446,10 @@ exports.GUI = GUI;
 Object.defineProperty(exports, "__esModule", { value: true });
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
-const Tipibot_1 = __webpack_require__(4);
+const Tipibot_1 = __webpack_require__(2);
 const RequestTimeout = 2000;
 let scale = 1000;
-let CommeUnDesseinSize = new paper.Size(4000, 3000);
+let CommeUnDesseinSize = new paper.Size(2200, 1500);
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize);
 let commeUnDesseinToDrawArea = function (point) {
@@ -1643,7 +1643,7 @@ exports.CommeUnDessein = CommeUnDessein;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Shapes_1 = __webpack_require__(12);
-const Pen_1 = __webpack_require__(3);
+const Pen_1 = __webpack_require__(4);
 class Renderer {
     constructor() {
     }
@@ -2193,12 +2193,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 const Settings_1 = __webpack_require__(0);
-const Tipibot_1 = __webpack_require__(4);
+const Tipibot_1 = __webpack_require__(2);
 const Renderers_1 = __webpack_require__(8);
-const Pen_1 = __webpack_require__(3);
+const Pen_1 = __webpack_require__(4);
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
-const Draggable_1 = __webpack_require__(2);
+const Draggable_1 = __webpack_require__(3);
 const GUI_1 = __webpack_require__(6);
 const CommeUnDessein_1 = __webpack_require__(7);
 let communication = null;

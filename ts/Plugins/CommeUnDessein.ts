@@ -8,7 +8,7 @@ const RequestTimeout = 2000
 
 let scale = 1000
 
-let CommeUnDesseinSize = new paper.Size(4000, 3000)
+let CommeUnDesseinSize = new paper.Size(2200, 1500)
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 
