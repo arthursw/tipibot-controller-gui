@@ -1748,7 +1748,7 @@ let commeUnDesseinToDrawArea = function (point) {
     let drawArea = Tipibot_1.tipibot.drawArea.getBounds();
     let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
     const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize);
-    return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size());
+    return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).add(drawArea.topLeft()).multiply(drawArea.size());
 };
 let posOnPlanetToProject = function (point, planet) {
     if (point.x == null && point.y == null) {
