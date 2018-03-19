@@ -1,69 +1,69 @@
 /******/ (function(modules) { // webpackBootstrap
-/******/ 	// The module cache
-/******/ 	var installedModules = {};
+/******/    // The module cache
+/******/    var installedModules = {};
 /******/
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
+/******/    // The require function
+/******/    function __webpack_require__(moduleId) {
 /******/
-/******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId]) {
-/******/ 			return installedModules[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
-/******/ 			i: moduleId,
-/******/ 			l: false,
-/******/ 			exports: {}
-/******/ 		};
+/******/        // Check if module is in cache
+/******/        if(installedModules[moduleId]) {
+/******/            return installedModules[moduleId].exports;
+/******/        }
+/******/        // Create a new module (and put it into the cache)
+/******/        var module = installedModules[moduleId] = {
+/******/            i: moduleId,
+/******/            l: false,
+/******/            exports: {}
+/******/        };
 /******/
-/******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/        // Execute the module function
+/******/        modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
 /******/
-/******/ 		// Flag the module as loaded
-/******/ 		module.l = true;
+/******/        // Flag the module as loaded
+/******/        module.l = true;
 /******/
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
+/******/        // Return the exports of the module
+/******/        return module.exports;
+/******/    }
 /******/
 /******/
-/******/ 	// expose the modules object (__webpack_modules__)
-/******/ 	__webpack_require__.m = modules;
+/******/    // expose the modules object (__webpack_modules__)
+/******/    __webpack_require__.m = modules;
 /******/
-/******/ 	// expose the module cache
-/******/ 	__webpack_require__.c = installedModules;
+/******/    // expose the module cache
+/******/    __webpack_require__.c = installedModules;
 /******/
-/******/ 	// identity function for calling harmony imports with the correct context
-/******/ 	__webpack_require__.i = function(value) { return value; };
+/******/    // identity function for calling harmony imports with the correct context
+/******/    __webpack_require__.i = function(value) { return value; };
 /******/
-/******/ 	// define getter function for harmony exports
-/******/ 	__webpack_require__.d = function(exports, name, getter) {
-/******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
-/******/ 		}
-/******/ 	};
+/******/    // define getter function for harmony exports
+/******/    __webpack_require__.d = function(exports, name, getter) {
+/******/        if(!__webpack_require__.o(exports, name)) {
+/******/            Object.defineProperty(exports, name, {
+/******/                configurable: false,
+/******/                enumerable: true,
+/******/                get: getter
+/******/            });
+/******/        }
+/******/    };
 /******/
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__webpack_require__.n = function(module) {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			function getDefault() { return module['default']; } :
-/******/ 			function getModuleExports() { return module; };
-/******/ 		__webpack_require__.d(getter, 'a', getter);
-/******/ 		return getter;
-/******/ 	};
+/******/    // getDefaultExport function for compatibility with non-harmony modules
+/******/    __webpack_require__.n = function(module) {
+/******/        var getter = module && module.__esModule ?
+/******/            function getDefault() { return module['default']; } :
+/******/            function getModuleExports() { return module; };
+/******/        __webpack_require__.d(getter, 'a', getter);
+/******/        return getter;
+/******/    };
 /******/
-/******/ 	// Object.prototype.hasOwnProperty.call
-/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
+/******/    // Object.prototype.hasOwnProperty.call
+/******/    __webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
 /******/
-/******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
+/******/    // __webpack_public_path__
+/******/    __webpack_require__.p = "";
 /******/
-/******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/    // Load entry module and return exports
+/******/    return __webpack_require__(__webpack_require__.s = 12);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -350,7 +350,7 @@ class Communication {
         // this.createGUI()
     }
     // createGUI() {
-    // 	this.gui.addButton('Connect to arduino agent', ()=> this.connectToArduinoCreateAgent())
+    //  this.gui.addButton('Connect to arduino agent', ()=> this.connectToArduinoCreateAgent())
     // }
     setTipibot(tipibot) {
         this.interpreter.setTipibot(tipibot);
@@ -1220,53 +1220,53 @@ class SVGPlot extends Plot {
         }
     }
     // plotItemStep(): any {
-    // 	let item = this.currentItem
-    // 	// if we didn't already plot the item: plot it along with its children
-    // 	if(item.data.plotted == null || !item.data.plotted) {
-    // 		// plot path
-    // 		if(item.className == 'Path' || item.className == 'CompoundPath') {
-    // 			let path: paper.Path = <paper.Path>item
-    // 			let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
-    // 			if(segment == path.firstSegment) {
-    // 				if(!tipibot.getPosition().equals(segment.point)) {
-    // 					tipibot.penUp()
-    // 					tipibot.moveDirect(segment.point, this.plotItemStep)
-    // 				}
-    // 				tipibot.penDown()
-    // 			} else {
-    // 				tipibot.moveLinear(segment.point, this.plotItemStep)
-    // 			}
-    // 			// go to next segment
-    // 			this.currentSegment = segment.next != path.firstSegment ? segment.next : null
-    // 		} else if(item.className == 'Shape') {
-    // 			console.error('A shape was found in the SVG to plot.')
-    // 		}
-    // 		// plot children
-    // 		if(item.children.length > 0) {
-    // 			this.currentItem = item.firstChild
-    // 			this.currentSegment = null
-    // 			this.plotItemStep()
-    // 			return
-    // 		}
-    // 		item.data.plotted = true
-    // 	}
-    // 	// plot next siblings if any, or go up to parent
-    // 	if(item != this.item && item.parent != null && item.index < item.parent.children.length - 1) {
-    // 		if(item.index < item.parent.children.length - 1) {
-    // 			this.currentItem = item.nextSibling
-    // 			this.currentSegment = null
-    // 			this.plotItemStep()
-    // 			return
-    // 		} else {
-    // 			this.currentItem = item.parent
-    // 			this.currentSegment = null
-    // 			this.plotItemStep()
-    // 			return
-    // 		}
-    // 	}
-    // 	if(item == this.item) {
-    // 		this.clearData(item)
-    // 	}
+    //  let item = this.currentItem
+    //  // if we didn't already plot the item: plot it along with its children
+    //  if(item.data.plotted == null || !item.data.plotted) {
+    //      // plot path
+    //      if(item.className == 'Path' || item.className == 'CompoundPath') {
+    //          let path: paper.Path = <paper.Path>item
+    //          let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
+    //          if(segment == path.firstSegment) {
+    //              if(!tipibot.getPosition().equals(segment.point)) {
+    //                  tipibot.penUp()
+    //                  tipibot.moveDirect(segment.point, this.plotItemStep)
+    //              }
+    //              tipibot.penDown()
+    //          } else {
+    //              tipibot.moveLinear(segment.point, this.plotItemStep)
+    //          }
+    //          // go to next segment
+    //          this.currentSegment = segment.next != path.firstSegment ? segment.next : null
+    //      } else if(item.className == 'Shape') {
+    //          console.error('A shape was found in the SVG to plot.')
+    //      }
+    //      // plot children
+    //      if(item.children.length > 0) {
+    //          this.currentItem = item.firstChild
+    //          this.currentSegment = null
+    //          this.plotItemStep()
+    //          return
+    //      }
+    //      item.data.plotted = true
+    //  }
+    //  // plot next siblings if any, or go up to parent
+    //  if(item != this.item && item.parent != null && item.index < item.parent.children.length - 1) {
+    //      if(item.index < item.parent.children.length - 1) {
+    //          this.currentItem = item.nextSibling
+    //          this.currentSegment = null
+    //          this.plotItemStep()
+    //          return
+    //      } else {
+    //          this.currentItem = item.parent
+    //          this.currentSegment = null
+    //          this.plotItemStep()
+    //          return
+    //      }
+    //  }
+    //  if(item == this.item) {
+    //      this.clearData(item)
+    //  }
     // }
     plotFinished(callback = null) {
         SVGPlot.gui.getController('Draw').name('Draw');
@@ -1476,7 +1476,7 @@ const Communication_1 = __webpack_require__(1);
 const Tipibot_1 = __webpack_require__(2);
 const RequestTimeout = 2000;
 let scale = 1000;
-let CommeUnDesseinSize = new paper.Size(4000, 3000);
+let CommeUnDesseinSize = new paper.Size(2200, 1500);
 let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width / 2, -CommeUnDesseinSize.height / 2);
 const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize);
 let commeUnDesseinToDrawArea = function (point) {
@@ -2149,7 +2149,7 @@ class Interpreter {
     processMessage(message) {
         console.log(message);
         // if(message.indexOf('++')==0) {
-        // 	console.log(message)
+        //  console.log(message)
         // }
         document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }));
         if (message.indexOf(this.continueMessage) == 0) {
@@ -2304,10 +2304,10 @@ class Polargraph extends Interpreter_1.Interpreter {
         // this.startKeepingTipibotAwake()
     }
     // startKeepingTipibotAwake() {
-    // 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
+    //  this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
     // }
     // keepTipibotAwake() {
-    // 	this.sendPenUp()
+    //  this.sendPenUp()
     // }
     send(data) {
         let commandCode = data.substr(0, 3);
