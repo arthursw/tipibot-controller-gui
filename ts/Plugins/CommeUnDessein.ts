@@ -10,11 +10,11 @@ const RequestTimeout = 2000
 let scale = 1000
 
 let CommeUnDesseinSize = new paper.Size(4000, 3000)
-let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
-const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 
 let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 	let drawArea = tipibot.drawArea.getBounds()
+	let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
+	const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size())
 }
 
@@ -97,6 +97,13 @@ export class CommeUnDessein {
 		let commeUnDesseinGUI = gui.addFolder(folderName)
 		commeUnDesseinGUI.add(this, 'mode')
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
+		
+		CommeUnDesseinSize.width = tipibot.drawArea.getBounds().width
+		CommeUnDesseinSize.height = tipibot.drawArea.getBounds().height
+
+		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, Settings.tipibot.width).name('Width')
+		commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, Settings.tipibot.height).name('Height')
+
 		commeUnDesseinGUI.addButton('Start', ()=> this.requestNextDrawing())
 		commeUnDesseinGUI.addButton('Stop & Clear', ()=> this.stopAndClear())
 		commeUnDesseinGUI.open()
