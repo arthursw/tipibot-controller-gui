@@ -29,8 +29,14 @@ export let Settings = {
 			down: 1500,
 		},
 		delay: {
-			up: 150,
-			down: 150,
+			up: {
+				before: 0,
+				after: 0,
+			},
+			down: {
+				before: 1000,
+				after: 2000,
+			},
 		}
 	},
 	drawArea: {
@@ -53,6 +59,7 @@ export class SettingsManager {
 	gui: GUI = null
 	tipibotPositionFolder: GUI = null
 	drawAreaDimensionsFolder: GUI = null
+	homeFolder: GUI = null
 	tipibot: TipibotInterface
 
 	constructor() {
@@ -79,11 +86,12 @@ export class SettingsManager {
 		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X').onChange((value: number)=>{this.tipibot.setX(value)})
 		this.tipibotPositionFolder.add(position, 'y', 0, Settings.tipibot.height).name('Y').onChange((value: number)=>{this.tipibot.setY(value)})
 
-		let homeFolder = settingsFolder.addFolder('Home')
-		homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
-		homeFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
-		homeFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
-		homeFolder.open()
+		this.homeFolder = settingsFolder.addFolder('Home')
+		this.homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
+		this.homeFolder.add( {'Position': 'Bottom'}, 'Position', ['Custom', 'Top', 'Center', 'Bottom', 'Left', 'Right', 'TopLeft', 'BottomLeft', 'TopRight', 'BottomRight'])
+		this.homeFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
+		this.homeFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
+		this.homeFolder.open()
 
 		let tipibotDimensionsFolder = settingsFolder.addFolder('Tipibot dimensions')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
@@ -102,8 +110,13 @@ export class SettingsManager {
 		anglesFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
 
 		let delaysFolder = penFolder.addFolder('Delays')
-		delaysFolder.add(Settings.servo.delay, 'up', 0, 1000, 1).name('Up')
-		delaysFolder.add(Settings.servo.delay, 'down', 0, 1000, 1).name('Down')
+		let delaysUpFolder = delaysFolder.addFolder('Up')
+		delaysUpFolder.add(Settings.servo.delay.up, 'before', 0, 3000, 1).name('Before')
+		delaysUpFolder.add(Settings.servo.delay.up, 'after', 0, 3000, 1).name('After')
+
+		let delaysDownFolder = delaysFolder.addFolder('Down')
+		delaysDownFolder.add(Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before')
+		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
 
 		let machineFolder = settingsFolder.addFolder('Machine')
 
@@ -127,6 +140,42 @@ export class SettingsManager {
 		this.tipibot = tipibot
 	}
 
+	updateHomePosition(homePositionName: string, updateSliders = true) {
+		if(homePositionName == 'Top') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y
+		} else if(homePositionName == 'Center') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height / 2
+		} else if(homePositionName == 'Bottom') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height
+		} else if(homePositionName == 'Left') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 - Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height / 2
+		} else if(homePositionName == 'Right') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 + Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height / 2
+		} else if(homePositionName == 'TopLeft') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 - Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y
+		} else if(homePositionName == 'BottomLeft') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 - Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height
+		} else if(homePositionName == 'TopRight') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 + Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y
+		} else if(homePositionName == 'BottomRight') {
+			Settings.tipibot.homeX = Settings.tipibot.width / 2 + Settings.drawArea.width / 2
+			Settings.tipibot.homeY = Settings.drawArea.y + Settings.drawArea.height
+		}
+		if(updateSliders) {
+			this.homeFolder.getController('homeX').setValueNoCallback(Settings.tipibot.homeX)
+			this.homeFolder.getController('homeY').setValueNoCallback(Settings.tipibot.homeY)
+		}
+		this.tipibot.setHome(false)
+	}
+
 	settingChanged(parentNames: string[], name: string, value: any=null, finishChanged=false) {
 
 		// update sliders and transmit change to concerned object
@@ -140,15 +189,15 @@ export class SettingsManager {
 				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
 			}
 			if(name == 'width' || name == 'height') {
+				this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 				this.tipibot.sizeChanged(finishChanged)
 			}
 		} else if(parentNames[0] == 'Home') {
-			if(name == 'homeX') {
-				this.tipibotPositionFolder.getController('x').setValue(value, true)
-			} else if(name == 'homeY') {
-				this.tipibotPositionFolder.getController('y').setValue(value, true)
+			if(name == 'Position') {
+				this.updateHomePosition(value, true)
 			}
 			if(name == 'homeX' || name == 'homeY') {
+				this.homeFolder.getController('Position').setValueNoCallback('Custom')
 				this.tipibot.setHome(false)
 			}
 		} else if(parentNames[0] == 'Machine') {
@@ -170,15 +219,18 @@ export class SettingsManager {
 				this.tipibot.setY(value, finishChanged)
 			}
 		} else if(parentNames[1] == 'Pen') {
+			console.log(Settings.servo.position.down, Settings.servo.position.up)
 			if(finishChanged) {
 				this.tipibot.servoChanged(finishChanged)
 			}
 		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(finishChanged)
+			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		}
 		this.save(false)
 	}
 
+	// When loading settings (load from json file)
 	settingsChanged() {
 
 		this.tipibotPositionFolder.getController('x').max(Settings.tipibot.width, false)
@@ -188,6 +240,9 @@ export class SettingsManager {
 		this.drawAreaDimensionsFolder.getController('y').max(Settings.tipibot.height - Settings.drawArea.height, false)
 		this.tipibotPositionFolder.getController('x').setValue(Settings.tipibot.homeX, false)
 		this.tipibotPositionFolder.getController('y').setValue(Settings.tipibot.homeY, false)
+		this.homeFolder.getController('Position').setValue('Custom', false)
+		this.homeFolder.getController('homeX').setValue(Settings.tipibot.homeX, false)
+		this.homeFolder.getController('homeY').setValue(Settings.tipibot.homeY, false)
 
 		for(let controller of this.getControllers()) {
 			controller.updateDisplay()
@@ -201,8 +256,12 @@ export class SettingsManager {
 		this.tipibot.servoChanged(true)
 		this.tipibot.sizeChanged(true)
 		this.tipibot.drawAreaChanged(true)
-		this.tipibot.setX(Settings.tipibot.homeX, false)
-		this.tipibot.setY(Settings.tipibot.homeY, true)
+		// this.tipibot.setX(Settings.tipibot.homeX, false)
+		// this.tipibot.setY(Settings.tipibot.homeY, true)
+		this.tipibot.setHome(false)
+
+		// save to local storage
+		this.save(false)
 	}
 
 	save(saveFile=true) {
@@ -230,7 +289,9 @@ export class SettingsManager {
 			if(typeof(target[property]) === 'object') {
 				this.copyObjectProperties(target[property], source[property])
 			} else if (source[property] != null) {
-				target[property] = source[property]
+				if(typeof target[property] == typeof source[property]) {
+					target[property] = source[property]
+				}
 			}
 		}
 	}

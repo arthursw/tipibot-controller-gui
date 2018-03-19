@@ -17,8 +17,8 @@ export interface TipibotInterface {
 	sizeChanged: (sendChange: boolean) => void
 	drawAreaChanged: (sendChange: boolean) => void
 
-	penUp: (servoUpValue?: number, servoUpTempo?: number)=> void
-	penDown: (servoDownValue?: number, servoDownTempo?: number)=> void
+	penUp: (servoUpValue?: number, servoUpTempoBefore?: number)=> void
+	penDown: (servoDownValue?: number, servoDownTempoBefore?: number)=> void
 
 	mmToSteps(point: paper.Point): paper.Point
 	cartesianToLengths(point: paper.Point): paper.Point

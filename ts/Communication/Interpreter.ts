@@ -3,18 +3,21 @@ import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
 
-declare type Command = {
+export declare type Command = {
 	data: string
 	callback: ()=> any
+	id: number
 }
 
 export class Interpreter {
 	
 	serialPort: string
 	socket: any
+	commandID = 0
 	commandQueue: Array<Command>
 	tipibot: TipibotInterface
 	pause: boolean
+	tempoNextCommand: boolean
 	serialInput: string
 	readonly continueMessage = 'READY'
 
@@ -22,6 +25,7 @@ export class Interpreter {
 		this.commandQueue = []
 		this.pause = false
 		this.serialInput = ''
+		this.tempoNextCommand = false
 	}
 
 	setSerialPort(serialPort: string) {
@@ -40,12 +44,12 @@ export class Interpreter {
 
 	}
 
-	send(data: string) {
+	send(command: Command) {
 		if(this.pause) {
 			return
 		}
-		console.log('Serial input: ', data)
-		this.socket.emit('command', 'send ' + this.serialPort + ' ' + data)
+		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
+		this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
 	}
 
 	messageReceived(message: string) {
@@ -68,14 +72,21 @@ export class Interpreter {
 
 	processMessage(message: string) {
 		console.log(message)
+		// if(message.indexOf('++')==0) {
+		// 	console.log(message)
+		// }
+		
+		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
+
 		if(message.indexOf(this.continueMessage) == 0) {
 			if(this.commandQueue.length > 0) {
 				let command = this.commandQueue.shift()
 				if(command.callback != null) {
 					command.callback()
 				}
+				document.dispatchEvent(new CustomEvent('CommandExecuted', { detail: command }))
 				if(this.commandQueue.length > 0) {
-					this.send(this.commandQueue[0].data)
+					this.send(this.commandQueue[0])
 				} else {
 					this.queueEmpty()
 				}
@@ -90,7 +101,7 @@ export class Interpreter {
 	setPause(pause: boolean) {
 		this.pause = pause;
 		if(!this.pause && this.commandQueue.length > 0) {
-			this.send(this.commandQueue[0].data)
+			this.send(this.commandQueue[0])
 		}
 	}
 
@@ -99,19 +110,30 @@ export class Interpreter {
 			return
 		}
 
-		this.commandQueue.push({ data: data, callback: callback })
+		let command = { id: this.commandID++, data: data, callback: callback }
+		document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }))
+
+		this.commandQueue.push(command)
 
 		if(this.commandQueue.length == 1) {
-			this.send(data)
+			this.send(command)
+		}
+	}
+
+	removeCommand(commandID: number) {
+		let index = this.commandQueue.findIndex((command)=> command.id == commandID)
+		if(index >= 0) {
+			this.commandQueue.splice(index, 1)
 		}
 	}
 
 	clearQueue() {
 		this.commandQueue = []
+		document.dispatchEvent(new CustomEvent('ClearQueue', { detail: null }))
 	}
 
 	stopAndClearQueue() {
-		this.commandQueue = []
+		this.clearQueue()
 		this.sendStop()
 	}
 
@@ -154,10 +176,10 @@ export class Interpreter {
 	sendPenState(servoValue: number, servoTempo: number = 0) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
 	sendStop() {
@@ -166,6 +188,6 @@ export class Interpreter {
 	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
 	}
 
-	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
+	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
 	}
 }

@@ -1,5 +1,5 @@
 import { Settings, settingsManager } from "../Settings"
-import { Interpreter } from "./Interpreter"
+import { Interpreter, Command } from "./Interpreter"
 
 const commands = {
 	CMD_CHANGELENGTH: "C01,",
@@ -49,7 +49,8 @@ const commands = {
 	CMD_SELECT_ROVE_SOURCE_IMAGE: "C46",
 	CMD_RENDER_ROVE: "C47",
 	CMD_ACTIVATE_MACHINE_BUTTON: "C49",
-	CMD_DEACTIVATE_MACHINE_BUTTON: "C50"
+	CMD_DEACTIVATE_MACHINE_BUTTON: "C50",
+	CMD_DELAY: "C60,"
 }
 
 export class Polargraph extends Interpreter {
@@ -62,31 +63,32 @@ export class Polargraph extends Interpreter {
 		this.sendSpeed()
 		this.sendSetPosition()
 
-		this.startKeepingTipibotAwake()
+		// this.startKeepingTipibotAwake()
 	}
 
-	startKeepingTipibotAwake() {
-		this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
-	}
+	// startKeepingTipibotAwake() {
+	// 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
+	// }
 
-	keepTipibotAwake() {
-		this.sendPenUp()
-	}
+	// keepTipibotAwake() {
+	// 	this.sendPenUp()
+	// }
 
-	send(data: string) {
-		let commandCode = data.substr(0, 3)
-		for(let commandName in commands) {
-			let code: string = (<any>commands)[commandName].substr(0, 3)
-			if(code == commandCode) {
-				console.log("Send command: " + commandName)
-			}
-		}
-		super.send(data + String.fromCharCode(10))
+	send(command: Command) {
+		// let commandCode = command.data.substr(0, 3)
+		// for(let commandName in commands) {
+		// 	let code: string = (<any>commands)[commandName].substr(0, 3)
+		// 	if(code == commandCode) {
+		// 		console.log("Send command: " + commandName)
+		// 	}
+		// }
+		command.data += String.fromCharCode(10)
+		super.send(command)
 	}
 	
 	queue(data: string, callback: () => any = null) {
-		clearTimeout(this.keepTipibotAwakeInterval)
-		this.keepTipibotAwakeInterval = null
+		// clearTimeout(this.keepTipibotAwakeInterval)
+		// this.keepTipibotAwakeInterval = null
 
 		let commandCode = data.substr(0, 3)
 		for(let commandName in commands) {
@@ -99,7 +101,7 @@ export class Polargraph extends Interpreter {
 	}
 
 	queueEmpty() {
-		this.startKeepingTipibotAwake()
+		// this.startKeepingTipibotAwake()
 	}
 
 	getMaxSegmentLength() {
@@ -176,25 +178,39 @@ export class Polargraph extends Interpreter {
 		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
 	}
 
-	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down, servoUpDelay: number=Settings.servo.delay.up) {
+	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempo: number = Settings.servo.delay.up, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		if (servoUpValue != Settings.servo.position.up) {
 			Settings.servo.position.up = servoUpValue;
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(commands.CMD_PENUP + "END", callback);
+		if(servoUpTempoBefore > 0) {
+			this.queue(commands.CMD_DELAY + servoUpTempoBefore + ",END", callback);
+		}
+		this.queue(commands.CMD_PENUP + Settings.servo.position.up + ",END", callback);
+		// this.queue(commands.CMD_PENUP + "END", callback);
+		if(servoUpTempoAfter > 0) {
+			this.queue(commands.CMD_DELAY + servoUpTempoAfter + ",END", callback);
+		}
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempo: number = Settings.servo.delay.down, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		if (servoDownValue != Settings.servo.position.down) {
 			Settings.servo.position.down = servoDownValue;
 			settingsManager.updateSliders();
 			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
 		}
-		this.queue(commands.CMD_PENDOWN + "END", callback);
+		if(servoDownTempoBefore > 0) {
+			this.queue(commands.CMD_DELAY + servoDownTempoBefore + ",END", callback);
+		}
+		this.queue(commands.CMD_PENDOWN + Settings.servo.position.down + ",END", callback);
+		// this.queue(commands.CMD_PENDOWN + "END", callback);
+		if(servoDownTempoAfter > 0) {
+			this.queue(commands.CMD_DELAY + servoDownTempoAfter + ",END", callback);
+		}
 	}
 
 	sendStop() {

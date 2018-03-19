@@ -1,27 +1,22 @@
 import { Communication, communication } from "./Communication/Communication"
-import { Draggable } from "./Draggable"
+import { InteractiveItem } from "./InteractiveItem"
 import { Settings, settingsManager } from "./Settings"
 import { tipibot } from "./Tipibot"
+import { Renderer } from "./RendererInterface"
 
-declare type Renderer = {
-	getWorldPosition(event: MouseEvent): paper.Point
-}
-
-
-
-export class Pen extends Draggable {
+export class Pen extends InteractiveItem {
 	public static HOME_RADIUS = 10
 	public static RADIUS = 20
 
 	constructor(renderer: Renderer) {
-		super(renderer)
+		super(renderer, null, true)
 	}
 
 	tipibotWidthChanged() {
 	}
 
 	getPosition(): paper.Point {
-		return this.item.position // will be overloaded
+		return this.shape.getPosition() // will be overloaded
 	}
 
 	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
@@ -33,8 +28,8 @@ export class Pen extends Draggable {
 		}
 	}
 
-	mouseStop(event: MouseEvent) {
-		super.mouseStop(event)
+	mouseStop(event: MouseEvent): boolean {
+		return super.mouseStop(event)
 	}
 }
 
@@ -53,7 +48,7 @@ export class PaperPen extends Pen {
 		this.circle.strokeColor = 'black'
 		this.circle.fillColor = 'black'
 
-		this.item = this.circle
+		this.shape = this.renderer.createShape(this.circle)
 
 		this.lines = new paper.Path()
 		this.lines.add(new paper.Point(0, 0))
@@ -89,7 +84,7 @@ export class PaperPen extends Pen {
 		if(this.dragging) {
 			this.setPosition(this.circle.position)
 		}
-		super.mouseStop(event)
+		return super.mouseStop(event)
 	}
 
 	tipibotWidthChanged() {
@@ -100,16 +95,16 @@ export class PaperPen extends Pen {
 export class ThreePen extends Pen {
 
 	circle: THREE.Mesh
-	camera: THREE.OrthographicCamera
+	camera: THREE.Camera
 	lines: THREE.Line
 
 	constructor(renderer: Renderer) {
 		super(renderer)
 	}
 
-	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.OrthographicCamera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
+	initialize(x: number, y:number, tipibotWidth: number, camera: THREE.Camera, scene: THREE.Scene = null, lineMat: THREE.LineBasicMaterial = null) {
 		let geometry = new THREE.CircleGeometry( Pen.RADIUS, 32 )
-		let material = new THREE.MeshBasicMaterial( { color: 0xffff00 } )
+		let material = new THREE.MeshBasicMaterial( { color: 0x4274f4, opacity: 0.7, transparent: true } )
 		this.circle = new THREE.Mesh( geometry, material )
 		this.circle.position.x = x
 		this.circle.position.y = y
@@ -149,7 +144,9 @@ export class ThreePen extends Pen {
 	}
 	
 	tipibotWidthChanged() {
-		(<THREE.Geometry>this.lines.geometry).vertices[2].x = Settings.tipibot.width
+		let geometry = <THREE.Geometry>this.lines.geometry
+		geometry.vertices[2].x = Settings.tipibot.width
+		geometry.verticesNeedUpdate = true
 	}
 
 	pointToVector(point: paper.Point): THREE.Vector3 {
@@ -160,15 +157,17 @@ export class ThreePen extends Pen {
 		return new paper.Point(point.x, point.y)
 	}
 
-	mouseDown(event:MouseEvent) {
+	mouseDown(event:MouseEvent): boolean {
 		let position = this.getWorldPosition(event)
 		if(position.getDistance(new paper.Point(this.circle.position.x, this.circle.position.y), true) < Pen.RADIUS * Pen.RADIUS) {
 			this.dragging = true
 			this.previousPosition = position.clone()
+			return false
 		}
+		return true
 	}
 
-	mouseMove(event:MouseEvent) {
+	mouseMove(event:MouseEvent): boolean {
 
 		let position = this.getWorldPosition(event)
 		if(this.dragging) {
@@ -176,14 +175,16 @@ export class ThreePen extends Pen {
 			this.setPosition(circlePosition.add(position.subtract(this.previousPosition)), true, false)
 
 			this.previousPosition = position.clone()
+			return false
 		}
+		return true
 	}
 
-	mouseUp(event:MouseEvent) {
-		this.mouseStop(event)
+	mouseUp(event:MouseEvent): boolean {
+		return this.mouseStop(event)
 	}
 
-	mouseLeave(event:MouseEvent) {
-		this.mouseStop(event)
+	mouseLeave(event:MouseEvent): boolean {
+		return this.mouseStop(event)
 	}
 }
