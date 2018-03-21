@@ -152,7 +152,7 @@ export class CommeUnDessein {
 				console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state')
 				return
 			}
-			this.drawSVG(results)
+			this.draw(results)
 			return
 		}).fail((results) => {
 			console.error('getNextValidatedDrawing request failed')
@@ -173,7 +173,6 @@ export class CommeUnDessein {
 		let drawing = new paper.Group()
 
 		paper.project.importSVG(results.svg, (item: paper.Item, svg: string)=> {
-			console.log(item.bounds)
 
 			for (let path of item.children) {
 
@@ -187,12 +186,8 @@ export class CommeUnDessein {
 					continue
 				}
 
-				let p = <paper.Path>path
-				let controlPath = new paper.Path()
+				let controlPath: paper.Path = <paper.Path>path.clone()
 
-				for(let segment of p.segments) {
-					controlPath.add(segment)
-				}
 				controlPath.flatten(Settings.plot.flattenPrecision)
 				
 				// now that controlPath is flattened: convert in draw area coordinates
