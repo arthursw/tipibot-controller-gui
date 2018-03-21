@@ -172,8 +172,6 @@ export class CommeUnDessein {
 
 		let drawing = new paper.Group()
 
-		let planet = new paper.Point(0, 0)
-
 		paper.project.importSVG(results.svg, (item: paper.Item, svg: string)=> {
 			console.log(item.bounds)
 
@@ -197,7 +195,9 @@ export class CommeUnDessein {
 					let point = segment.point
 					// points and handles in project coordinates
 					// do not convert in draw area cooredinates before flattening (to keep handle proportions)
-					controlPath.add(posOnPlanetToProject(point, planet))
+					console.log(point, commeUnDesseinToDrawArea(point))
+					controlPath.add(commeUnDesseinToDrawArea(point))
+
 					controlPath.lastSegment.handleIn = segment.handleIn
 					controlPath.lastSegment.handleOut = segment.handleOut
 
