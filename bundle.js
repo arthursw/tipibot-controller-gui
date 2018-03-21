@@ -1895,13 +1895,7 @@ class CommeUnDessein {
                 let p = path;
                 let controlPath = new paper.Path();
                 for (let segment of p.segments) {
-                    let point = segment.point;
-                    // points and handles in project coordinates
-                    // do not convert in draw area cooredinates before flattening (to keep handle proportions)
-                    console.log(point, commeUnDesseinToDrawArea(point));
-                    controlPath.add(commeUnDesseinToDrawArea(point));
-                    controlPath.lastSegment.handleIn = segment.handleIn;
-                    controlPath.lastSegment.handleOut = segment.handleOut;
+                    controlPath.add(segment);
                 }
                 controlPath.flatten(Settings_1.Settings.plot.flattenPrecision);
                 // now that controlPath is flattened: convert in draw area coordinates
