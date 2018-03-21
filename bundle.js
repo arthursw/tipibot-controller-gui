@@ -2647,9 +2647,9 @@ class Polargraph extends Interpreter_1.Interpreter {
         let commandCode = data.substr(0, 3);
         for (let commandName in commands) {
             let code = commands[commandName].substr(0, 3);
-            if (code == commandCode) {
-                console.log("Queue command: " + commandName);
-            }
+            // if(code == commandCode) {
+            // 	console.log("Queue command: " + commandName)
+            // }
         }
         super.queue(data, callback);
     }
