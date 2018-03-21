@@ -1864,13 +1864,52 @@ class CommeUnDessein {
                 console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state');
                 return;
             }
-            this.draw(results);
+            this.drawSVG(results);
             return;
         }).fail((results) => {
             console.error('getNextValidatedDrawing request failed');
             console.error(results);
             this.state = State.NextDrawing;
             setTimeout(() => this.requestNextDrawing(), RequestTimeout);
+        });
+    }
+    drawSVG(results) {
+        if (results.state == 'error') {
+            console.log(results);
+            return;
+        }
+        this.state = State.Drawing;
+        this.currentDrawing = results;
+        let drawing = new paper.Group();
+        let planet = new paper.Point(0, 0);
+        paper.project.importSVG(results.svg, (item, svg) => {
+            console.log(item.bounds);
+            for (let path of item.children) {
+                if (path.className != 'Path') {
+                    continue;
+                }
+                let p = path;
+                let controlPath = new paper.Path();
+                for (let segment of p.segments) {
+                    let point = segment.point;
+                    // points and handles in project coordinates
+                    // do not convert in draw area cooredinates before flattening (to keep handle proportions)
+                    controlPath.add(posOnPlanetToProject(point, planet));
+                    controlPath.lastSegment.handleIn = segment.handleIn;
+                    controlPath.lastSegment.handleOut = segment.handleOut;
+                }
+                controlPath.flatten(Settings_1.Settings.plot.flattenPrecision);
+                // now that controlPath is flattened: convert in draw area coordinates
+                for (let segment of controlPath.segments) {
+                    segment.point = commeUnDesseinToDrawArea(segment.point);
+                }
+                drawing.addChild(controlPath);
+            }
+            if (Plot_1.SVGPlot.svgPlot != null) {
+                Plot_1.SVGPlot.svgPlot.clear();
+            }
+            Plot_1.SVGPlot.svgPlot = new Plot_1.SVGPlot(drawing);
+            Plot_1.SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk));
         });
     }
     draw(results) {
