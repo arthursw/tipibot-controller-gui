@@ -183,6 +183,12 @@ export class CommeUnDessein {
 					continue
 				}
 
+				// Ignore anything that humans can't see to avoid hacks
+				let strokeColor: any = path.strokeColor
+				if(path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2) {
+					continue
+				}
+
 				let p = <paper.Path>path
 				let controlPath = new paper.Path()
 

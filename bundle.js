@@ -1888,6 +1888,11 @@ class CommeUnDessein {
                 if (path.className != 'Path') {
                     continue;
                 }
+                // Ignore anything that humans can't see to avoid hacks
+                let strokeColor = path.strokeColor;
+                if (path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2) {
+                    continue;
+                }
                 let p = path;
                 let controlPath = new paper.Path();
                 for (let segment of p.segments) {
