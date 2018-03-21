@@ -152,7 +152,7 @@ export class CommeUnDessein {
 				console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state')
 				return
 			}
-			this.draw(results)
+			this.drawSVG(results)
 			return
 		}).fail((results) => {
 			console.error('getNextValidatedDrawing request failed')
