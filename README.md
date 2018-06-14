@@ -1,6 +1,6 @@
-# Tipibot controller
+# Tipibot controller GUI
 
-[Controller](https://arthursw.github.io/tipibot-controller/) for the Tipibot
+[Controller](https://arthursw.github.io/tipibot-controller-gui/) for the Tipibot
 
 # Set Arduino Create Agent
 

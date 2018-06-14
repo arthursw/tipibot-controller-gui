@@ -394,6 +394,15 @@ const Polargraph_1 = __webpack_require__(13);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 exports.SERIAL_COMMUNICATION_SPEED = 57600;
+let PORT = 6842;
+// Read the port number from url hash to be able to set it from electron (when using it)
+if (window.location.hash.length > 0) {
+    const regex = /#port=(\d+)/gm;
+    let m = regex.exec(window.location.hash);
+    if (m != null) {
+        PORT = parseInt(m[1]);
+    }
+}
 class Communication {
     constructor(gui) {
         exports.communication = this;
@@ -414,7 +423,7 @@ class Communication {
         });
         this.portController = this.portController.options(['Disconnected']);
         this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
-        this.socket = io('ws://localhost:3030');
+        this.socket = io('ws://localhost:' + PORT);
         this.interpreter.setSocket(this.socket);
         this.socket.on('list', (ports) => {
             let options = ['Disconnected'];
