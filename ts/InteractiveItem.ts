@@ -91,6 +91,18 @@ export class InteractiveItem {
 		InteractiveItem.interactiveItems.push(this)
 	}
 
+	setPosition(position: paper.Point) {
+		this.shape.setPosition(position)
+	}
+
+	setX(x: number) {
+		this.shape.setX(x)
+	}
+
+	setY(y: number) {
+		this.shape.setY(y)
+	}
+
 	drag(delta: paper.Point) {
 		this.shape.setPosition(this.shape.getPosition().add(delta))
 	}

@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		SVGPlot.createGUI(gui)
 		Plot.createGUI(SVGPlot.gui)
 		
-		renderer = new ThreeRenderer()
+		renderer = new PaperRenderer()
 		SVGPlot.renderer = renderer
 		
 		communication.setTipibot(tipibot)

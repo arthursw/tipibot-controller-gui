@@ -7,10 +7,13 @@ body {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	display: flex;
+	display: grid;
+	grid-template-columns: auto 245px;
+	grid-template-rows: 100%;
+/*	display: flex;
 	flex-direction: row;
 	align-items: stretch;
-	align-content: stretch;
+	align-content: stretch;*/
 }
 .noselect {
   -webkit-touch-callout: none; /* iOS Safari */
@@ -39,12 +42,19 @@ body {
 	overflow-y: auto;
 }
 
+.dg.main {
+	height: 100%;
+}
+
 #canvas {
-	display: flex;
-	width: 100%;
+	overflow: hidden;
+}
+
+canvas {
+	background-color: white;
 }
 
 #gui {
-	display: flex;
+	/*display: flex;*/
 
 }

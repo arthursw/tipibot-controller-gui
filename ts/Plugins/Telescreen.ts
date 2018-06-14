@@ -175,19 +175,19 @@ export class Telescreen {
 	}
 
 	connect(port: string) {
-		for(let serialPort of communication.serialPorts) {
-			if(serialPort != port) {
-				communication.socket.emit('command', 'open ' + serialPort + ' ' + SERIAL_COMMUNICATION_SPEED)
-			}
-		}
+		// for(let serialPort of communication.serialPorts) {
+		// 	if(serialPort != port) {
+		// 		communication.socket.emit('command', 'open ' + serialPort + ' ' + SERIAL_COMMUNICATION_SPEED)
+		// 	}
+		// }
 	}
 
 	disconnect() {
-		for(let serialPort of communication.serialPorts) {
-			if(serialPort != communication.interpreter.serialPort) {
-				communication.socket.emit('command', 'close ' + serialPort)
-			}
-		}
+		// for(let serialPort of communication.serialPorts) {
+		// 	if(serialPort != communication.interpreter.serialPort) {
+		// 		communication.socket.emit('command', 'close ' + serialPort)
+		// 	}
+		// }
 	}
 
 	messageReceived(message: string) {

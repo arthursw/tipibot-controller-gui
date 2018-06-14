@@ -31,7 +31,7 @@ export class PaperRenderer extends Renderer {
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
 		if(zoom) {
 			let margin = 100
-			let ratio = Math.max((tipibot.width + margin) / this.canvas.width, (tipibot.height + margin) / this.canvas.height)
+			let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
 		}
 
@@ -89,7 +89,7 @@ export class PaperRenderer extends Renderer {
 	}
 
 	mouseMove(event: MouseEvent) {
-		if(event.buttons == 4 && this.dragging) { 											// wheel button
+		if(event.buttons == 4 || event.shiftKey && this.dragging) { 											// wheel button
 			let position = this.getMousePosition(event)
 			paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom))
 			paper.view.draw()

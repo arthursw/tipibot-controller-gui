@@ -90,6 +90,22 @@ export class Shape {
 		return this.group.position
 	}
 
+	getX() {
+		return this.group.position.x
+	}
+
+	getY() {
+		return this.group.position.y
+	}
+
+	setX(x: number) {
+		this.group.position.x = x
+	}
+
+	setY(y: number) {
+		this.group.position.y = y
+	}
+
 	setPosition(position: paper.Point) {
 		this.group.position = position
 	}
@@ -100,6 +116,14 @@ export class Shape {
 
 	getBounds() {
 		return Rect.fromPaperRect(this.group.bounds)
+	}
+
+	getWidth() {
+		return this.group.bounds.width
+	}
+
+	getHeight() {
+		return this.group.bounds.height
 	}
 }
 
@@ -295,6 +319,30 @@ export class PaperShape extends Shape {
 
 	getBounds() {
 		return Rect.fromPaperRect(this.item.bounds)
+	}
+
+	getX() {
+		return this.item.position.x
+	}
+
+	getY() {
+		return this.item.position.y
+	}
+
+	setX(x: number) {
+		this.item.position.x = x
+	}
+
+	setY(y: number) {
+		this.item.position.y = y
+	}
+
+	getWidth() {
+		return this.item.bounds.width
+	}
+
+	getHeight() {
+		return this.item.bounds.height
 	}
 }
 
@@ -720,5 +768,29 @@ export class ThreeShape extends Shape {
 
 	getBounds() {
 		return this.rectangle
+	}
+
+	getX() {
+		return this.rectangle.x
+	}
+
+	getY() {
+		return this.rectangle.y
+	}
+
+	setX(x: number) {
+		this.setPosition(new paper.Point(x, this.getY()))
+	}
+
+	setY(y: number) {
+		this.setPosition(new paper.Point(this.getX(), y))
+	}
+
+	getWidth() {
+		return this.rectangle.width
+	}
+
+	getHeight() {
+		return this.rectangle.height
 	}
 }

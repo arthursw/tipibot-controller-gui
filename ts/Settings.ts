@@ -83,8 +83,8 @@ export class SettingsManager {
 		this.tipibotPositionFolder.addButton('Set position', () => this.tipibot.toggleSetPosition() )
 		
 		let position = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
-		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X').onChange((value: number)=>{this.tipibot.setX(value)})
-		this.tipibotPositionFolder.add(position, 'y', 0, Settings.tipibot.height).name('Y').onChange((value: number)=>{this.tipibot.setY(value)})
+		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X')
+		this.tipibotPositionFolder.add(position, 'y', 0, Settings.tipibot.height).name('Y')
 
 		this.homeFolder = settingsFolder.addFolder('Home')
 		this.homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
@@ -103,7 +103,8 @@ export class SettingsManager {
 		this.drawAreaDimensionsFolder.add(Settings.drawArea, 'height', 0, Settings.tipibot.height, 1).name('Height')
 
 		let penFolder = settingsFolder.addFolder('Pen')
-		penFolder.add(Settings.tipibot, 'penWidth', 1, 20, 1).name('Pen width')
+
+		penFolder.add(Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width')
 
 		let anglesFolder = penFolder.addFolder('Angles')
 		anglesFolder.add(Settings.servo.position, 'up', 0, 3600, 1).name('Up')
@@ -218,10 +219,13 @@ export class SettingsManager {
 			} else if(name == 'y') {
 				this.tipibot.setY(value, finishChanged)
 			}
-		} else if(parentNames[1] == 'Pen') {
-			console.log(Settings.servo.position.down, Settings.servo.position.up)
+		} else if(parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down') ) {
 			if(finishChanged) {
 				this.tipibot.servoChanged(finishChanged)
+			}
+		} else if(parentNames[0] == 'Pen' && name == 'penWidth') {
+			if(finishChanged) {
+				this.tipibot.penWidthChanged(true)
 			}
 		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(finishChanged)

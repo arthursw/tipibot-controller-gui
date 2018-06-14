@@ -170,10 +170,14 @@ export class GUI {
 
 		let divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "'/>")
 
-		let button = this.addButton(name, ()=> divJ.click() )
-		$(button.getDomElement()).append(divJ)
+		let button = this.addButton(name, (event)=> divJ.click())
+		// $(button.getDomElement()).append(divJ)
+		divJ.insertAfter(button.getParentDomElement())
 		divJ.hide()
-		divJ.change(callback)
+		divJ.change((event)=> {
+			callback(event)
+			divJ.val('')
+		})
 
 		return button
 	}

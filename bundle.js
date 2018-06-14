@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -141,8 +141,8 @@ class SettingsManager {
         this.tipibotPositionFolder = settingsFolder.addFolder('Position');
         this.tipibotPositionFolder.addButton('Set position', () => this.tipibot.toggleSetPosition());
         let position = new paper.Point(exports.Settings.tipibot.homeX, exports.Settings.tipibot.homeY);
-        this.tipibotPositionFolder.add(position, 'x', 0, exports.Settings.tipibot.width).name('X').onChange((value) => { this.tipibot.setX(value); });
-        this.tipibotPositionFolder.add(position, 'y', 0, exports.Settings.tipibot.height).name('Y').onChange((value) => { this.tipibot.setY(value); });
+        this.tipibotPositionFolder.add(position, 'x', 0, exports.Settings.tipibot.width).name('X');
+        this.tipibotPositionFolder.add(position, 'y', 0, exports.Settings.tipibot.height).name('Y');
         this.homeFolder = settingsFolder.addFolder('Home');
         this.homeFolder.addButton('Set home', () => this.tipibot.setHome());
         this.homeFolder.add({ 'Position': 'Bottom' }, 'Position', ['Custom', 'Top', 'Center', 'Bottom', 'Left', 'Right', 'TopLeft', 'BottomLeft', 'TopRight', 'BottomRight']);
@@ -157,7 +157,7 @@ class SettingsManager {
         this.drawAreaDimensionsFolder.add(exports.Settings.drawArea, 'width', 0, exports.Settings.tipibot.width, 1).name('Width');
         this.drawAreaDimensionsFolder.add(exports.Settings.drawArea, 'height', 0, exports.Settings.tipibot.height, 1).name('Height');
         let penFolder = settingsFolder.addFolder('Pen');
-        penFolder.add(exports.Settings.tipibot, 'penWidth', 1, 20, 1).name('Pen width');
+        penFolder.add(exports.Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width');
         let anglesFolder = penFolder.addFolder('Angles');
         anglesFolder.add(exports.Settings.servo.position, 'up', 0, 3600, 1).name('Up');
         anglesFolder.add(exports.Settings.servo.position, 'down', 0, 3600, 1).name('Down');
@@ -279,10 +279,14 @@ class SettingsManager {
                 this.tipibot.setY(value, finishChanged);
             }
         }
-        else if (parentNames[1] == 'Pen') {
-            console.log(exports.Settings.servo.position.down, exports.Settings.servo.position.up);
+        else if (parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down')) {
             if (finishChanged) {
                 this.tipibot.servoChanged(finishChanged);
+            }
+        }
+        else if (parentNames[0] == 'Pen' && name == 'penWidth') {
+            if (finishChanged) {
+                this.tipibot.penWidthChanged(true);
             }
         }
         else if (parentNames[0] == 'Draw area dimensions') {
@@ -386,7 +390,7 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Polargraph_1 = __webpack_require__(12);
+const Polargraph_1 = __webpack_require__(13);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 exports.SERIAL_COMMUNICATION_SPEED = 57600;
@@ -396,165 +400,53 @@ class Communication {
         this.socket = null;
         this.gui = gui;
         this.portController = null;
-        this.serialPorts = [];
-        this.connectToArduinoCreateAgent();
         this.interpreter = new Polargraph_1.Polargraph();
-        // this.createGUI()
+        this.connectToSerial();
     }
-    // createGUI() {
-    // 	this.gui.addButton('Connect to arduino agent', ()=> this.connectToArduinoCreateAgent())
-    // }
     setTipibot(tipibot) {
         this.interpreter.setTipibot(tipibot);
     }
-    connectToArduinoCreateAgent() {
-        // Find proper websocket port with http requests info
-        // It will listen to http and websocket connections on a range of ports from 8990 to 9000.
-        let portNumber = 8991;
-        let connectionSuccess = (data, textStatus, jqXHR) => {
-            console.log("connection to arduino-create-agent success");
-            console.log("textStatus: ");
-            console.log(textStatus);
-            console.log(data);
-            if (data.hasOwnProperty('ws')) {
-                this.openWebsocketConnection(data.ws);
+    connectToSerial() {
+        this.portController = this.gui.add({ 'Connection': 'Disconnected' }, 'Connection');
+        this.gui.addButton('Refresh', () => {
+            this.portController.setValue('Disconnected');
+            this.socket.emit('list');
+        });
+        this.portController = this.portController.options(['Disconnected']);
+        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
+        this.socket = io('ws://localhost:3030');
+        this.interpreter.setSocket(this.socket);
+        this.socket.on('list', (ports) => {
+            let options = ['Disconnected'];
+            for (let port of ports) {
+                options.push(port.comName);
             }
-        };
-        let connectionError = (jqXHR, textStatus, errorThrown) => {
-            console.log("connection to arduino-create-agent error");
-            console.log("errorThrown: ");
-            console.log(errorThrown);
-            console.log("textStatus: ");
-            console.log(textStatus);
-            if (portNumber == 9000) {
-                portNumber = 8990;
-            }
-            else if (portNumber == 8990) {
-                console.log("Error: impossible to connect to arduino-create-agent");
-                return;
-            }
-            else {
-                portNumber++;
-            }
-            connectArduinoCreateAgent();
-        };
-        let connectArduinoCreateAgent = () => {
-            return $.ajax({ url: "http://localhost:" + portNumber + "/info" }).done(connectionSuccess).fail(connectionError);
-        };
-        connectArduinoCreateAgent();
-        // this.openWebsocketConnection("ws://localhost:8991")
+            this.portController = this.portController.options(options);
+            this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
+        });
+        this.socket.on('opened', () => {
+            this.interpreter.connectionOpened();
+        });
+        this.socket.on('data', (data) => {
+            this.interpreter.messageReceived(data);
+        });
+        this.socket.on('error', (message) => {
+            console.error(message);
+        });
+        // window.sendToSerial = (message: string)=> {
+        // 	this.socket.emit('data', message)
+        // }
     }
-    serialConnectionPortChanged(value) {
-        if (value == 'Disconnected') {
-            this.socket.emit('command', 'close ' + this.interpreter.serialPort);
+    serialConnectionPortChanged(portName) {
+        if (portName == 'Disconnected') {
+            this.socket.emit('close');
             document.dispatchEvent(new CustomEvent('Disconnect'));
         }
-        else if (value == 'Refresh') {
-            this.serialPorts = [];
-            this.socket.emit('command', 'list');
-        }
         else {
-            this.interpreter.setSerialPort(value);
-            document.dispatchEvent(new CustomEvent('Connect', { detail: value }));
-            this.socket.emit('command', 'open ' + value + ' ' + exports.SERIAL_COMMUNICATION_SPEED);
+            this.interpreter.setSerialPort(portName);
+            document.dispatchEvent(new CustomEvent('Connect', { detail: portName }));
+            this.socket.emit('open', { name: portName, baudRate: exports.SERIAL_COMMUNICATION_SPEED });
         }
-    }
-    initializeSerialConnectionPorts(data) {
-        // this.gui.getController('Connect to arduino agent').hide()
-        for (let port of data.Ports) {
-            if (this.serialPorts.indexOf(port.Name) < 0) {
-                this.serialPorts.push(port.Name);
-            }
-        }
-        let portNames = ['Disconnected', 'Refresh'].concat(this.serialPorts);
-        if (this.portController == null) {
-            this.portController = this.gui.add({ 'Connection': 'Disconnected' }, 'Connection');
-        }
-        else {
-            this.portController = this.portController.options(portNames);
-        }
-        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
-    }
-    checkSerialConnection(event) {
-        if (event.data.hasOwnProperty('Cmd')) {
-            console.log(event.data.Cmd);
-        }
-        else {
-            console.log('Unknown response: ', event);
-        }
-    }
-    onWebSocketConnect(response) {
-        console.log('connect response: ', response);
-        this.socket.emit('command', 'list');
-    }
-    onWebSocketMessage(message) {
-        let data = null;
-        try {
-            data = JSON.parse(message);
-        }
-        catch (e) {
-            return;
-        }
-        // List serial ports response (list):
-        if (data.hasOwnProperty('Ports') && data.hasOwnProperty('Network')) {
-            this.initializeSerialConnectionPorts(data);
-            return;
-        }
-        // Command responses:
-        if (data.hasOwnProperty('Cmd')) {
-            switch (data.Cmd) {
-                case 'Open':
-                    console.log('Port: ' + data.Port);
-                    console.log(data.Desc);
-                    this.interpreter.connectionOpened(data.Desc);
-                    break;
-                case 'OpenFail':
-                    console.log('Port: ' + data.Port);
-                    console.log(data.Desc);
-                    break;
-                case 'Close':
-                    console.log('Port: ' + data.Port);
-                    console.log(data.Desc);
-                    break;
-                case 'Queued':
-                    console.log('Queued:');
-                    console.log('QCnt: ' + data.QCnt);
-                    console.log('Ids: ', data.Ids);
-                    console.log('D: ', data.D);
-                    console.log('Port: ' + data.Port);
-                    break;
-                case 'Write':
-                    console.log('Write:');
-                    console.log('QCnt: ' + data.QCnt);
-                    console.log('Ids: ', data.Ids);
-                    console.log('P: ' + data.P);
-                    break;
-                case 'CompleteFake':
-                    console.log('CompleteFake:');
-                    console.log('QCnt: ' + data.QCnt);
-                    console.log('Ids: ', data.Ids);
-                    console.log('P: ' + data.P);
-                    break;
-                default:
-                    console.error('Received unknown command: ' + data.Cmd);
-                    break;
-            }
-        }
-        else if (data.hasOwnProperty('Error')) {
-            console.error(data.Error);
-        }
-        else if (data.hasOwnProperty('D')) {
-            this.interpreter.messageReceived(data.D);
-        }
-    }
-    openWebsocketConnection(websocketPort) {
-        // this.socket = io('ws://localhost:3000')
-        this.socket = io(websocketPort);
-        this.interpreter.setSocket(this.socket);
-        this.socket.on('connect', (response) => this.onWebSocketConnect(response));
-        // window.ws = this.socket
-        this.socket.on('message', (message) => this.onWebSocketMessage(message));
-        return;
     }
 }
 exports.Communication = Communication;
@@ -572,6 +464,7 @@ const Communication_1 = __webpack_require__(1);
 const Settings_1 = __webpack_require__(0);
 const InteractiveItem_1 = __webpack_require__(3);
 const Pen_1 = __webpack_require__(4);
+const PlotInterface_1 = __webpack_require__(7);
 class Tipibot {
     constructor() {
         this.gui = null;
@@ -670,6 +563,15 @@ class Tipibot {
         Settings_1.settingsManager.setTipibot(this);
         this.createGUI(gui);
     }
+    updateMoveToButtons() {
+        let homePoint = new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY);
+        let drawAreaBounds = this.drawArea.getBounds();
+        this.moveToButtons[0].setPosition(drawAreaBounds.topLeft());
+        this.moveToButtons[1].setPosition(drawAreaBounds.topRight());
+        this.moveToButtons[2].setPosition(drawAreaBounds.bottomLeft());
+        this.moveToButtons[3].setPosition(drawAreaBounds.bottomRight());
+        this.moveToButtons[4].setPosition(homePoint);
+    }
     sizeChanged(sendChange) {
         this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
         this.tipibotArea.updateRectangle(this.computeTipibotArea());
@@ -679,9 +581,11 @@ class Tipibot {
             Communication_1.communication.interpreter.sendSize();
         }
         this.renderer.centerOnTipibot(this.tipibotArea.getBounds(), true);
+        this.updateMoveToButtons();
     }
     drawAreaChanged(sendChange) {
         this.drawArea.updateRectangle(this.computeDrawArea());
+        this.updateMoveToButtons();
     }
     speedChanged(sendChange) {
         if (sendChange) {
@@ -746,6 +650,7 @@ class Tipibot {
         if (sendChange) {
             Communication_1.communication.interpreter.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
         }
+        PlotInterface_1.PlotInterface.currentPlot.updateShape();
     }
     servoChanged(sendChange) {
         if (sendChange) {
@@ -782,6 +687,7 @@ class Tipibot {
         if (setPosition) {
             this.setPosition(homePosition);
         }
+        this.updateMoveToButtons();
     }
     goHome(callback = null) {
         this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, null, true);
@@ -895,6 +801,15 @@ class InteractiveItem {
         let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
         InteractiveItem.interactiveItems.splice(thisIndex, 1);
         InteractiveItem.interactiveItems.push(this);
+    }
+    setPosition(position) {
+        this.shape.setPosition(position);
+    }
+    setX(x) {
+        this.shape.setX(x);
+    }
+    setY(y) {
+        this.shape.setY(y);
     }
     drag(delta) {
         this.shape.setPosition(this.shape.getPosition().add(delta));
@@ -1102,12 +1017,13 @@ exports.ThreePen = ThreePen;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const PlotInterface_1 = __webpack_require__(7);
 const Tipibot_1 = __webpack_require__(2);
 const Settings_1 = __webpack_require__(0);
-const InteractiveItem_1 = __webpack_require__(3);
 const Communication_1 = __webpack_require__(1);
+const Renderers_1 = __webpack_require__(6);
 const Pen_1 = __webpack_require__(4);
-class Plot extends InteractiveItem_1.InteractiveItem {
+class Plot extends PlotInterface_1.PlotInterface {
     constructor(renderer, item = null) {
         super(renderer, null, true);
         this.plotting = false;
@@ -1118,40 +1034,56 @@ class Plot extends InteractiveItem_1.InteractiveItem {
     }
     static createCallback(f, addValue = false, parameters = []) {
         return (value) => {
-            if (Plot.currentPlot != null) {
+            if (PlotInterface_1.PlotInterface.currentPlot != null) {
                 if (addValue) {
                     parameters.unshift(value);
                 }
-                f.apply(Plot.currentPlot, parameters);
+                f.apply(PlotInterface_1.PlotInterface.currentPlot, parameters);
             }
         };
     }
     static createGUI(gui) {
         Plot.gui = gui;
         let filterFolder = gui.addFolder('Filter');
-        filterFolder.add(Settings_1.Settings.plot, 'flatten').name('Flatten').onChange(Plot.onFilterChange);
-        filterFolder.add(Settings_1.Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.onFilterChange);
-        filterFolder.add(Settings_1.Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.onFilterChange);
-        filterFolder.add(Settings_1.Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.onFilterChange);
+        filterFolder.add(Plot, 'showPoints').name('Show points').onChange(Plot.createCallback(Plot.prototype.showPoints, true));
+        filterFolder.add(Settings_1.Settings.plot, 'flatten').name('Flatten').onChange(Plot.createCallback(Plot.prototype.filter));
+        filterFolder.add(Settings_1.Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.createCallback(Plot.prototype.filter));
+        filterFolder.add(Settings_1.Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.createCallback(Plot.prototype.filter));
+        filterFolder.add(Settings_1.Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.createCallback(Plot.prototype.filter));
         let transformFolder = gui.addFolder('Transform');
-        transformFolder.addSlider('X', 0, 0, Settings_1.Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true));
-        transformFolder.addSlider('Y', 0, 0, Settings_1.Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true));
+        Plot.transformFolder = transformFolder;
+        transformFolder.addButton('Center', Plot.createCallback(Plot.prototype.center));
+        transformFolder.addSlider('X', 0, 0, Settings_1.Settings.drawArea.width).onChange(Plot.createCallback(Plot.prototype.setX, true));
+        transformFolder.addSlider('Y', 0, 0, Settings_1.Settings.drawArea.height).onChange(Plot.createCallback(Plot.prototype.setY, true));
         transformFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX));
         transformFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY));
         transformFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate));
-        transformFolder.addSlider('Scale', 1, 0.1, 5).onChange((value) => {
-            Plot.currentPlot.item.applyMatrix = false;
-            Plot.currentPlot.item.scaling = new paper.Point(value, value);
-        });
-    }
-    static onFilterChange() {
-        if (Plot.currentPlot != null) {
-            Plot.currentPlot.filter();
-        }
+        transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(Plot.createCallback(Plot.prototype.scale, true));
     }
     mouseDown(event) {
         let result = super.mouseDown(event);
         this.item.selected = this.dragging;
+        return result;
+    }
+    updateItemPosition() {
+        this.item.position = this.shape.getBounds().getCenter();
+    }
+    updatePositonGUI(drawAreaTopLeft = Tipibot_1.tipibot.drawArea.getBounds().topLeft()) {
+        Plot.transformFolder.getController('X').setValue(this.item.bounds.left - drawAreaTopLeft.x, false);
+        Plot.transformFolder.getController('Y').setValue(this.item.bounds.top - drawAreaTopLeft.y, false);
+    }
+    updateItemPositionAndGUI() {
+        this.updateItemPosition();
+        this.updatePositonGUI();
+    }
+    drag(delta) {
+        let result = super.drag(delta);
+        this.updateItemPositionAndGUI();
+        return result;
+    }
+    mouseUp(event) {
+        let result = super.mouseUp(event);
+        this.updateItemPositionAndGUI();
         return result;
     }
     itemMustBeDrawn(item) {
@@ -1172,24 +1104,38 @@ class Plot extends InteractiveItem_1.InteractiveItem {
         if (this.shape != null) {
             this.shape.remove();
         }
-        // this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
-        // this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
-        // paper.project.clear()
-        paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000));
-        paper.project.activeLayer.addChild(this.item);
-        paper.project.deselectAll();
-        this.item.selected = false;
-        paper.view.setCenter(this.item.bounds.center);
-        let margin = 100;
-        let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height);
-        paper.view.zoom = 1 / ratio;
-        // var image = new Image()
-        // image.src = paper.view.element.toDataURL()
-        // let w = window.open("")
-        // w.document.write(image.outerHTML)
-        this.shape = this.renderer.createSprite(paper.view.element);
-        // paper.project.clear()
-        this.shape.setPosition(Tipibot_1.tipibot.drawArea.getBounds().getCenter());
+        this.item.strokeWidth = Settings_1.Settings.tipibot.penWidth;
+        // HACK !!!
+        // Todo: create two SvgPlot classes : one for ThreeRenderers and one for PaperRenderers
+        if (this.renderer instanceof Renderers_1.ThreeRenderer) {
+            // this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
+            // this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+            // paper.project.clear()
+            paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000));
+            paper.project.activeLayer.addChild(this.item);
+            paper.project.deselectAll();
+            this.item.selected = false;
+            paper.view.setCenter(this.item.bounds.center);
+            let margin = 100;
+            let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height);
+            paper.view.zoom = 1 / ratio;
+            // var image = new Image()
+            // image.src = paper.view.element.toDataURL()
+            // let w = window.open("")
+            // w.document.write(image.outerHTML)
+            this.shape = this.renderer.createSprite(paper.view.element);
+            // paper.project.clear()
+            this.shape.setPosition(Tipibot_1.tipibot.drawArea.getBounds().getCenter());
+        }
+        else {
+            this.item.selected = false;
+            this.item.visible = true;
+            let raster = this.item.rasterize(paper.project.view.resolution);
+            raster.sendToBack();
+            this.shape = this.renderer.createShape(raster);
+            this.item.selected = Plot.showPoints;
+            this.item.visible = Plot.showPoints;
+        }
     }
     filter() {
         if (this.originalItem == null && (Settings_1.Settings.plot.subdivide || Settings_1.Settings.plot.flatten)) {
@@ -1229,7 +1175,6 @@ class Plot extends InteractiveItem_1.InteractiveItem {
     subdivide() {
         if (Settings_1.Settings.plot.subdivide) {
             this.subdivideItem(this.item, Settings_1.Settings.plot.maxSegmentLength);
-            this.item.selected = true;
         }
     }
     subdividePath(path, maxSegmentLength) {
@@ -1248,7 +1193,6 @@ class Plot extends InteractiveItem_1.InteractiveItem {
     flatten() {
         if (Settings_1.Settings.plot.flatten) {
             this.flattenItem(this.item, Settings_1.Settings.plot.flattenPrecision);
-            this.item.selected = true;
         }
     }
     flattenPath(path, flattenPrecision) {
@@ -1273,9 +1217,24 @@ class Plot extends InteractiveItem_1.InteractiveItem {
     stop() {
         Communication_1.communication.interpreter.sendStop();
     }
+    showPoints(show) {
+        this.item.selected = show;
+        this.item.visible = show;
+    }
     rotate() {
         this.item.rotate(90);
         this.updateShape();
+        this.updateItemPositionAndGUI();
+    }
+    scale(value) {
+        this.item.applyMatrix = false;
+        this.item.scaling = new paper.Point(value, value);
+        this.updateShape();
+        this.updateItemPositionAndGUI();
+    }
+    center() {
+        this.shape.setPosition(Tipibot_1.tipibot.drawArea.getBounds().getCenter());
+        this.updateItemPositionAndGUI();
     }
     flipX() {
         this.item.scale(-1, 1);
@@ -1286,12 +1245,14 @@ class Plot extends InteractiveItem_1.InteractiveItem {
         this.updateShape();
     }
     setX(x) {
-        this.item.position.x = x;
-        this.shape.setPosition(this.item.position);
+        let drawArea = Tipibot_1.tipibot.drawArea.getBounds();
+        this.shape.setX(drawArea.topLeft().x + x + this.shape.getWidth() / 2);
+        this.updateItemPosition();
     }
     setY(y) {
-        this.item.position.y = y;
-        this.shape.setPosition(this.item.position);
+        let drawArea = Tipibot_1.tipibot.drawArea.getBounds();
+        this.shape.setY(drawArea.topLeft().y + y + this.shape.getHeight() / 2);
+        this.updateItemPosition();
     }
     clear() {
         super.delete();
@@ -1303,30 +1264,36 @@ class Plot extends InteractiveItem_1.InteractiveItem {
             this.item.remove();
         }
         this.item = null;
-        if (Plot.currentPlot == this) {
-            Plot.currentPlot = null;
+        if (PlotInterface_1.PlotInterface.currentPlot == this) {
+            PlotInterface_1.PlotInterface.currentPlot = null;
         }
     }
 }
 Plot.gui = null;
-Plot.currentPlot = null;
+Plot.showPoints = false;
+Plot.transformFolder = null;
 exports.Plot = Plot;
 class SVGPlot extends Plot {
     constructor(svg, renderer = SVGPlot.renderer) {
         super(renderer, svg);
-        Plot.currentPlot = this;
+        PlotInterface_1.PlotInterface.currentPlot = this;
         if (SVGPlot.svgPlot != null) {
             SVGPlot.svgPlot.clear();
             SVGPlot.svgPlot = null;
         }
         SVGPlot.svgPlot = this;
-        // paper.project.layers[0].addChild(svg)
+        paper.project.layers[0].addChild(svg);
+        svg.sendToBack();
     }
     static onImageLoad(event) {
         let svg = paper.project.importSVG(event.target.result);
         let svgPlot = new SVGPlot(svg);
-        svg.remove();
-        paper.project.clear();
+        svgPlot.center();
+        // Hack: Find a better way to handle ThreeRenderer and PaperRenderer
+        if (this.renderer instanceof Renderers_1.ThreeRenderer) {
+            svg.remove();
+            paper.project.clear();
+        }
         SVGPlot.gui.getController('Draw').show();
     }
     static handleFileSelect(event) {
@@ -1351,12 +1318,13 @@ class SVGPlot extends Plot {
         SVGPlot.svgPlot.clear();
         SVGPlot.svgPlot = null;
         SVGPlot.gui.getController('Draw').name('Draw');
+        SVGPlot.gui.getController('Draw').hide();
     }
     static drawClicked(event) {
-        if (Plot.currentPlot != null) {
-            if (!Plot.currentPlot.plotting) {
+        if (PlotInterface_1.PlotInterface.currentPlot != null) {
+            if (!PlotInterface_1.PlotInterface.currentPlot.plotting) {
                 SVGPlot.gui.getController('Draw').name('Stop & Clear queue');
-                Plot.currentPlot.plot();
+                PlotInterface_1.PlotInterface.currentPlot.plot();
             }
             else {
                 SVGPlot.gui.getController('Draw').name('Draw');
@@ -1501,6 +1469,235 @@ exports.SVGPlot = SVGPlot;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const Shapes_1 = __webpack_require__(16);
+const Pen_1 = __webpack_require__(4);
+const RendererInterface_1 = __webpack_require__(15);
+class PaperRenderer extends RendererInterface_1.Renderer {
+    constructor() {
+        super();
+        this.canvas = document.createElement('canvas');
+        let containerJ = $('#canvas');
+        this.canvas.width = containerJ.width();
+        this.canvas.height = containerJ.height();
+        containerJ.get(0).appendChild(this.canvas);
+        paper.setup(this.canvas);
+        this.tipibotLayer = new paper.Layer();
+        this.dragging = false;
+        this.previousPosition = new paper.Point(0, 0);
+    }
+    centerOnTipibot(tipibot, zoom = true) {
+        if (zoom) {
+            let margin = 100;
+            let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio);
+            paper.view.zoom = 1 / ratio;
+        }
+        paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2));
+    }
+    getDomElement() {
+        return paper.view.element;
+    }
+    createRectangle(rectangle) {
+        return new Shapes_1.PaperRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.tipibotLayer);
+    }
+    createCircle(x, y, radius, nSegments = 12) {
+        return new Shapes_1.PaperCircle(x, y, radius, this.tipibotLayer);
+    }
+    createPen(x, y, tipibotWidth) {
+        let pen = new Pen_1.PaperPen(this);
+        pen.initialize(x, y, tipibotWidth, this.tipibotLayer);
+        return pen;
+    }
+    createTarget(x, y, radius) {
+        return new Shapes_1.PaperTarget(x, y, radius, this.tipibotLayer);
+    }
+    createSprite(canvas) {
+        return new Shapes_1.PaperSprite(canvas);
+    }
+    createShape(item) {
+        return new Shapes_1.PaperShape(item);
+    }
+    createDrawingLayer() {
+        this.drawingLayer = new paper.Layer();
+        this.drawingLayer.moveBelow(this.tipibotLayer);
+    }
+    windowResize() {
+        let containerJ = $('#canvas');
+        let width = containerJ.width();
+        let height = containerJ.height();
+        let canvasJ = $(this.canvas);
+        canvasJ.width(width);
+        canvasJ.height(height);
+        paper.view.viewSize = new paper.Size(width, height);
+    }
+    mouseDown(event) {
+        this.dragging = true;
+        this.previousPosition = this.getMousePosition(event);
+    }
+    mouseMove(event) {
+        if (event.buttons == 4 || event.shiftKey && this.dragging) {
+            let position = this.getMousePosition(event);
+            paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom));
+            paper.view.draw();
+            this.previousPosition.x = position.x;
+            this.previousPosition.y = position.y;
+        }
+    }
+    mouseUp(event) {
+        this.dragging = false;
+    }
+    mouseLeave(event) {
+        this.dragging = false;
+    }
+    mouseWheel(event) {
+        if (event.target != this.getDomElement()) {
+            return;
+        }
+        paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500));
+    }
+    render() {
+    }
+}
+exports.PaperRenderer = PaperRenderer;
+class ThreeRenderer extends RendererInterface_1.Renderer {
+    constructor() {
+        super();
+        // Setup paper to be able to call paper.project.importSVG()
+        let paperCanvas = document.createElement('canvas');
+        paper.setup(paperCanvas);
+        this.dragging = false;
+        this.previousPosition = new THREE.Vector2();
+        let containerJ = $('#canvas');
+        let width = containerJ.width();
+        let height = containerJ.height();
+        // this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        this.camera = new THREE.OrthographicCamera(0, width, 0, height, -500, 1000);
+        this.scene = new THREE.Scene();
+        this.lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+        let ambientLight = new THREE.AmbientLight(Math.random() * 0x10);
+        this.scene.add(ambientLight);
+        this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        console.log(width, height);
+        this.renderer.setSize(width, height);
+        containerJ.append(this.renderer.domElement);
+        // var spriteMap = new THREE.TextureLoader().load( "out.png" );
+        // spriteMap.minFilter = THREE.LinearFilter;
+        // var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
+        // let sprite = new THREE.Sprite( spriteMaterial );
+        // sprite.scale.set(500, 500, 1)
+        // this.scene.add( sprite );
+    }
+    centerOnTipibot(tipibot, zoom = true) {
+        this.setCameraCenterTo(new THREE.Vector3(tipibot.width / 2, tipibot.height / 2, 0));
+        if (zoom) {
+            let margin = 100;
+            let size = this.renderer.getSize();
+            let ratio = Math.max((tipibot.width + margin) / size.width, (tipibot.height + margin) / size.height);
+            this.camera.zoom = 1 / ratio;
+            this.camera.updateProjectionMatrix();
+        }
+    }
+    getDomElement() {
+        return this.renderer.domElement;
+    }
+    createRectangle(rectangle) {
+        return new Shapes_1.ThreeRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.scene, this.lineMaterial);
+    }
+    createCircle(x, y, radius, nSegments = 12) {
+        return new Shapes_1.ThreeCircle(x, y, radius, nSegments, this.scene, this.lineMaterial);
+    }
+    createPen(x, y, tipibotWidth) {
+        let pen = new Pen_1.ThreePen(this);
+        pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial);
+        return pen;
+    }
+    createSprite(canvas) {
+        return new Shapes_1.ThreeSprite(this.scene, canvas);
+    }
+    createTarget(x, y, radius) {
+        return new Shapes_1.ThreeTarget(x, y, radius, 12, this.scene);
+    }
+    createShape(item, material = this.lineMaterial) {
+        return new Shapes_1.ThreeShape(item, this.scene, material);
+    }
+    setCameraCenterTo(point) {
+        let size = this.renderer.getSize();
+        this.camera.position.x = point.x - size.width / 2;
+        this.camera.position.y = point.y - size.height / 2;
+        this.camera.position.z = point.z;
+    }
+    getWorldPosition(event) {
+        let size = this.renderer.getSize();
+        let windowCenter = new paper.Point(size.width / 2, size.height / 2);
+        let windowOrigin = windowCenter.subtract(windowCenter.divide(this.camera.zoom).subtract(this.camera.position));
+        let delta = this.getMousePosition(event).divide(this.camera.zoom);
+        return windowOrigin.add(delta);
+    }
+    windowResize() {
+        let containerJ = $('#canvas');
+        let width = containerJ.width();
+        let height = containerJ.height();
+        this.camera.left = 0;
+        this.camera.right = width;
+        this.camera.top = 0;
+        this.camera.bottom = height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    }
+    mouseDown(event) {
+        this.dragging = true;
+        this.previousPosition.x = event.clientX;
+        this.previousPosition.y = event.clientY;
+    }
+    mouseMove(event) {
+        if (event.buttons == 4 || event.shiftKey && this.dragging) {
+            this.camera.position.x += (this.previousPosition.x - event.clientX) / this.camera.zoom;
+            this.camera.position.y += (this.previousPosition.y - event.clientY) / this.camera.zoom;
+            this.previousPosition.x = event.clientX;
+            this.previousPosition.y = event.clientY;
+        }
+    }
+    mouseUp(event) {
+        this.dragging = false;
+    }
+    mouseLeave(event) {
+        this.dragging = false;
+    }
+    mouseWheel(event) {
+        if (event.target != this.getDomElement()) {
+            return;
+        }
+        this.camera.zoom += (event.deltaY / 500);
+        this.camera.zoom = Math.max(0.1, Math.min(5, this.camera.zoom));
+        this.camera.updateProjectionMatrix();
+    }
+    render() {
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+exports.ThreeRenderer = ThreeRenderer;
+
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const InteractiveItem_1 = __webpack_require__(3);
+class PlotInterface extends InteractiveItem_1.InteractiveItem {
+}
+exports.PlotInterface = PlotInterface;
+
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const Communication_1 = __webpack_require__(1);
 class CommandDisplay {
     constructor() {
@@ -1557,7 +1754,7 @@ exports.CommandDisplay = CommandDisplay;
 
 
 /***/ }),
-/* 7 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1672,10 +1869,14 @@ class GUI {
     }
     addFileSelectorButton(name, fileType, callback) {
         let divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "'/>");
-        let button = this.addButton(name, () => divJ.click());
-        $(button.getDomElement()).append(divJ);
+        let button = this.addButton(name, (event) => divJ.click());
+        // $(button.getDomElement()).append(divJ)
+        divJ.insertAfter(button.getParentDomElement());
         divJ.hide();
-        divJ.change(callback);
+        divJ.change((event) => {
+            callback(event);
+            divJ.val('');
+        });
         return button;
     }
     addSlider(name, value, min, max, step = null) {
@@ -1731,7 +1932,7 @@ exports.GUI = GUI;
 
 
 /***/ }),
-/* 8 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1990,13 +2191,12 @@ exports.CommeUnDessein = CommeUnDessein;
 
 
 /***/ }),
-/* 9 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Communication_1 = __webpack_require__(1);
 const Tipibot_1 = __webpack_require__(2);
 class Move {
     constructor(telescreen) {
@@ -2137,18 +2337,18 @@ class Telescreen {
         this.modeController.updateDisplay();
     }
     connect(port) {
-        for (let serialPort of Communication_1.communication.serialPorts) {
-            if (serialPort != port) {
-                Communication_1.communication.socket.emit('command', 'open ' + serialPort + ' ' + Communication_1.SERIAL_COMMUNICATION_SPEED);
-            }
-        }
+        // for(let serialPort of communication.serialPorts) {
+        // 	if(serialPort != port) {
+        // 		communication.socket.emit('command', 'open ' + serialPort + ' ' + SERIAL_COMMUNICATION_SPEED)
+        // 	}
+        // }
     }
     disconnect() {
-        for (let serialPort of Communication_1.communication.serialPorts) {
-            if (serialPort != Communication_1.communication.interpreter.serialPort) {
-                Communication_1.communication.socket.emit('command', 'close ' + serialPort);
-            }
-        }
+        // for(let serialPort of communication.serialPorts) {
+        // 	if(serialPort != communication.interpreter.serialPort) {
+        // 		communication.socket.emit('command', 'close ' + serialPort)
+        // 	}
+        // }
     }
     messageReceived(message) {
         let position = Tipibot_1.tipibot.getPosition();
@@ -2180,223 +2380,7 @@ exports.Telescreen = Telescreen;
 
 
 /***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const Shapes_1 = __webpack_require__(15);
-const Pen_1 = __webpack_require__(4);
-const RendererInterface_1 = __webpack_require__(14);
-class PaperRenderer extends RendererInterface_1.Renderer {
-    constructor() {
-        super();
-        this.canvas = document.createElement('canvas');
-        let containerJ = $('#canvas');
-        this.canvas.width = containerJ.width();
-        this.canvas.height = containerJ.height();
-        containerJ.get(0).appendChild(this.canvas);
-        paper.setup(this.canvas);
-        this.tipibotLayer = new paper.Layer();
-        this.dragging = false;
-        this.previousPosition = new paper.Point(0, 0);
-    }
-    centerOnTipibot(tipibot, zoom = true) {
-        if (zoom) {
-            let margin = 100;
-            let ratio = Math.max((tipibot.width + margin) / this.canvas.width, (tipibot.height + margin) / this.canvas.height);
-            paper.view.zoom = 1 / ratio;
-        }
-        paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2));
-    }
-    getDomElement() {
-        return paper.view.element;
-    }
-    createRectangle(rectangle) {
-        return new Shapes_1.PaperRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.tipibotLayer);
-    }
-    createCircle(x, y, radius, nSegments = 12) {
-        return new Shapes_1.PaperCircle(x, y, radius, this.tipibotLayer);
-    }
-    createPen(x, y, tipibotWidth) {
-        let pen = new Pen_1.PaperPen(this);
-        pen.initialize(x, y, tipibotWidth, this.tipibotLayer);
-        return pen;
-    }
-    createTarget(x, y, radius) {
-        return new Shapes_1.PaperTarget(x, y, radius, this.tipibotLayer);
-    }
-    createSprite(canvas) {
-        return new Shapes_1.PaperSprite(canvas);
-    }
-    createShape(item) {
-        return new Shapes_1.PaperShape(item);
-    }
-    createDrawingLayer() {
-        this.drawingLayer = new paper.Layer();
-        this.drawingLayer.moveBelow(this.tipibotLayer);
-    }
-    windowResize() {
-        let containerJ = $('#canvas');
-        let width = containerJ.width();
-        let height = containerJ.height();
-        let canvasJ = $(this.canvas);
-        canvasJ.width(width);
-        canvasJ.height(height);
-        paper.view.viewSize = new paper.Size(width, height);
-    }
-    mouseDown(event) {
-        this.dragging = true;
-        this.previousPosition = this.getMousePosition(event);
-    }
-    mouseMove(event) {
-        if (event.buttons == 4 && this.dragging) {
-            let position = this.getMousePosition(event);
-            paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom));
-            paper.view.draw();
-            this.previousPosition.x = position.x;
-            this.previousPosition.y = position.y;
-        }
-    }
-    mouseUp(event) {
-        this.dragging = false;
-    }
-    mouseLeave(event) {
-        this.dragging = false;
-    }
-    mouseWheel(event) {
-        if (event.target != this.getDomElement()) {
-            return;
-        }
-        paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500));
-    }
-    render() {
-    }
-}
-exports.PaperRenderer = PaperRenderer;
-class ThreeRenderer extends RendererInterface_1.Renderer {
-    constructor() {
-        super();
-        // Setup paper to be able to call paper.project.importSVG()
-        let paperCanvas = document.createElement('canvas');
-        paper.setup(paperCanvas);
-        this.dragging = false;
-        this.previousPosition = new THREE.Vector2();
-        let containerJ = $('#canvas');
-        let width = containerJ.width();
-        let height = containerJ.height();
-        // this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-        this.camera = new THREE.OrthographicCamera(0, width, 0, height, -500, 1000);
-        this.scene = new THREE.Scene();
-        this.lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-        let ambientLight = new THREE.AmbientLight(Math.random() * 0x10);
-        this.scene.add(ambientLight);
-        this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        console.log(width, height);
-        this.renderer.setSize(width, height);
-        containerJ.append(this.renderer.domElement);
-        // var spriteMap = new THREE.TextureLoader().load( "out.png" );
-        // spriteMap.minFilter = THREE.LinearFilter;
-        // var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: 0xffffff } );
-        // let sprite = new THREE.Sprite( spriteMaterial );
-        // sprite.scale.set(500, 500, 1)
-        // this.scene.add( sprite );
-    }
-    centerOnTipibot(tipibot, zoom = true) {
-        this.setCameraCenterTo(new THREE.Vector3(tipibot.width / 2, tipibot.height / 2, 0));
-        if (zoom) {
-            let margin = 100;
-            let size = this.renderer.getSize();
-            let ratio = Math.max((tipibot.width + margin) / size.width, (tipibot.height + margin) / size.height);
-            this.camera.zoom = 1 / ratio;
-            this.camera.updateProjectionMatrix();
-        }
-    }
-    getDomElement() {
-        return this.renderer.domElement;
-    }
-    createRectangle(rectangle) {
-        return new Shapes_1.ThreeRectangle(rectangle.x, rectangle.y, rectangle.width, rectangle.height, this.scene, this.lineMaterial);
-    }
-    createCircle(x, y, radius, nSegments = 12) {
-        return new Shapes_1.ThreeCircle(x, y, radius, nSegments, this.scene, this.lineMaterial);
-    }
-    createPen(x, y, tipibotWidth) {
-        let pen = new Pen_1.ThreePen(this);
-        pen.initialize(x, y, tipibotWidth, this.camera, this.scene, this.lineMaterial);
-        return pen;
-    }
-    createSprite(canvas) {
-        return new Shapes_1.ThreeSprite(this.scene, canvas);
-    }
-    createTarget(x, y, radius) {
-        return new Shapes_1.ThreeTarget(x, y, radius, 12, this.scene);
-    }
-    createShape(item, material = this.lineMaterial) {
-        return new Shapes_1.ThreeShape(item, this.scene, material);
-    }
-    setCameraCenterTo(point) {
-        let size = this.renderer.getSize();
-        this.camera.position.x = point.x - size.width / 2;
-        this.camera.position.y = point.y - size.height / 2;
-        this.camera.position.z = point.z;
-    }
-    getWorldPosition(event) {
-        let size = this.renderer.getSize();
-        let windowCenter = new paper.Point(size.width / 2, size.height / 2);
-        let windowOrigin = windowCenter.subtract(windowCenter.divide(this.camera.zoom).subtract(this.camera.position));
-        let delta = this.getMousePosition(event).divide(this.camera.zoom);
-        return windowOrigin.add(delta);
-    }
-    windowResize() {
-        let containerJ = $('#canvas');
-        let width = containerJ.width();
-        let height = containerJ.height();
-        this.camera.left = 0;
-        this.camera.right = width;
-        this.camera.top = 0;
-        this.camera.bottom = height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
-    }
-    mouseDown(event) {
-        this.dragging = true;
-        this.previousPosition.x = event.clientX;
-        this.previousPosition.y = event.clientY;
-    }
-    mouseMove(event) {
-        if (event.buttons == 4 || event.shiftKey && this.dragging) {
-            this.camera.position.x += (this.previousPosition.x - event.clientX) / this.camera.zoom;
-            this.camera.position.y += (this.previousPosition.y - event.clientY) / this.camera.zoom;
-            this.previousPosition.x = event.clientX;
-            this.previousPosition.y = event.clientY;
-        }
-    }
-    mouseUp(event) {
-        this.dragging = false;
-    }
-    mouseLeave(event) {
-        this.dragging = false;
-    }
-    mouseWheel(event) {
-        if (event.target != this.getDomElement()) {
-            return;
-        }
-        this.camera.zoom += (event.deltaY / 500);
-        this.camera.zoom = Math.max(0.1, Math.min(5, this.camera.zoom));
-        this.camera.updateProjectionMatrix();
-    }
-    render() {
-        this.renderer.render(this.scene, this.camera);
-    }
-}
-exports.ThreeRenderer = ThreeRenderer;
-
-
-/***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2429,7 +2413,8 @@ class Interpreter {
             return;
         }
         document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }));
-        this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data);
+        // this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
+        this.socket.emit('data', command.data);
     }
     messageReceived(message) {
         this.serialInput += message;
@@ -2542,14 +2527,14 @@ exports.Interpreter = Interpreter;
 
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
-const Interpreter_1 = __webpack_require__(11);
+const Interpreter_1 = __webpack_require__(12);
 const commands = {
     CMD_CHANGELENGTH: "C01,",
     CMD_CHANGEPENWIDTH: "C02,",
@@ -2745,7 +2730,7 @@ exports.Polargraph = Polargraph;
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2764,15 +2749,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { THREE } from "../node_modules/three/build/three"
 const Settings_1 = __webpack_require__(0);
 const Tipibot_1 = __webpack_require__(2);
-const Renderers_1 = __webpack_require__(10);
+const Renderers_1 = __webpack_require__(6);
 const Pen_1 = __webpack_require__(4);
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
-const CommandDisplay_1 = __webpack_require__(6);
+const CommandDisplay_1 = __webpack_require__(8);
 const InteractiveItem_1 = __webpack_require__(3);
-const GUI_1 = __webpack_require__(7);
-const CommeUnDessein_1 = __webpack_require__(8);
-const Telescreen_1 = __webpack_require__(9);
+const GUI_1 = __webpack_require__(9);
+const CommeUnDessein_1 = __webpack_require__(10);
+const Telescreen_1 = __webpack_require__(11);
 let communication = null;
 let container = null;
 let renderer = null;
@@ -2810,7 +2795,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         Settings_1.settingsManager.createGUI(gui);
         Plot_1.SVGPlot.createGUI(gui);
         Plot_1.Plot.createGUI(Plot_1.SVGPlot.gui);
-        renderer = new Renderers_1.ThreeRenderer();
+        renderer = new Renderers_1.PaperRenderer();
         Plot_1.SVGPlot.renderer = renderer;
         communication.setTipibot(Tipibot_1.tipibot);
         Tipibot_1.tipibot.initialize(renderer, commandFolder);
@@ -2893,7 +2878,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2952,7 +2937,7 @@ exports.Renderer = Renderer;
 
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3023,6 +3008,18 @@ class Shape {
     getPosition() {
         return this.group.position;
     }
+    getX() {
+        return this.group.position.x;
+    }
+    getY() {
+        return this.group.position.y;
+    }
+    setX(x) {
+        this.group.position.x = x;
+    }
+    setY(y) {
+        this.group.position.y = y;
+    }
     setPosition(position) {
         this.group.position = position;
     }
@@ -3031,6 +3028,12 @@ class Shape {
     }
     getBounds() {
         return Rect.fromPaperRect(this.group.bounds);
+    }
+    getWidth() {
+        return this.group.bounds.width;
+    }
+    getHeight() {
+        return this.group.bounds.height;
     }
 }
 exports.Shape = Shape;
@@ -3191,6 +3194,24 @@ class PaperShape extends Shape {
     }
     getBounds() {
         return Rect.fromPaperRect(this.item.bounds);
+    }
+    getX() {
+        return this.item.position.x;
+    }
+    getY() {
+        return this.item.position.y;
+    }
+    setX(x) {
+        this.item.position.x = x;
+    }
+    setY(y) {
+        this.item.position.y = y;
+    }
+    getWidth() {
+        return this.item.bounds.width;
+    }
+    getHeight() {
+        return this.item.bounds.height;
     }
 }
 exports.PaperShape = PaperShape;
@@ -3535,6 +3556,24 @@ class ThreeShape extends Shape {
     }
     getBounds() {
         return this.rectangle;
+    }
+    getX() {
+        return this.rectangle.x;
+    }
+    getY() {
+        return this.rectangle.y;
+    }
+    setX(x) {
+        this.setPosition(new paper.Point(x, this.getY()));
+    }
+    setY(y) {
+        this.setPosition(new paper.Point(this.getX(), y));
+    }
+    getWidth() {
+        return this.rectangle.width;
+    }
+    getHeight() {
+        return this.rectangle.height;
     }
 }
 exports.ThreeShape = ThreeShape;

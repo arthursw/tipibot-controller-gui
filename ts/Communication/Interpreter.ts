@@ -40,7 +40,7 @@ export class Interpreter {
 		this.tipibot = tipibot;
 	}
 
-	connectionOpened(description: string) {
+	connectionOpened(description?: string) {
 
 	}
 
@@ -49,7 +49,8 @@ export class Interpreter {
 			return
 		}
 		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
-		this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
+		// this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
+		this.socket.emit('data', command.data)
 	}
 
 	messageReceived(message: string) {

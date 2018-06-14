@@ -1,25 +1,27 @@
+import { PlotInterface } from "./PlotInterface"
 import { Tipibot, tipibot } from "./Tipibot"
 import { Settings } from "./Settings"
 import { InteractiveItem } from "./InteractiveItem"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
 import { Renderer } from "./RendererInterface"
+import { ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from './Pen'
 
 
-export class Plot extends InteractiveItem {
+export class Plot extends PlotInterface {
 
 	static gui: GUI = null
-
-	static currentPlot: Plot = null
+	static showPoints = false
+	static transformFolder: GUI = null
 
 	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
 		return (value: any)=> { 
-			if(Plot.currentPlot != null) { 
+			if(PlotInterface.currentPlot != null) { 
 				if(addValue) {
 					parameters.unshift(value)
 				}
-				f.apply(Plot.currentPlot, parameters)
+				f.apply(PlotInterface.currentPlot, parameters)
 			} 
 		}
 	}
@@ -27,31 +29,25 @@ export class Plot extends InteractiveItem {
 	public static createGUI(gui: GUI) {
 		Plot.gui = gui
 		let filterFolder = gui.addFolder('Filter')
-		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.onFilterChange)
-		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.onFilterChange)
-		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.onFilterChange)
-		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.onFilterChange)
+		filterFolder.add(Plot, 'showPoints').name('Show points').onChange(Plot.createCallback(Plot.prototype.showPoints, true))
+		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.createCallback(Plot.prototype.filter))
+		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.createCallback(Plot.prototype.filter))
+		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.createCallback(Plot.prototype.filter))
+		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.createCallback(Plot.prototype.filter))
 
 		let transformFolder = gui.addFolder('Transform')
-		transformFolder.addSlider('X', 0, 0, Settings.tipibot.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
-		transformFolder.addSlider('Y', 0, 0, Settings.tipibot.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
+		Plot.transformFolder = transformFolder
+		transformFolder.addButton('Center', Plot.createCallback(Plot.prototype.center))
+		transformFolder.addSlider('X', 0, 0, Settings.drawArea.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
+		transformFolder.addSlider('Y', 0, 0, Settings.drawArea.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
 		
 		transformFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX))
 		transformFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY))
 
 		transformFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate))
 
-		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange((value: number) => {
-			Plot.currentPlot.item.applyMatrix = false
-			Plot.currentPlot.item.scaling = new paper.Point(value, value)
-		})
+		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(Plot.createCallback(Plot.prototype.scale, true))
 
-	}
-
-	public static onFilterChange() {
-		if(Plot.currentPlot != null) {
-			Plot.currentPlot.filter()
-		}
 	}
 
 	originalItem: paper.Item 			// Not flattened
@@ -70,6 +66,32 @@ export class Plot extends InteractiveItem {
 		let result = super.mouseDown(event)
 		this.item.selected = this.dragging
 		return result
+	}
+
+	updateItemPosition() {
+		this.item.position = this.shape.getBounds().getCenter()
+	}
+
+	updatePositonGUI(drawAreaTopLeft = tipibot.drawArea.getBounds().topLeft()) {
+		Plot.transformFolder.getController('X').setValue(this.item.bounds.left - drawAreaTopLeft.x, false)
+		Plot.transformFolder.getController('Y').setValue(this.item.bounds.top - drawAreaTopLeft.y, false)
+	}
+
+	updateItemPositionAndGUI() {
+		this.updateItemPosition()
+		this.updatePositonGUI()
+	}
+
+	drag(delta: paper.Point) {
+		let result = super.drag(delta);
+		this.updateItemPositionAndGUI()
+		return result;
+	}
+
+	mouseUp(event:MouseEvent): boolean {
+		let result = super.mouseUp(event);
+		this.updateItemPositionAndGUI()
+		return result;
 	}
 
 	itemMustBeDrawn(item: paper.Path | paper.Shape) {
@@ -93,30 +115,47 @@ export class Plot extends InteractiveItem {
 		if(this.shape != null) {
 			this.shape.remove()
 		}
-		// this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
-		// this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
 
-		// paper.project.clear()
-		paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000))
-		paper.project.activeLayer.addChild(this.item)
-		paper.project.deselectAll()
-		this.item.selected = false
-		paper.view.setCenter(this.item.bounds.center)
+		this.item.strokeWidth = Settings.tipibot.penWidth
 
-		let margin = 100
-		let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height)
-		paper.view.zoom = 1 / ratio
+		// HACK !!!
+		// Todo: create two SvgPlot classes : one for ThreeRenderers and one for PaperRenderers
+		if(this.renderer instanceof ThreeRenderer) {
 
-		// var image = new Image()
-		// image.src = paper.view.element.toDataURL()
+			// this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
+			// this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
 
-		// let w = window.open("")
-		// w.document.write(image.outerHTML)
+			// paper.project.clear()
+			paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000))
+			paper.project.activeLayer.addChild(this.item)
+			paper.project.deselectAll()
+			this.item.selected = false
+			paper.view.setCenter(this.item.bounds.center)
 
-		this.shape = this.renderer.createSprite(paper.view.element)
-		// paper.project.clear()
-		
-		this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+			let margin = 100
+			let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height)
+			paper.view.zoom = 1 / ratio
+
+			// var image = new Image()
+			// image.src = paper.view.element.toDataURL()
+
+			// let w = window.open("")
+			// w.document.write(image.outerHTML)
+
+			this.shape = this.renderer.createSprite(paper.view.element)
+			// paper.project.clear()
+			
+			this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+
+		} else {
+			this.item.selected = false
+			this.item.visible = true
+			let raster = this.item.rasterize(paper.project.view.resolution)
+			raster.sendToBack()
+			this.shape = this.renderer.createShape(raster);
+			this.item.selected = Plot.showPoints
+			this.item.visible = Plot.showPoints
+		}
 	}
 
 	filter() {
@@ -157,7 +196,6 @@ export class Plot extends InteractiveItem {
 	subdivide() {
 		if(Settings.plot.subdivide) {
 			this.subdivideItem(this.item, Settings.plot.maxSegmentLength)
-			this.item.selected = true
 		}
 	}
 	
@@ -179,7 +217,6 @@ export class Plot extends InteractiveItem {
 	flatten() {
 		if(Settings.plot.flatten) {
 			this.flattenItem(this.item, Settings.plot.flattenPrecision)
-			this.item.selected = true
 		}
 	}
 
@@ -212,9 +249,29 @@ export class Plot extends InteractiveItem {
 		communication.interpreter.sendStop()
 	}
 
+	showPoints(show: boolean) {
+		this.item.selected = show
+		this.item.visible = show
+	}
+
 	rotate() {
 		this.item.rotate(90)
 		this.updateShape()
+		this.updateItemPositionAndGUI()
+	}
+
+	scale(value: number) {
+
+		this.item.applyMatrix = false
+		this.item.scaling = new paper.Point(value, value)
+
+		this.updateShape()
+		this.updateItemPositionAndGUI()
+	}
+
+	center() {
+		this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
+		this.updateItemPositionAndGUI()
 	}
 
 	flipX() {
@@ -228,13 +285,15 @@ export class Plot extends InteractiveItem {
 	}
 	
 	setX(x: number) {
-		this.item.position.x = x
-		this.shape.setPosition(this.item.position)
+		let drawArea = tipibot.drawArea.getBounds()
+		this.shape.setX(drawArea.topLeft().x + x + this.shape.getWidth() / 2)
+		this.updateItemPosition()
 	}
 	
 	setY(y: number) {
-		this.item.position.y = y
-		this.shape.setPosition(this.item.position)
+		let drawArea = tipibot.drawArea.getBounds()
+		this.shape.setY(drawArea.topLeft().y + y + this.shape.getHeight() / 2)
+		this.updateItemPosition()
 	}
 
 	clear() {
@@ -247,8 +306,8 @@ export class Plot extends InteractiveItem {
 			this.item.remove()
 		}
 		this.item = null
-		if(Plot.currentPlot == this) {
-			Plot.currentPlot = null
+		if(PlotInterface.currentPlot == this) {
+			PlotInterface.currentPlot = null
 		}
 	}
 }
@@ -260,9 +319,16 @@ export class SVGPlot extends Plot {
 
 	public static onImageLoad(event: any) {
 		let svg = paper.project.importSVG(event.target.result)
+
 		let svgPlot = new SVGPlot(svg)
-		svg.remove()
-		paper.project.clear()
+		svgPlot.center()
+
+		// Hack: Find a better way to handle ThreeRenderer and PaperRenderer
+		if(this.renderer instanceof ThreeRenderer) {
+			svg.remove()
+			paper.project.clear()
+		}
+
 		SVGPlot.gui.getController('Draw').show()
 	}
 
@@ -294,13 +360,14 @@ export class SVGPlot extends Plot {
 		SVGPlot.svgPlot.clear()
 		SVGPlot.svgPlot = null
 		SVGPlot.gui.getController('Draw').name('Draw')
+		SVGPlot.gui.getController('Draw').hide()
 	}
 
 	public static drawClicked(event: any) {
-		if(Plot.currentPlot != null) {
-			if(!Plot.currentPlot.plotting) {
+		if(PlotInterface.currentPlot != null) {
+			if(!PlotInterface.currentPlot.plotting) {
 				SVGPlot.gui.getController('Draw').name('Stop & Clear queue')
-				Plot.currentPlot.plot()
+				PlotInterface.currentPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
 				communication.interpreter.stopAndClearQueue()
@@ -325,13 +392,14 @@ export class SVGPlot extends Plot {
 
 	constructor(svg: paper.Item, renderer: Renderer=SVGPlot.renderer) {
 		super(renderer, svg)
-		Plot.currentPlot = this
+		PlotInterface.currentPlot = this
 		if(SVGPlot.svgPlot != null) {
 			SVGPlot.svgPlot.clear()
 			SVGPlot.svgPlot = null
 		}
 		SVGPlot.svgPlot = this
-		// paper.project.layers[0].addChild(svg)
+		paper.project.layers[0].addChild(svg)
+		svg.sendToBack()
 	}
 
 
