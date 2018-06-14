@@ -9,16 +9,7 @@ import { Polargraph } from "./Polargraph"
 
 export const SERIAL_COMMUNICATION_SPEED = 57600
 
-let PORT = 6842
-
-// Read the port number from url hash to be able to set it from electron (when using it)
-if(window.location.hash.length > 0) {
-	const regex = /#port=(\d+)/gm;
-	let m = regex.exec(window.location.hash);
-	if(m != null) {
-		PORT = parseInt(m[1])
-	}
-}
+let PORT = window.localStorage.getItem('port') || 6842
 
 declare var io: any
 
