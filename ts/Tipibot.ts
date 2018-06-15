@@ -45,6 +45,10 @@ export class Tipibot implements TipibotInterface {
 		return point.multiply(this.stepsPerMm())
 	}
 
+	stepsToMm(point: paper.Point): paper.Point {
+		return point.multiply(this.mmPerSteps())
+	}
+
 	cartesianToLengths(point: paper.Point): paper.Point {
 		let lx2 = Settings.tipibot.width - point.x
 		return new paper.Point(Math.sqrt(point.x * point.x + point.y * point.y), Math.sqrt(lx2 * lx2 + point.y * point.y))

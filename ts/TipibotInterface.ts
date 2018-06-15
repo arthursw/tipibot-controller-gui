@@ -21,6 +21,7 @@ export interface TipibotInterface {
 	penDown: (servoDownValue?: number, servoDownTempoBefore?: number)=> void
 
 	mmToSteps(point: paper.Point): paper.Point
+	stepsToMm(point: paper.Point): paper.Point
 	cartesianToLengths(point: paper.Point): paper.Point
 	lengthsToCartesian(lengths: paper.Point): paper.Point
 

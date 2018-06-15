@@ -3,7 +3,16 @@ import { Interpreter } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {
 
-    sendSetPosition(point: paper.Point) {
+	connectionOpened(description: string) {
+		this.sendPenWidth(Settings.tipibot.penWidth)
+		this.sendSpecs()
+		this.sendSpeed()
+		this.sendSetPosition()
+
+		// this.startKeepingTipibotAwake()
+	}
+	
+    sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
 		this.queue('G92 X' + point.x + ' Y' + point.y + '\n')
     }
 

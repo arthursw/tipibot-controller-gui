@@ -3,6 +3,7 @@ import { Settings } from "../Settings"
 import { TipibotInterface} from "../TipibotInterface"
 import { Interpreter } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
+import { PenPlotter } from "./PenPlotter"
 
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
@@ -26,7 +27,8 @@ export class Communication {
 		this.portController = null
 		this.serialPorts = []
 		this.connectToArduinoCreateAgent()
-		this.interpreter = new Polargraph()
+		// this.interpreter = new Polargraph()
+		this.interpreter = new PenPlotter()
 		// this.createGUI()
 	}
 
