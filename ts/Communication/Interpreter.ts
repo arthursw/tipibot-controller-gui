@@ -40,8 +40,18 @@ export class Interpreter {
 		this.tipibot = tipibot;
 	}
 
-	connectionOpened(description?: string) {
+	connectionOpened() {
+		this.initialize()
+	}
 
+	initialize() {
+		this.sendPenWidth(Settings.tipibot.penWidth)
+		this.sendSpecs()
+		this.sendInvertXY()
+		// Initialize at home position; it is always possible to set position afterward
+		this.sendSetPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+		this.sendSpeedAndAcceleration()
+		this.tipibot.initializedCommunication = true
 	}
 
 	send(command: Command) {
@@ -138,16 +148,25 @@ export class Interpreter {
 		this.sendStop()
 	}
 
-    sendSetPosition(point: paper.Point) {
+    sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     }
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
+	}
+
+	sendMoveDirectMaxSpeed(point: paper.Point, callback: () => any = null) {
 	}
 
 	sendMoveLinear(point: paper.Point, callback: () => any = null) {
 	}
 
 	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
+	}
+	
+	sendAcceleration(acceleration: number=Settings.tipibot.acceleration) {
+	}
+
+	sendSpeedAndAcceleration(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
 	}
 
 	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
@@ -166,6 +185,12 @@ export class Interpreter {
 	}
 
 	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	}
+
+	sendInvertXY(invertX: boolean=Settings.tipibot.invertX, invertY: boolean=Settings.tipibot.invertY) {
+	}
+
+	sendProgressiveMicrosteps(progressiveMicrosteps: boolean = Settings.tipibot.progressiveMicrosteps) {
 	}
 
 	sendPause(delay: number) {

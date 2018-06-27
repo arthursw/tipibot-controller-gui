@@ -22,6 +22,7 @@ import { Communication } from "./Communication/Communication"
 import { CommandDisplay } from "./Communication/CommandDisplay"
 import { InteractiveItem } from "./InteractiveItem"
 import { GUI } from "./GUI"
+import { Console } from "./Console"
 import { Circle } from "./Shapes"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
@@ -70,6 +71,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 		gui = new GUI({ autoPlace: false })
 
+		// let console = new Console()
+		
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())
 		

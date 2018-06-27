@@ -3,7 +3,7 @@ import { Settings, settingsManager } from "./Settings"
 import { Rectangle, Circle, Target} from "./Shapes"
 import { Renderer } from "./RendererInterface"
 import { InteractiveItem } from "./InteractiveItem"
-import { Pen } from "./Pen"
+import { Pen, MoveType } from "./Pen"
 import { GUI, Controller } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
 import { PlotInterface } from "./PlotInterface"
@@ -12,8 +12,6 @@ export class Tipibot implements TipibotInterface {
 
 	gui:GUI = null
 	renderer: Renderer = null
-
-	isPenUp: boolean
 
 	tipibotArea: Rectangle
 	drawArea: Rectangle
@@ -27,18 +25,18 @@ export class Tipibot implements TipibotInterface {
 	settingPosition: boolean = false
 
 	initialPosition: paper.Point = null
+	initializedCommunication = false
 
 	constructor() {
-		this.isPenUp = true
 		this.moveToButtons = []
 	}
 
 	mmPerSteps() {
-		return Settings.tipibot.mmPerRev / Settings.tipibot.stepsPerRev;
+		return Settings.tipibot.mmPerRev / ( Settings.tipibot.stepsPerRev * Settings.tipibot.stepMultiplier );
 	}
 
 	stepsPerMm() {
-		return Settings.tipibot.stepsPerRev / Settings.tipibot.mmPerRev;
+		return ( Settings.tipibot.stepsPerRev * Settings.tipibot.stepMultiplier ) / Settings.tipibot.mmPerRev;
 	}
 
 	mmToSteps(point: paper.Point): paper.Point {
@@ -51,7 +49,8 @@ export class Tipibot implements TipibotInterface {
 
 	cartesianToLengths(point: paper.Point): paper.Point {
 		let lx2 = Settings.tipibot.width - point.x
-		return new paper.Point(Math.sqrt(point.x * point.x + point.y * point.y), Math.sqrt(lx2 * lx2 + point.y * point.y))
+		let lengths = new paper.Point(Math.sqrt(point.x * point.x + point.y * point.y), Math.sqrt(lx2 * lx2 + point.y * point.y))
+		return lengths
 	}
 
 	lengthsToCartesian(lengths: paper.Point): paper.Point {
@@ -76,6 +75,9 @@ export class Tipibot implements TipibotInterface {
 
 		gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
 		gui.addButton('Stop & Clear queue', () => communication.interpreter.stopAndClearQueue() )
+		
+		// DEBUG
+		gui.addButton('Send specs', () => communication.interpreter.connectionOpened() )
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -100,7 +102,7 @@ export class Tipibot implements TipibotInterface {
 	
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
-		if(this.isPenUp) {
+		if(this.pen.isPenUp) {
 			this.penDown(Settings.servo.position.down, Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback)
 		} else {
 			this.penUp(Settings.servo.position.up, Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback)
@@ -193,21 +195,47 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-    setPosition(point: paper.Point, sendChange=true) {
+	checkInitialized() {
+		if(!this.initializedCommunication) {
+			communication.interpreter.initialize()
+		}
+	}
+
+	setPosition(point: paper.Point, sendChange=true) {
 		this.pen.setPosition(point, false, false)
 		if(sendChange) {
+			this.checkInitialized()
 			communication.interpreter.sendSetPosition(point)
 		}
-    }
+	}
+
+	sendInvertXY() {
+		communication.interpreter.sendInvertXY()
+		communication.interpreter.sendSetPosition(this.getPosition())
+	}
+
+	sendProgressiveMicrosteps() {
+		communication.interpreter.sendProgressiveMicrosteps()
+	}
 
 	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
+		this.checkInitialized()
 		communication.interpreter.sendMoveDirect(point, callback)
 		if(movePen) {
 			this.pen.setPosition(point, true, false)
 		}
 	}
 
+	moveDirectMaxSpeed(point: paper.Point, callback: () => any = null, movePen=true) {
+		this.checkInitialized()
+		communication.interpreter.sendMoveDirectMaxSpeed(point, callback)
+		if(movePen) {
+			this.pen.setPosition(point, true, false)
+		}
+	}
+
 	moveLinear(point: paper.Point, callback: () => any = null, movePen=true) {
+		this.checkInitialized()
 		communication.interpreter.sendMoveLinear(point, callback)
 		if(movePen) {
 			this.pen.setPosition(point, true, false)
@@ -250,7 +278,7 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	tipibotSpecs() {
+	sendSpecs() {
 		communication.interpreter.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
 	}
 
@@ -263,18 +291,16 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
-		if(!this.isPenUp || force) {
-			communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
+		if(!this.pen.isPenUp || force) {
+			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 			this.penStateButton.setName('Pen down')
-			this.isPenUp = true
 		}
 	}
 
 	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
-		if(this.isPenUp || force) {
-			communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
+		if(this.pen.isPenUp || force) {
+			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 			this.penStateButton.setName('Pen up')
-			this.isPenUp = false
 		}
 	}
 
@@ -291,7 +317,7 @@ export class Tipibot implements TipibotInterface {
 		this.penUp(Settings.servo.position.up, Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
 		// this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
-		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, callback)
+		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, MoveType.Direct, callback)
 	}
 
 	motorsOff() {

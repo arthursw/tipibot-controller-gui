@@ -181,8 +181,9 @@ export class PaperRectangle extends Rectangle {
 		let position = new paper.Point(x, y)
 		let size = new paper.Size(width, height)
 		this.rectangle = paper.Path.Rectangle(position, size)
-		this.rectangle.strokeWidth = 1 
+		this.rectangle.strokeWidth = 0.5
 		this.rectangle.strokeColor = 'black'
+		this.rectangle.strokeScaling = false
 		this.group.addChild(this.rectangle)
 		if(layer) {
 			layer.addChild(this.group)
@@ -198,8 +199,9 @@ export class PaperCircle extends Circle {
 		this.group = new paper.Group()
 		let position = new paper.Point(x, y)
 		this.circle = paper.Path.Circle(position, radius)
-		this.circle.strokeWidth = 1 
+		this.circle.strokeWidth = 0.5
 		this.circle.strokeColor = 'black'
+		this.circle.strokeScaling = false
 		this.group.addChild(this.circle)
 		if(layer) {
 			layer.addChild(this.group)
@@ -236,20 +238,23 @@ export class PaperTarget extends Target {
 		this.circle = paper.Path.Circle(position, radius)
 		this.circle.strokeWidth = 1 
 		this.circle.strokeColor = 'black'
+		this.circle.strokeScaling = false
 		this.group.addChild(this.circle)
 
 		let hLine = new paper.Path()
 		hLine.add(new paper.Point(position.x - radius, position.y))
 		hLine.add(new paper.Point(position.x + radius, position.y))
-		hLine.strokeWidth = 1 
+		hLine.strokeWidth = 0.5
 		hLine.strokeColor = 'black'
+		hLine.strokeScaling = false
 		this.group.addChild(hLine)
 
 		let vLine = new paper.Path()
 		vLine.add(new paper.Point(position.x, position.y - radius))
 		vLine.add(new paper.Point(position.x, position.y + radius))
-		vLine.strokeWidth = 1 
+		vLine.strokeWidth = 0.5
 		vLine.strokeColor = 'black'
+		vLine.strokeScaling = false
 		this.group.addChild(vLine)
 		
 		if(layer) {

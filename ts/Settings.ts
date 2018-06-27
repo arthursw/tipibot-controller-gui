@@ -16,11 +16,14 @@ export let Settings = {
 		height: tipibotHeight,
 		homeX: tipibotWidth / 2,
 		homeY: paperHeight + homeY,
+		invertX: false,
+		invertY: false,
 		speed: 1440,
 		acceleration: 400,
 		stepsPerRev: 200,
 		stepMultiplier: 32,
 		mmPerRev: 96,
+		progressiveMicrosteps: false,
 		penWidth: 2
 	},
 	servo: {
@@ -121,11 +124,14 @@ export class SettingsManager {
 
 		let machineFolder = settingsFolder.addFolder('Machine')
 
+		machineFolder.add(Settings.tipibot, 'invertX').name('Invert X')
+		machineFolder.add(Settings.tipibot, 'invertY').name('Invert Y')
 		machineFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
 		machineFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
 		machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
 		machineFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier')
 		machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
+		machineFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
 
 		let controllers = this.getControllers()
 
@@ -177,21 +183,21 @@ export class SettingsManager {
 		this.tipibot.setHome(false)
 	}
 
-	settingChanged(parentNames: string[], name: string, value: any=null, finishChanged=false) {
+	settingChanged(parentNames: string[], name: string, value: any=null, changeFinished=false) {
 
 		// update sliders and transmit change to concerned object
 		if(parentNames[0] == 'Tipibot dimensions') {
 			if(name == 'width') {
 				this.tipibotPositionFolder.getController('x').max(value, false)
-				this.drawAreaDimensionsFolder.getController('width').max(value, finishChanged)
+				this.drawAreaDimensionsFolder.getController('width').max(value, changeFinished)
 			} else if(name == 'height') {
 				this.tipibotPositionFolder.getController('y').max(value, false)
-				this.drawAreaDimensionsFolder.getController('height').max(value, finishChanged)
-				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, finishChanged)
+				this.drawAreaDimensionsFolder.getController('height').max(value, changeFinished)
+				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, changeFinished)
 			}
 			if(name == 'width' || name == 'height') {
 				this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
-				this.tipibot.sizeChanged(finishChanged)
+				this.tipibot.sizeChanged(changeFinished)
 			}
 		} else if(parentNames[0] == 'Home') {
 			if(name == 'Position') {
@@ -203,32 +209,36 @@ export class SettingsManager {
 			}
 		} else if(parentNames[0] == 'Machine') {
 			if(name == 'speed' || name == 'acceleration') {
-				this.tipibot.speedChanged(finishChanged)
+				this.tipibot.speedChanged(changeFinished)
 			} else if(name == 'mmPerRev') {
-				this.tipibot.mmPerRevChanged(finishChanged)
+				this.tipibot.mmPerRevChanged(changeFinished)
 			} else if(name == 'stepsPerRev') {
-				this.tipibot.stepsPerRevChanged(finishChanged)
+				this.tipibot.stepsPerRevChanged(changeFinished)
 			} else if(name == 'stepMultiplier') {
-				this.tipibot.stepMultiplierChanged(finishChanged)
+				this.tipibot.stepMultiplierChanged(changeFinished)
 			} else if(name == 'penWidth') {
-				this.tipibot.penWidthChanged(finishChanged)
+				this.tipibot.penWidthChanged(changeFinished)
+			} else if(name == 'invertX' || name == 'invertY' && changeFinished) {
+				this.tipibot.sendInvertXY()
+			} else if(name == 'progressiveMicrosteps' && changeFinished) {
+				this.tipibot.sendProgressiveMicrosteps()
 			}
 		} else if(parentNames[0] == 'Position') {
 			if(name == 'x') {
-				this.tipibot.setX(value, finishChanged)
+				this.tipibot.setX(value, changeFinished)
 			} else if(name == 'y') {
-				this.tipibot.setY(value, finishChanged)
+				this.tipibot.setY(value, changeFinished)
 			}
 		} else if(parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down') ) {
-			if(finishChanged) {
-				this.tipibot.servoChanged(finishChanged)
+			if(changeFinished) {
+				this.tipibot.servoChanged(changeFinished)
 			}
 		} else if(parentNames[0] == 'Pen' && name == 'penWidth') {
-			if(finishChanged) {
+			if(changeFinished) {
 				this.tipibot.penWidthChanged(true)
 			}
 		} else if(parentNames[0] == 'Draw area dimensions') {
-			this.tipibot.drawAreaChanged(finishChanged)
+			this.tipibot.drawAreaChanged(changeFinished)
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		}
 		this.save(false)

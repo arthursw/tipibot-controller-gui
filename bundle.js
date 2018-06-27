@@ -85,11 +85,14 @@ exports.Settings = {
         height: tipibotHeight,
         homeX: tipibotWidth / 2,
         homeY: paperHeight + homeY,
+        invertX: false,
+        invertY: false,
         speed: 1440,
         acceleration: 400,
         stepsPerRev: 200,
         stepMultiplier: 32,
         mmPerRev: 96,
+        progressiveMicrosteps: false,
         penWidth: 2
     },
     servo: {
@@ -169,11 +172,14 @@ class SettingsManager {
         delaysDownFolder.add(exports.Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before');
         delaysDownFolder.add(exports.Settings.servo.delay.down, 'after', 0, 3000, 1).name('After');
         let machineFolder = settingsFolder.addFolder('Machine');
+        machineFolder.add(exports.Settings.tipibot, 'invertX').name('Invert X');
+        machineFolder.add(exports.Settings.tipibot, 'invertY').name('Invert Y');
         machineFolder.add(exports.Settings.tipibot, 'speed', 100, 10000, 1).name('Speed');
         machineFolder.add(exports.Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration');
         machineFolder.add(exports.Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.');
         machineFolder.add(exports.Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier');
         machineFolder.add(exports.Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.');
+        machineFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
         let controllers = this.getControllers();
         for (let controller of controllers) {
             let name = controller.getName();
@@ -228,21 +234,21 @@ class SettingsManager {
         }
         this.tipibot.setHome(false);
     }
-    settingChanged(parentNames, name, value = null, finishChanged = false) {
+    settingChanged(parentNames, name, value = null, changeFinished = false) {
         // update sliders and transmit change to concerned object
         if (parentNames[0] == 'Tipibot dimensions') {
             if (name == 'width') {
                 this.tipibotPositionFolder.getController('x').max(value, false);
-                this.drawAreaDimensionsFolder.getController('width').max(value, finishChanged);
+                this.drawAreaDimensionsFolder.getController('width').max(value, changeFinished);
             }
             else if (name == 'height') {
                 this.tipibotPositionFolder.getController('y').max(value, false);
-                this.drawAreaDimensionsFolder.getController('height').max(value, finishChanged);
-                this.drawAreaDimensionsFolder.getController('y').max(value - exports.Settings.drawArea.height, finishChanged);
+                this.drawAreaDimensionsFolder.getController('height').max(value, changeFinished);
+                this.drawAreaDimensionsFolder.getController('y').max(value - exports.Settings.drawArea.height, changeFinished);
             }
             if (name == 'width' || name == 'height') {
                 this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true);
-                this.tipibot.sizeChanged(finishChanged);
+                this.tipibot.sizeChanged(changeFinished);
             }
         }
         else if (parentNames[0] == 'Home') {
@@ -256,41 +262,47 @@ class SettingsManager {
         }
         else if (parentNames[0] == 'Machine') {
             if (name == 'speed' || name == 'acceleration') {
-                this.tipibot.speedChanged(finishChanged);
+                this.tipibot.speedChanged(changeFinished);
             }
             else if (name == 'mmPerRev') {
-                this.tipibot.mmPerRevChanged(finishChanged);
+                this.tipibot.mmPerRevChanged(changeFinished);
             }
             else if (name == 'stepsPerRev') {
-                this.tipibot.stepsPerRevChanged(finishChanged);
+                this.tipibot.stepsPerRevChanged(changeFinished);
             }
             else if (name == 'stepMultiplier') {
-                this.tipibot.stepMultiplierChanged(finishChanged);
+                this.tipibot.stepMultiplierChanged(changeFinished);
             }
             else if (name == 'penWidth') {
-                this.tipibot.penWidthChanged(finishChanged);
+                this.tipibot.penWidthChanged(changeFinished);
+            }
+            else if (name == 'invertX' || name == 'invertY' && changeFinished) {
+                this.tipibot.sendInvertXY();
+            }
+            else if (name == 'progressiveMicrosteps' && changeFinished) {
+                this.tipibot.sendProgressiveMicrosteps();
             }
         }
         else if (parentNames[0] == 'Position') {
             if (name == 'x') {
-                this.tipibot.setX(value, finishChanged);
+                this.tipibot.setX(value, changeFinished);
             }
             else if (name == 'y') {
-                this.tipibot.setY(value, finishChanged);
+                this.tipibot.setY(value, changeFinished);
             }
         }
         else if (parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down')) {
-            if (finishChanged) {
-                this.tipibot.servoChanged(finishChanged);
+            if (changeFinished) {
+                this.tipibot.servoChanged(changeFinished);
             }
         }
         else if (parentNames[0] == 'Pen' && name == 'penWidth') {
-            if (finishChanged) {
+            if (changeFinished) {
                 this.tipibot.penWidthChanged(true);
             }
         }
         else if (parentNames[0] == 'Draw area dimensions') {
-            this.tipibot.drawAreaChanged(finishChanged);
+            this.tipibot.drawAreaChanged(changeFinished);
             this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true);
         }
         this.save(false);
@@ -390,40 +402,59 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const PenPlotter_1 = __webpack_require__(17);
+const PenPlotter_1 = __webpack_require__(13);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
-exports.SERIAL_COMMUNICATION_SPEED = 57600;
+// export const SERIAL_COMMUNICATION_SPEED = 57600
+exports.SERIAL_COMMUNICATION_SPEED = 115200;
 let PORT = window.localStorage.getItem('port') || 6842;
 class Socket {
-    constructor(url, interpreter) {
+    constructor(url, communication) {
         this.socket = new WebSocket(url);
-        this.interpreter = interpreter;
-        this.socket.addEventListener('opened', (event) => {
-            console.log('opened');
-        });
+        this.communication = communication;
         this.socket.addEventListener('message', (event) => {
-            if (event.data.indexOf(' - ') == 0) {
-                let message = event.data.replace(' - l: ', '');
-                let messages = message.split(', r: ');
+            let json = JSON.parse(event.data);
+            let type = json.type;
+            let data = json.data;
+            let interpreter = this.communication.interpreter;
+            if (data && data.indexOf(' - ') == 0) {
+                let m = data.replace(' - l: ', '');
+                let messages = m.split(', r: ');
                 let x = parseInt(messages[0]);
-                let y = parseInt(messages[1]);
+                let y = parseInt(messages[1].split(' - x: ')[0]);
                 let lengths = new paper.Point(x, y);
-                let lengthsMm = this.interpreter.tipibot.stepsToMm(lengths);
-                let point = this.interpreter.tipibot.lengthsToCartesian(lengthsMm);
-                let pen = this.interpreter.tipibot.pen;
+                let lengthsMm = interpreter.tipibot.stepsToMm(lengths);
+                let point = interpreter.tipibot.lengthsToCartesian(lengthsMm);
+                let pen = interpreter.tipibot.pen;
                 pen.setPosition(point, false, false);
                 return;
             }
-            this.interpreter.messageReceived(event.data + '\n');
+            if (type == 'opened') {
+                interpreter.connectionOpened();
+            }
+            else if (type == 'list') {
+                let options = ['Disconnected'];
+                for (let port of data) {
+                    options.push(port.comName);
+                }
+                communication.portController = communication.portController.options(options);
+                communication.portController.onFinishChange((value) => communication.serialConnectionPortChanged(value));
+            }
+            else if (type == 'data') {
+                interpreter.messageReceived(data + '\n');
+                // interpreter.messageReceived(data)
+            }
+            else if (type == 'error') {
+                console.error(data);
+            }
         });
     }
     on() {
         // this.socket.addEventListener.apply(this.socket, arguments)
     }
     emit() {
-        arguments[0] += arguments[1];
-        this.socket.send.apply(this.socket, arguments);
+        let message = { type: arguments[0], data: arguments[1] };
+        this.socket.send.apply(this.socket, [JSON.stringify(message)]);
     }
 }
 class Communication {
@@ -433,6 +464,7 @@ class Communication {
         this.gui = gui;
         this.portController = null;
         this.interpreter = new PenPlotter_1.PenPlotter();
+        // this.interpreter = new Polargraph()
         this.connectToSerial();
     }
     setTipibot(tipibot) {
@@ -448,15 +480,9 @@ class Communication {
         this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
         // this.socket = io('ws://localhost:' + PORT)
         // this.socket = io('ws://localhost:' + PORT, {transports: ['websocket', 'polling', 'flashsocket']})
-        this.socket = new Socket('ws://localhost:' + PORT, this.interpreter);
+        this.socket = new Socket('ws://localhost:' + PORT, this);
         this.interpreter.setSocket(this.socket);
         this.socket.on('list', (ports) => {
-            let options = ['Disconnected'];
-            for (let port of ports) {
-                options.push(port.comName);
-            }
-            this.portController = this.portController.options(options);
-            this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
         });
         this.socket.on('opened', () => {
             this.interpreter.connectionOpened();
@@ -506,14 +532,14 @@ class Tipibot {
         this.penStateButton = null;
         this.settingPosition = false;
         this.initialPosition = null;
-        this.isPenUp = true;
+        this.initializedCommunication = false;
         this.moveToButtons = [];
     }
     mmPerSteps() {
-        return Settings_1.Settings.tipibot.mmPerRev / Settings_1.Settings.tipibot.stepsPerRev;
+        return Settings_1.Settings.tipibot.mmPerRev / (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.stepMultiplier);
     }
     stepsPerMm() {
-        return Settings_1.Settings.tipibot.stepsPerRev / Settings_1.Settings.tipibot.mmPerRev;
+        return (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.stepMultiplier) / Settings_1.Settings.tipibot.mmPerRev;
     }
     mmToSteps(point) {
         return point.multiply(this.stepsPerMm());
@@ -523,7 +549,8 @@ class Tipibot {
     }
     cartesianToLengths(point) {
         let lx2 = Settings_1.Settings.tipibot.width - point.x;
-        return new paper.Point(Math.sqrt(point.x * point.x + point.y * point.y), Math.sqrt(lx2 * lx2 + point.y * point.y));
+        let lengths = new paper.Point(Math.sqrt(point.x * point.x + point.y * point.y), Math.sqrt(lx2 * lx2 + point.y * point.y));
+        return lengths;
     }
     lengthsToCartesian(lengths) {
         let r1 = lengths.x;
@@ -543,6 +570,8 @@ class Tipibot {
         let motorsOffButton = gui.addButton('Motors off', () => this.motorsOff());
         gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
         gui.addButton('Stop & Clear queue', () => Communication_1.communication.interpreter.stopAndClearQueue());
+        // DEBUG
+        gui.addButton('Send specs', () => Communication_1.communication.interpreter.connectionOpened());
     }
     setPositionSliders(point) {
         Settings_1.settingsManager.tipibotPositionFolder.getController('x').setValue(point.x, false);
@@ -565,7 +594,7 @@ class Tipibot {
     }
     togglePenState() {
         let callback = () => console.log('pen state changed');
-        if (this.isPenUp) {
+        if (this.pen.isPenUp) {
             this.penDown(Settings_1.Settings.servo.position.down, Settings_1.Settings.servo.delay.down.before, Settings_1.Settings.servo.delay.down.after, callback);
         }
         else {
@@ -647,19 +676,41 @@ class Tipibot {
             this.setPosition(new paper.Point(p.x, y), sendChange);
         }
     }
+    checkInitialized() {
+        if (!this.initializedCommunication) {
+            Communication_1.communication.interpreter.initialize();
+        }
+    }
     setPosition(point, sendChange = true) {
         this.pen.setPosition(point, false, false);
         if (sendChange) {
+            this.checkInitialized();
             Communication_1.communication.interpreter.sendSetPosition(point);
         }
     }
+    sendInvertXY() {
+        Communication_1.communication.interpreter.sendInvertXY();
+        Communication_1.communication.interpreter.sendSetPosition(this.getPosition());
+    }
+    sendProgressiveMicrosteps() {
+        Communication_1.communication.interpreter.sendProgressiveMicrosteps();
+    }
     moveDirect(point, callback = null, movePen = true) {
+        this.checkInitialized();
         Communication_1.communication.interpreter.sendMoveDirect(point, callback);
         if (movePen) {
             this.pen.setPosition(point, true, false);
         }
     }
+    moveDirectMaxSpeed(point, callback = null, movePen = true) {
+        this.checkInitialized();
+        Communication_1.communication.interpreter.sendMoveDirectMaxSpeed(point, callback);
+        if (movePen) {
+            this.pen.setPosition(point, true, false);
+        }
+    }
     moveLinear(point, callback = null, movePen = true) {
+        this.checkInitialized();
         Communication_1.communication.interpreter.sendMoveLinear(point, callback);
         if (movePen) {
             this.pen.setPosition(point, true, false);
@@ -695,7 +746,7 @@ class Tipibot {
             Communication_1.communication.interpreter.sendPenDelays();
         }
     }
-    tipibotSpecs() {
+    sendSpecs() {
         Communication_1.communication.interpreter.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
     }
     pause(delay) {
@@ -705,17 +756,15 @@ class Tipibot {
         Communication_1.communication.interpreter.sendMotorOff();
     }
     penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null, force = false) {
-        if (!this.isPenUp || force) {
-            Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
+        if (!this.pen.isPenUp || force) {
+            this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
             this.penStateButton.setName('Pen down');
-            this.isPenUp = true;
         }
     }
     penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null, force = false) {
-        if (this.isPenUp || force) {
-            Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
+        if (this.pen.isPenUp || force) {
+            this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
             this.penStateButton.setName('Pen up');
-            this.isPenUp = false;
         }
     }
     setHome(setPosition = true) {
@@ -730,7 +779,7 @@ class Tipibot {
         this.penUp(Settings_1.Settings.servo.position.up, Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, null, true);
         // this.penUp(null, null, null, true)
         // The pen will make me (tipibot) move :-)
-        this.pen.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY), true, true, callback);
+        this.pen.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY), true, true, Pen_1.MoveType.Direct, callback);
     }
     motorsOff() {
         Communication_1.communication.interpreter.sendMotorOff();
@@ -904,28 +953,55 @@ exports.InteractiveItem = InteractiveItem;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const Communication_1 = __webpack_require__(1);
 const InteractiveItem_1 = __webpack_require__(3);
 const Settings_1 = __webpack_require__(0);
 const Tipibot_1 = __webpack_require__(2);
+var MoveType;
+(function (MoveType) {
+    MoveType[MoveType["Direct"] = 0] = "Direct";
+    MoveType[MoveType["DirectMaxSpeed"] = 1] = "DirectMaxSpeed";
+    MoveType[MoveType["Linear"] = 2] = "Linear";
+})(MoveType = exports.MoveType || (exports.MoveType = {}));
 class Pen extends InteractiveItem_1.InteractiveItem {
     constructor(renderer) {
         super(renderer, null, true);
+        this.isPenUp = true;
     }
     tipibotWidthChanged() {
     }
     getPosition() {
         return this.shape.getPosition(); // will be overloaded
     }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
+    setPosition(point, updateSliders = true, move = true, moveType = MoveType.Direct, callback = null) {
+        if (point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+            return;
+        }
         if (updateSliders) {
             Tipibot_1.tipibot.setPositionSliders(point);
         }
         if (move) {
-            Tipibot_1.tipibot.moveDirect(point, callback);
+            if (moveType == MoveType.Direct) {
+                Tipibot_1.tipibot.moveDirect(point, callback);
+            }
+            else if (moveType == MoveType.DirectMaxSpeed) {
+                Tipibot_1.tipibot.moveDirectMaxSpeed(point, callback);
+            }
+            else {
+                Tipibot_1.tipibot.moveLinear(point, callback);
+            }
         }
     }
     mouseStop(event) {
         return super.mouseStop(event);
+    }
+    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
+        Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
+        this.isPenUp = true;
+    }
+    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
+        Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
+        this.isPenUp = false;
     }
 }
 Pen.HOME_RADIUS = 10;
@@ -937,16 +1013,18 @@ class PaperPen extends Pen {
     }
     initialize(x, y, tipibotWidth, layer = null) {
         this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
-        this.circle.strokeWidth = 1;
+        this.circle.strokeWidth = 0.5;
         this.circle.strokeColor = 'black';
-        this.circle.fillColor = 'black';
+        this.circle.fillColor = null;
+        this.circle.strokeScaling = false;
         this.shape = this.renderer.createShape(this.circle);
         this.lines = new paper.Path();
         this.lines.add(new paper.Point(0, 0));
         this.lines.add(new paper.Point(x, y));
         this.lines.add(new paper.Point(tipibotWidth, 0));
-        this.lines.strokeWidth = 1;
+        this.lines.strokeWidth = 0.5;
         this.lines.strokeColor = 'black';
+        this.lines.strokeScaling = false;
         this.previousPosition = new paper.Point(0, 0);
         if (layer) {
             layer.addChild(this.circle);
@@ -956,22 +1034,35 @@ class PaperPen extends Pen {
     getPosition() {
         return this.circle.position;
     }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
+    setPosition(point, updateSliders = true, move = true, moveType = MoveType.Direct, callback = null) {
+        if (point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+            return;
+        }
+        super.setPosition(point, updateSliders, move, moveType, callback);
         this.circle.position = point;
         this.lines.segments[1].point = point;
-        super.setPosition(point, updateSliders, move, callback);
     }
     drag(delta) {
         this.setPosition(this.circle.position.add(delta), true, false);
     }
     mouseStop(event) {
         if (this.dragging) {
-            this.setPosition(this.circle.position);
+            this.setPosition(this.circle.position, true, true, event.ctrlKey ? MoveType.Linear : event.altKey ? MoveType.DirectMaxSpeed : MoveType.Direct);
         }
         return super.mouseStop(event);
     }
     tipibotWidthChanged() {
         this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
+    }
+    penUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
+        super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
+        this.circle.fillColor = null;
+        this.isPenUp = true;
+    }
+    penDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
+        super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
+        this.circle.fillColor = 'rgba(0, 0, 0, 0.25)';
+        this.isPenUp = false;
     }
 }
 exports.PaperPen = PaperPen;
@@ -999,13 +1090,16 @@ class ThreePen extends Pen {
     getPosition() {
         return this.vectorToPoint(this.circle.position);
     }
-    setPosition(point, updateSliders = true, move = true, callback = null) {
+    setPosition(point, updateSliders = true, move = true, moveType = MoveType.Direct, callback = null) {
+        if (point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+            return;
+        }
+        super.setPosition(point, updateSliders, move, moveType, callback);
         let position = this.pointToVector(point);
         this.circle.position.copy(position);
         let geometry = this.lines.geometry;
         geometry.vertices[1].copy(position);
         geometry.verticesNeedUpdate = true;
-        super.setPosition(point, updateSliders, move, callback);
     }
     tipibotWidthChanged() {
         let geometry = this.lines.geometry;
@@ -2443,7 +2537,17 @@ class Interpreter {
     setTipibot(tipibot) {
         this.tipibot = tipibot;
     }
-    connectionOpened(description) {
+    connectionOpened() {
+        this.initialize();
+    }
+    initialize() {
+        this.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
+        this.sendSpecs();
+        this.sendInvertXY();
+        // Initialize at home position; it is always possible to set position afterward
+        this.sendSetPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
+        this.sendSpeedAndAcceleration();
+        this.tipibot.initializedCommunication = true;
     }
     send(command) {
         if (this.pause) {
@@ -2523,13 +2627,19 @@ class Interpreter {
         this.clearQueue();
         this.sendStop();
     }
-    sendSetPosition(point) {
+    sendSetPosition(point = this.tipibot.getPosition()) {
     }
     sendMoveDirect(point, callback = null) {
+    }
+    sendMoveDirectMaxSpeed(point, callback = null) {
     }
     sendMoveLinear(point, callback = null) {
     }
     sendSpeed(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
+    }
+    sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
+    }
+    sendSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
     }
     sendSize(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height) {
     }
@@ -2542,6 +2652,10 @@ class Interpreter {
     sendPenWidth(penWidth = Settings_1.Settings.tipibot.penWidth) {
     }
     sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
+    }
+    sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
+    }
+    sendProgressiveMicrosteps(progressiveMicrosteps = Settings_1.Settings.tipibot.progressiveMicrosteps) {
     }
     sendPause(delay) {
     }
@@ -2564,7 +2678,106 @@ exports.Interpreter = Interpreter;
 
 
 /***/ }),
-/* 13 */,
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
+const Interpreter_1 = __webpack_require__(12);
+class PenPlotter extends Interpreter_1.Interpreter {
+    sendSetPosition(point = this.tipibot.getPosition()) {
+        super.sendSetPosition(point);
+        let lengths = this.tipibot.cartesianToLengths(point);
+        let lengthsSteps = this.tipibot.mmToSteps(lengths);
+        console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
+        this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n');
+    }
+    sendMoveDirect(point, callback = null) {
+        super.sendMoveDirect(point, callback);
+        let lengths = this.tipibot.cartesianToLengths(point);
+        let lengthsSteps = this.tipibot.mmToSteps(lengths);
+        console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
+        this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+    }
+    sendMoveDirectMaxSpeed(point, callback = null) {
+        super.sendMoveDirectMaxSpeed(point, callback);
+        let lengths = this.tipibot.cartesianToLengths(point);
+        let lengthsSteps = this.tipibot.mmToSteps(lengths);
+        console.log('move direct max speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
+        this.queue('G2 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+    }
+    sendMoveLinear(point, callback = null) {
+        super.sendMoveLinear(point, callback);
+        let lengths = this.tipibot.cartesianToLengths(point);
+        let lengthsSteps = this.tipibot.mmToSteps(lengths);
+        console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
+        this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+    }
+    sendSpeed(speed = Settings_1.Settings.tipibot.speed) {
+        console.log('set speed: ' + speed);
+        this.queue('G0 F' + speed + '\n');
+    }
+    sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
+        console.log('set acceleration: ' + acceleration);
+        this.queue('G0 S' + acceleration + '\n');
+    }
+    sendSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
+        this.queue('G0 F' + speed + ' S' + acceleration + '\n');
+    }
+    sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
+        console.log('invertX: ' + invertX + ', invertY: ' + invertY);
+        this.queue('M12 X' + (invertX ? -1 : 1) + ' Y' + (invertY ? -1 : 1) + '\n');
+    }
+    sendProgressiveMicrosteps(progressiveMicrosteps = Settings_1.Settings.tipibot.progressiveMicrosteps) {
+        console.log('progressiveMicrosteps: ' + progressiveMicrosteps);
+        this.queue('M13 F' + (progressiveMicrosteps ? -1 : 1) + '\n');
+    }
+    sendSize(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height) {
+        // todo: test
+        this.queue('M4 X' + tipibotWidth.toFixed(2) + '\n');
+    }
+    sendStepsPerRev(stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev) {
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
+    }
+    sendMmPerRev(mmPerRev = Settings_1.Settings.tipibot.mmPerRev) {
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
+    }
+    sendStepMultiplier(stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, stepMultiplier);
+    }
+    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
+        let stepsPerRevolution = stepsPerRev * stepMultiplier;
+        let millimetersPerStep = mmPerRev / stepsPerRevolution;
+        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev * stepMultiplier) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
+        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * stepMultiplier) + ' P' + mmPerRev + '\n');
+    }
+    sendPause(delay) {
+        this.queue('G4 P' + delay + '\n');
+    }
+    sendMotorOff() {
+        this.queue('M84\n');
+    }
+    sendPenState(servoValue, servoTempo = 0, callback = null) {
+        this.queue('G4 P' + servoTempo + '\n');
+        this.queue('M340 P3 S' + servoValue + '\n');
+        this.queue('G4 P' + servoTempo + '\n', callback);
+    }
+    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
+        this.sendPenState(servoUpValue, servoUpTempoBefore, callback);
+    }
+    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
+        this.sendPenState(servoDownValue, servoDownTempoBefore, callback);
+    }
+    sendStop() {
+        this.queue('M0\n');
+    }
+}
+exports.PenPlotter = PenPlotter;
+
+
+/***/ }),
 /* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2620,6 +2833,7 @@ w.addPlugin = function (pluginName, testMode) {
 document.addEventListener("DOMContentLoaded", function (event) {
     function initialize() {
         gui = new GUI_1.GUI({ autoPlace: false });
+        // let console = new Console()
         let customContainer = document.getElementById('gui');
         customContainer.appendChild(gui.getDomElement());
         let communicationFolder = gui.addFolder('Communication');
@@ -2918,8 +3132,9 @@ class PaperRectangle extends Rectangle {
         let position = new paper.Point(x, y);
         let size = new paper.Size(width, height);
         this.rectangle = paper.Path.Rectangle(position, size);
-        this.rectangle.strokeWidth = 1;
+        this.rectangle.strokeWidth = 0.5;
         this.rectangle.strokeColor = 'black';
+        this.rectangle.strokeScaling = false;
         this.group.addChild(this.rectangle);
         if (layer) {
             layer.addChild(this.group);
@@ -2934,8 +3149,9 @@ class PaperCircle extends Circle {
         this.group = new paper.Group();
         let position = new paper.Point(x, y);
         this.circle = paper.Path.Circle(position, radius);
-        this.circle.strokeWidth = 1;
+        this.circle.strokeWidth = 0.5;
         this.circle.strokeColor = 'black';
+        this.circle.strokeScaling = false;
         this.group.addChild(this.circle);
         if (layer) {
             layer.addChild(this.group);
@@ -2967,18 +3183,21 @@ class PaperTarget extends Target {
         this.circle = paper.Path.Circle(position, radius);
         this.circle.strokeWidth = 1;
         this.circle.strokeColor = 'black';
+        this.circle.strokeScaling = false;
         this.group.addChild(this.circle);
         let hLine = new paper.Path();
         hLine.add(new paper.Point(position.x - radius, position.y));
         hLine.add(new paper.Point(position.x + radius, position.y));
-        hLine.strokeWidth = 1;
+        hLine.strokeWidth = 0.5;
         hLine.strokeColor = 'black';
+        hLine.strokeScaling = false;
         this.group.addChild(hLine);
         let vLine = new paper.Path();
         vLine.add(new paper.Point(position.x, position.y - radius));
         vLine.add(new paper.Point(position.x, position.y + radius));
-        vLine.strokeWidth = 1;
+        vLine.strokeWidth = 0.5;
         vLine.strokeColor = 'black';
+        vLine.strokeScaling = false;
         this.group.addChild(vLine);
         if (layer) {
             layer.addChild(this.group);
@@ -3412,72 +3631,6 @@ class ThreeShape extends Shape {
     }
 }
 exports.ThreeShape = ThreeShape;
-
-
-/***/ }),
-/* 17 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const Settings_1 = __webpack_require__(0);
-const Interpreter_1 = __webpack_require__(12);
-class PenPlotter extends Interpreter_1.Interpreter {
-    connectionOpened(description) {
-        this.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
-        this.sendSpecs();
-        this.sendSpeed();
-        this.sendSetPosition();
-        // this.startKeepingTipibotAwake()
-    }
-    sendSetPosition(point = this.tipibot.getPosition()) {
-        this.queue('G92 X' + point.x + ' Y' + point.y + '\n');
-    }
-    sendMoveDirect(point, callback = null) {
-        this.queue('G0 X' + point.x + ' Y' + point.y + '\n', callback);
-    }
-    sendMoveLinear(point, callback = null) {
-        this.queue('G1 X' + point.x + ' Y' + point.y + '\n', callback);
-    }
-    sendSpeed(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
-        this.queue('G0 F' + speed + '\n');
-    }
-    sendSize(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height) {
-        // todo: test
-        this.queue('M4 X' + tipibotWidth + '\n');
-    }
-    sendStepsPerRev(stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev) {
-    }
-    sendMmPerRev(mmPerRev = Settings_1.Settings.tipibot.mmPerRev) {
-    }
-    sendStepMultiplier(stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
-    }
-    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
-        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * stepMultiplier) + ' P' + mmPerRev + '\n');
-    }
-    sendPause(delay) {
-        this.queue('G4 P' + delay + '\n');
-    }
-    sendMotorOff() {
-        this.queue('M84\n');
-    }
-    sendPenState(servoValue, servoTempo = 0, callback = null) {
-        this.queue('G4 P' + servoTempo + '\n');
-        this.queue('M340 P3 S' + servoValue + '\n');
-        this.queue('G4 P' + servoTempo + '\n', callback);
-    }
-    sendPenUp(servoUpValue = Settings_1.Settings.servo.position.up, servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
-        this.sendPenState(servoUpValue, servoUpTempoBefore, callback);
-    }
-    sendPenDown(servoDownValue = Settings_1.Settings.servo.position.down, servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
-        this.sendPenState(servoDownValue, servoDownTempoBefore, callback);
-    }
-    sendStop() {
-        this.queue('M0\n');
-    }
-}
-exports.PenPlotter = PenPlotter;
 
 
 /***/ })

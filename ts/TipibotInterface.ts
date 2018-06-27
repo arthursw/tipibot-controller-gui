@@ -4,7 +4,7 @@ import { GUI } from "./GUI"
 export interface TipibotInterface {
 	tipibotArea: Rectangle
 	drawArea: Rectangle
-	isPenUp: boolean
+	initializedCommunication: boolean
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void }
 
 	createGUI: (gui:GUI)=> void
@@ -25,6 +25,8 @@ export interface TipibotInterface {
 	cartesianToLengths(point: paper.Point): paper.Point
 	lengthsToCartesian(lengths: paper.Point): paper.Point
 
+	sendInvertXY: ()=> void
+	sendProgressiveMicrosteps: ()=> void
 	speedChanged: (sendChange?: boolean)=> void
 	stepsPerRevChanged: (sendChange?: boolean)=> void
 	mmPerRevChanged: (sendChange?: boolean)=> void

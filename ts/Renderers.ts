@@ -20,7 +20,7 @@ export class PaperRenderer extends Renderer {
 		containerJ.get(0).appendChild(this.canvas)
 
 		paper.setup(<any>this.canvas)
-
+		
 		this.tipibotLayer = new paper.Layer()
 
 		this.dragging = false

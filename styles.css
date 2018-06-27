@@ -9,6 +9,7 @@ body {
 	right: 0;
 	display: grid;
 	grid-template-columns: auto 245px;
+	/*grid-template-columns: auto 245px 300px;*/
 	grid-template-rows: 100%;
 /*	display: flex;
 	flex-direction: row;
@@ -32,6 +33,12 @@ body {
 
 #command-list li button {
 	float: right;
+    margin-top: 5px;
+    cursor: pointer;
+    border-radius: 0;
+    border: none;
+    width: 22px;
+    margin-right: 5px;
 }
 
 .dg .close-button {
@@ -46,6 +53,23 @@ body {
 	height: 100%;
 }
 
+.function span.property-name {
+    width: 100%;
+}
+
+.boolean span.property-name {
+    width: 80%;
+}
+.boolean div.c {
+    width: 20%;
+}
+
+#main {
+	/*display: grid;*/
+	/*grid-template-rows: auto 250px;*/
+	/*grid-template-columns: 100%;*/
+}
+
 #canvas {
 	overflow: hidden;
 }
@@ -57,4 +81,33 @@ canvas {
 #gui {
 	/*display: flex;*/
 
+}
+
+#console {
+	background-color: white;
+	padding: 20px;
+	display: flex;
+    flex-direction: column;
+    overflow: auto;
+    font-family: monospace;
+    color: #242424;
+    font-size: 12px;
+}
+
+#console div {
+	background-color: rgba(0,0,0,.05);
+    border-bottom: 1px #eeeeee solid;
+}
+
+#console div:nth-child(odd) {
+	background-color: rgba(0,0,0,0);
+}
+
+#console div p, #console div table {
+	padding: 5px;
+	margin: 0;
+}
+
+table {
+	border-collapse: collapse;
 }

@@ -4,12 +4,20 @@ import { Settings, settingsManager } from "./Settings"
 import { tipibot } from "./Tipibot"
 import { Renderer } from "./RendererInterface"
 
+export enum MoveType {
+    Direct,
+    DirectMaxSpeed,
+    Linear
+}
+
 export class Pen extends InteractiveItem {
 	public static HOME_RADIUS = 10
 	public static RADIUS = 20
+	isPenUp: boolean
 
 	constructor(renderer: Renderer) {
 		super(renderer, null, true)
+		this.isPenUp = true
 	}
 
 	tipibotWidthChanged() {
@@ -19,17 +27,36 @@ export class Pen extends InteractiveItem {
 		return this.shape.getPosition() // will be overloaded
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, moveType: MoveType=MoveType.Direct, callback: ()=> any = null) {
+		if(point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+			return
+		}
 		if(updateSliders) {
 			tipibot.setPositionSliders(point)
 		}
 		if(move) {
-			tipibot.moveDirect(point, callback)
+			if(moveType == MoveType.Direct) {
+				tipibot.moveDirect(point, callback)
+			} else if(moveType == MoveType.DirectMaxSpeed) {
+				tipibot.moveDirectMaxSpeed(point, callback)
+			} else {
+				tipibot.moveLinear(point, callback)
+			}
 		}
 	}
 
 	mouseStop(event: MouseEvent): boolean {
 		return super.mouseStop(event)
+	}
+
+	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
+		this.isPenUp = true
+	}
+	
+	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
+		this.isPenUp = false
 	}
 }
 
@@ -44,9 +71,10 @@ export class PaperPen extends Pen {
 
 	initialize(x: number, y:number, tipibotWidth: number, layer: paper.Layer = null) {
 		this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS)
-		this.circle.strokeWidth = 1
+		this.circle.strokeWidth = 0.5
 		this.circle.strokeColor = 'black'
-		this.circle.fillColor = 'black'
+		this.circle.fillColor = null
+		this.circle.strokeScaling = false
 
 		this.shape = this.renderer.createShape(this.circle)
 
@@ -55,8 +83,9 @@ export class PaperPen extends Pen {
 		this.lines.add(new paper.Point(x, y))
 		this.lines.add(new paper.Point(tipibotWidth, 0))
 
-		this.lines.strokeWidth = 1
+		this.lines.strokeWidth = 0.5
 		this.lines.strokeColor = 'black'
+		this.lines.strokeScaling = false
 
 		this.previousPosition = new paper.Point(0, 0)
 		
@@ -70,10 +99,13 @@ export class PaperPen extends Pen {
 		return this.circle.position
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, moveType: MoveType=MoveType.Direct, callback: ()=> any = null) {
+		if(point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+			return
+		}
+		super.setPosition(point, updateSliders, move, moveType, callback)
 		this.circle.position = point
 		this.lines.segments[1].point = point
-		super.setPosition(point, updateSliders, move, callback)
 	}
 
 	drag(delta: paper.Point) {
@@ -82,13 +114,25 @@ export class PaperPen extends Pen {
 
 	mouseStop(event: MouseEvent) {
 		if(this.dragging) {
-			this.setPosition(this.circle.position)
+			this.setPosition(this.circle.position, true, true, event.ctrlKey ? MoveType.Linear : event.altKey ? MoveType.DirectMaxSpeed : MoveType.Direct)
 		}
 		return super.mouseStop(event)
 	}
 
 	tipibotWidthChanged() {
 		this.lines.segments[2].point.x = Settings.tipibot.width
+	}
+
+	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+		super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
+		this.circle.fillColor = null
+		this.isPenUp = true
+	}
+	
+	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+		super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
+		this.circle.fillColor = 'rgba(0, 0, 0, 0.25)'
+		this.isPenUp = false
 	}
 }
 
@@ -134,13 +178,16 @@ export class ThreePen extends Pen {
 		return this.vectorToPoint(this.circle.position)
 	}
 
-	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, callback: ()=> any = null) {
+	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, moveType: MoveType=MoveType.Direct, callback: ()=> any = null) {
+		if(point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
+			return
+		}
+		super.setPosition(point, updateSliders, move, moveType, callback)
 		let position = this.pointToVector(point)
 		this.circle.position.copy(position)
 		let geometry = <THREE.Geometry>this.lines.geometry
 		geometry.vertices[1].copy(position)
 		geometry.verticesNeedUpdate = true
-		super.setPosition(point, updateSliders, move, callback)
 	}
 	
 	tipibotWidthChanged() {

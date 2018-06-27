@@ -57,15 +57,6 @@ export class Polargraph extends Interpreter {
 
 	keepTipibotAwakeInterval: number = null
 
-	connectionOpened(description: string) {
-		this.sendPenWidth(Settings.tipibot.penWidth)
-		this.sendSpecs()
-		this.sendSpeed()
-		this.sendSetPosition()
-
-		// this.startKeepingTipibotAwake()
-	}
-
 	// startKeepingTipibotAwake() {
 	// 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
 	// }
@@ -110,7 +101,7 @@ export class Polargraph extends Interpreter {
 
 	sendMoveToNativePosition(direct: boolean, p: paper.Point, callback: () => any = null ) {
 		p = this.tipibot.cartesianToLengths(p)
-		p = this.tipibot.mmToSteps(p)
+		p = this.tipibot.mmToSteps(p).divide(Settings.tipibot.stepMultiplier)
 		let command: string = null;
 		if (direct) {
 			command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
@@ -124,7 +115,7 @@ export class Polargraph extends Interpreter {
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	point = this.tipibot.cartesianToLengths(point)
-		let pointInSteps = this.tipibot.mmToSteps(point);
+		let pointInSteps = this.tipibot.mmToSteps(point).divide(Settings.tipibot.stepMultiplier);
 		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		this.queue(command);
     }

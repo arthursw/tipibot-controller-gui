@@ -151,7 +151,7 @@ export class Communication {
 				case 'Open':
 					console.log('Port: ' + data.Port)
 					console.log(data.Desc)
-					this.interpreter.connectionOpened(data.Desc)
+					this.interpreter.connectionOpened()
 					break;
 				case 'OpenFail':
 					console.log('Port: ' + data.Port)
