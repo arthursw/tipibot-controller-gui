@@ -101,7 +101,7 @@ export class Polargraph extends Interpreter {
 
 	sendMoveToNativePosition(direct: boolean, p: paper.Point, callback: () => any = null ) {
 		p = this.tipibot.cartesianToLengths(p)
-		p = this.tipibot.mmToSteps(p).divide(Settings.tipibot.stepMultiplier)
+		p = this.tipibot.mmToSteps(p).divide(Settings.tipibot.microstepResolution)
 		let command: string = null;
 		if (direct) {
 			command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
@@ -115,7 +115,7 @@ export class Polargraph extends Interpreter {
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	point = this.tipibot.cartesianToLengths(point)
-		let pointInSteps = this.tipibot.mmToSteps(point).divide(Settings.tipibot.stepMultiplier);
+		let pointInSteps = this.tipibot.mmToSteps(point).divide(Settings.tipibot.microstepResolution);
 		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		this.queue(command);
     }
@@ -131,8 +131,11 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
-		this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END');
-		this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END');
+		let stepsPerMm = this.tipibot.stepsPerMm()
+		let stepsPerSeconds = speed * stepsPerMm
+		let stepsPerSeconds2 = acceleration * stepsPerMm
+		this.queue(commands.CMD_SETMOTORSPEED + stepsPerSeconds.toFixed(2) + ',1,END');
+		this.queue(commands.CMD_SETMOTORACCEL + stepsPerSeconds2.toFixed(2) + ',1,END');
 	}
 	
 	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
@@ -148,15 +151,15 @@ export class Polargraph extends Interpreter {
 		this.queue(commands.CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END');
 	}
 
-	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
-		this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + stepMultiplier + ',END');
+	sendStepMultiplier(microstepResolution: number=Settings.tipibot.microstepResolution) {
+		this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + microstepResolution + ',END');
 	}
 
-	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
 		this.sendSize(tipibotWidth, tipibotHeight)
 		this.sendMmPerRev(mmPerRev)
 		this.sendStepsPerRev(stepsPerRev)
-		this.sendStepMultiplier(stepMultiplier)
+		this.sendStepMultiplier(microstepResolution)
 	}
 
 	sendPause(delay: number) {

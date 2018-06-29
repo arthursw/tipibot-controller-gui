@@ -24,6 +24,7 @@ import { InteractiveItem } from "./InteractiveItem"
 import { GUI } from "./GUI"
 import { Console } from "./Console"
 import { Circle } from "./Shapes"
+import { VisualFeedback } from "./VisualFeedback"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
 
@@ -72,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		gui = new GUI({ autoPlace: false })
 
 		// let console = new Console()
-		
+
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())
 		
@@ -100,6 +101,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		let commandDisplay = new CommandDisplay()
 		commandDisplay.createGUI(gui)
 
+		let visualFeedback = new VisualFeedback()
+
 		// debug
 		w.tipibot = tipibot
 		w.settingsManager = settingsManager
@@ -107,6 +110,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		w.renderer = renderer
 		w.communication = communication
 		w.commandDisplay = commandDisplay
+		w.visualFeedback = visualFeedback
 	}
 
 	initialize()

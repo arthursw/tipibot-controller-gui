@@ -18,10 +18,10 @@ export let Settings = {
 		homeY: paperHeight + homeY,
 		invertX: false,
 		invertY: false,
-		speed: 1440,
-		acceleration: 400,
+		speed: 500,
+		acceleration: 200,
 		stepsPerRev: 200,
-		stepMultiplier: 32,
+		microstepResolution: 32,
 		mmPerRev: 96,
 		progressiveMicrosteps: false,
 		penWidth: 2
@@ -126,10 +126,10 @@ export class SettingsManager {
 
 		machineFolder.add(Settings.tipibot, 'invertX').name('Invert X')
 		machineFolder.add(Settings.tipibot, 'invertY').name('Invert Y')
-		machineFolder.add(Settings.tipibot, 'speed', 100, 10000, 1).name('Speed')
-		machineFolder.add(Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration')
+		machineFolder.add(Settings.tipibot, 'speed', 1, 2500, 1).name('Speed')
+		machineFolder.add(Settings.tipibot, 'acceleration', 1, 500, 1).name('Acceleration')
 		machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
-		machineFolder.add(Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier')
+		machineFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
 		machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
 		machineFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
 
@@ -208,14 +208,16 @@ export class SettingsManager {
 				this.tipibot.setHome(false)
 			}
 		} else if(parentNames[0] == 'Machine') {
-			if(name == 'speed' || name == 'acceleration') {
+			if(name == 'speed') {
 				this.tipibot.speedChanged(changeFinished)
+			} else if(name == 'acceleration') {
+				this.tipibot.accelerationChanged(changeFinished)
 			} else if(name == 'mmPerRev') {
 				this.tipibot.mmPerRevChanged(changeFinished)
 			} else if(name == 'stepsPerRev') {
 				this.tipibot.stepsPerRevChanged(changeFinished)
-			} else if(name == 'stepMultiplier') {
-				this.tipibot.stepMultiplierChanged(changeFinished)
+			} else if(name == 'microstepResolution') {
+				this.tipibot.microstepResolutionChanged(changeFinished)
 			} else if(name == 'penWidth') {
 				this.tipibot.penWidthChanged(changeFinished)
 			} else if(name == 'invertX' || name == 'invertY' && changeFinished) {
@@ -265,7 +267,7 @@ export class SettingsManager {
 		this.tipibot.speedChanged(true)
 		this.tipibot.mmPerRevChanged(true)
 		this.tipibot.stepsPerRevChanged(true)
-		this.tipibot.stepMultiplierChanged(true)
+		this.tipibot.microstepResolutionChanged(true)
 		this.tipibot.penWidthChanged(true)
 		this.tipibot.servoChanged(true)
 		this.tipibot.sizeChanged(true)

@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 16);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -87,10 +87,10 @@ exports.Settings = {
         homeY: paperHeight + homeY,
         invertX: false,
         invertY: false,
-        speed: 1440,
-        acceleration: 400,
+        speed: 500,
+        acceleration: 200,
         stepsPerRev: 200,
-        stepMultiplier: 32,
+        microstepResolution: 32,
         mmPerRev: 96,
         progressiveMicrosteps: false,
         penWidth: 2
@@ -174,10 +174,10 @@ class SettingsManager {
         let machineFolder = settingsFolder.addFolder('Machine');
         machineFolder.add(exports.Settings.tipibot, 'invertX').name('Invert X');
         machineFolder.add(exports.Settings.tipibot, 'invertY').name('Invert Y');
-        machineFolder.add(exports.Settings.tipibot, 'speed', 100, 10000, 1).name('Speed');
-        machineFolder.add(exports.Settings.tipibot, 'acceleration', 50, 1500, 1).name('Acceleration');
+        machineFolder.add(exports.Settings.tipibot, 'speed', 1, 2500, 1).name('Speed');
+        machineFolder.add(exports.Settings.tipibot, 'acceleration', 1, 500, 1).name('Acceleration');
         machineFolder.add(exports.Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.');
-        machineFolder.add(exports.Settings.tipibot, 'stepMultiplier', 1, 64, 1).name('Step multiplier');
+        machineFolder.add(exports.Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier');
         machineFolder.add(exports.Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.');
         machineFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
         let controllers = this.getControllers();
@@ -261,8 +261,11 @@ class SettingsManager {
             }
         }
         else if (parentNames[0] == 'Machine') {
-            if (name == 'speed' || name == 'acceleration') {
+            if (name == 'speed') {
                 this.tipibot.speedChanged(changeFinished);
+            }
+            else if (name == 'acceleration') {
+                this.tipibot.accelerationChanged(changeFinished);
             }
             else if (name == 'mmPerRev') {
                 this.tipibot.mmPerRevChanged(changeFinished);
@@ -270,8 +273,8 @@ class SettingsManager {
             else if (name == 'stepsPerRev') {
                 this.tipibot.stepsPerRevChanged(changeFinished);
             }
-            else if (name == 'stepMultiplier') {
-                this.tipibot.stepMultiplierChanged(changeFinished);
+            else if (name == 'microstepResolution') {
+                this.tipibot.microstepResolutionChanged(changeFinished);
             }
             else if (name == 'penWidth') {
                 this.tipibot.penWidthChanged(changeFinished);
@@ -325,7 +328,7 @@ class SettingsManager {
         this.tipibot.speedChanged(true);
         this.tipibot.mmPerRevChanged(true);
         this.tipibot.stepsPerRevChanged(true);
-        this.tipibot.stepMultiplierChanged(true);
+        this.tipibot.microstepResolutionChanged(true);
         this.tipibot.penWidthChanged(true);
         this.tipibot.servoChanged(true);
         this.tipibot.sizeChanged(true);
@@ -402,7 +405,7 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const PenPlotter_1 = __webpack_require__(13);
+const TipibotInterpreter_1 = __webpack_require__(15);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 // export const SERIAL_COMMUNICATION_SPEED = 57600
@@ -417,18 +420,6 @@ class Socket {
             let type = json.type;
             let data = json.data;
             let interpreter = this.communication.interpreter;
-            if (data && data.indexOf(' - ') == 0) {
-                let m = data.replace(' - l: ', '');
-                let messages = m.split(', r: ');
-                let x = parseInt(messages[0]);
-                let y = parseInt(messages[1].split(' - x: ')[0]);
-                let lengths = new paper.Point(x, y);
-                let lengthsMm = interpreter.tipibot.stepsToMm(lengths);
-                let point = interpreter.tipibot.lengthsToCartesian(lengthsMm);
-                let pen = interpreter.tipibot.pen;
-                pen.setPosition(point, false, false);
-                return;
-            }
             if (type == 'opened') {
                 interpreter.connectionOpened();
             }
@@ -441,8 +432,11 @@ class Socket {
                 communication.portController.onFinishChange((value) => communication.serialConnectionPortChanged(value));
             }
             else if (type == 'data') {
-                interpreter.messageReceived(data + '\n');
-                // interpreter.messageReceived(data)
+                // If receiving messages while not connected: consider it as simulation
+                if (communication.portController.getValue().indexOf('Disconnected') == 0) {
+                    data += '\n';
+                }
+                interpreter.messageReceived(data);
             }
             else if (type == 'error') {
                 console.error(data);
@@ -463,7 +457,7 @@ class Communication {
         this.socket = null;
         this.gui = gui;
         this.portController = null;
-        this.interpreter = new PenPlotter_1.PenPlotter();
+        this.interpreter = new TipibotInterpreter_1.TipibotInterpreter();
         // this.interpreter = new Polargraph()
         this.connectToSerial();
     }
@@ -522,8 +516,8 @@ exports.communication = null;
 Object.defineProperty(exports, "__esModule", { value: true });
 const Communication_1 = __webpack_require__(1);
 const Settings_1 = __webpack_require__(0);
-const InteractiveItem_1 = __webpack_require__(3);
-const Pen_1 = __webpack_require__(4);
+const InteractiveItem_1 = __webpack_require__(4);
+const Pen_1 = __webpack_require__(3);
 const PlotInterface_1 = __webpack_require__(7);
 class Tipibot {
     constructor() {
@@ -536,10 +530,10 @@ class Tipibot {
         this.moveToButtons = [];
     }
     mmPerSteps() {
-        return Settings_1.Settings.tipibot.mmPerRev / (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.stepMultiplier);
+        return Settings_1.Settings.tipibot.mmPerRev / (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.microstepResolution);
     }
     stepsPerMm() {
-        return (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.stepMultiplier) / Settings_1.Settings.tipibot.mmPerRev;
+        return (Settings_1.Settings.tipibot.stepsPerRev * Settings_1.Settings.tipibot.microstepResolution) / Settings_1.Settings.tipibot.mmPerRev;
     }
     mmToSteps(point) {
         return point.multiply(this.stepsPerMm());
@@ -571,7 +565,7 @@ class Tipibot {
         gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
         gui.addButton('Stop & Clear queue', () => Communication_1.communication.interpreter.stopAndClearQueue());
         // DEBUG
-        gui.addButton('Send specs', () => Communication_1.communication.interpreter.connectionOpened());
+        gui.addButton('Send specs', () => Communication_1.communication.interpreter.initialize(false));
     }
     setPositionSliders(point) {
         Settings_1.settingsManager.tipibotPositionFolder.getController('x').setValue(point.x, false);
@@ -658,6 +652,11 @@ class Tipibot {
             Communication_1.communication.interpreter.sendSpeed();
         }
     }
+    accelerationChanged(sendChange) {
+        if (sendChange) {
+            Communication_1.communication.interpreter.sendAcceleration();
+        }
+    }
     getPosition() {
         return this.pen.getPosition();
     }
@@ -666,15 +665,11 @@ class Tipibot {
     }
     setX(x, sendChange = true) {
         let p = this.getPosition();
-        if (Math.abs(x - p.x) > 0.01) {
-            this.setPosition(new paper.Point(x, p.y), sendChange);
-        }
+        this.setPosition(new paper.Point(x, p.y), sendChange);
     }
     setY(y, sendChange = true) {
         let p = this.getPosition();
-        if (Math.abs(y - p.y) > 0.01) {
-            this.setPosition(new paper.Point(p.x, y), sendChange);
-        }
+        this.setPosition(new paper.Point(p.x, y), sendChange);
     }
     checkInitialized() {
         if (!this.initializedCommunication) {
@@ -729,9 +724,9 @@ class Tipibot {
             Communication_1.communication.interpreter.sendMmPerRev(Settings_1.Settings.tipibot.mmPerRev);
         }
     }
-    stepMultiplierChanged(sendChange) {
+    microstepResolutionChanged(sendChange) {
         if (sendChange) {
-            Communication_1.communication.interpreter.sendStepMultiplier(Settings_1.Settings.tipibot.stepMultiplier);
+            Communication_1.communication.interpreter.sendStepMultiplier(Settings_1.Settings.tipibot.microstepResolution);
         }
     }
     penWidthChanged(sendChange) {
@@ -747,7 +742,7 @@ class Tipibot {
         }
     }
     sendSpecs() {
-        Communication_1.communication.interpreter.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
+        Communication_1.communication.interpreter.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.microstepResolution);
     }
     pause(delay) {
         Communication_1.communication.interpreter.sendPause(delay);
@@ -820,141 +815,8 @@ exports.tipibot = new Tipibot();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-class InteractiveItem {
-    // constructor(renderer: Renderer, item: paper.Item=null) {
-    constructor(renderer, shape = null, draggable = false, clickCallback = null) {
-        this.clickCallback = clickCallback;
-        this.renderer = renderer;
-        this.draggable = draggable;
-        this.dragging = false;
-        this.previousPosition = new paper.Point(0, 0);
-        this.shape = shape;
-        InteractiveItem.interactiveItems.push(this);
-    }
-    static mouseDown(event) {
-        for (let interactiveItem of InteractiveItem.interactiveItems) {
-            if (!interactiveItem.mouseDown(event)) {
-                return;
-            }
-        }
-    }
-    static mouseMove(event) {
-        for (let interactiveItem of InteractiveItem.interactiveItems) {
-            if (!interactiveItem.mouseMove(event)) {
-                return;
-            }
-        }
-    }
-    static mouseStop(event) {
-        for (let interactiveItem of InteractiveItem.interactiveItems) {
-            if (!interactiveItem.mouseStop(event)) {
-                return;
-            }
-        }
-    }
-    static mouseUp(event) {
-        for (let interactiveItem of InteractiveItem.interactiveItems) {
-            if (!interactiveItem.mouseUp(event)) {
-                return;
-            }
-        }
-    }
-    static mouseLeave(event) {
-        for (let interactiveItem of InteractiveItem.interactiveItems) {
-            if (!interactiveItem.mouseLeave(event)) {
-                return;
-            }
-        }
-    }
-    moveAbove(otherItem) {
-        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
-        InteractiveItem.interactiveItems.splice(thisIndex, 1);
-        let otherIndex = InteractiveItem.interactiveItems.indexOf(otherItem);
-        InteractiveItem.interactiveItems.splice(otherIndex, 0, this);
-    }
-    moveBelow(otherItem) {
-        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
-        InteractiveItem.interactiveItems.splice(thisIndex, 1);
-        let otherIndex = InteractiveItem.interactiveItems.indexOf(otherItem);
-        InteractiveItem.interactiveItems.splice(otherIndex + 1, 0, this);
-    }
-    moveToTop() {
-        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
-        InteractiveItem.interactiveItems.splice(thisIndex, 1);
-        InteractiveItem.interactiveItems.splice(0, 0, this);
-    }
-    moveToBottom() {
-        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
-        InteractiveItem.interactiveItems.splice(thisIndex, 1);
-        InteractiveItem.interactiveItems.push(this);
-    }
-    setPosition(position) {
-        this.shape.setPosition(position);
-    }
-    setX(x) {
-        this.shape.setX(x);
-    }
-    setY(y) {
-        this.shape.setY(y);
-    }
-    drag(delta) {
-        this.shape.setPosition(this.shape.getPosition().add(delta));
-    }
-    getWorldPosition(event) {
-        return this.renderer.getWorldPosition(event);
-    }
-    mouseDown(event) {
-        let position = this.getWorldPosition(event);
-        if (this.shape.getBounds().contains(position)) {
-            this.dragging = true;
-            this.previousPosition = position.clone();
-            return false;
-        }
-        return true;
-    }
-    mouseMove(event) {
-        if (this.draggable && this.dragging) {
-            let position = this.getWorldPosition(event);
-            this.drag(position.subtract(this.previousPosition));
-            this.previousPosition = position.clone();
-            return false;
-        }
-        return true;
-    }
-    mouseStop(event) {
-        this.dragging = false;
-        return true;
-    }
-    mouseUp(event) {
-        let position = this.getWorldPosition(event);
-        if (this.dragging && this.shape.getBounds().contains(position) && this.clickCallback != null) {
-            this.clickCallback.call(this, event, this);
-            return false;
-        }
-        this.mouseStop(event);
-        return true;
-    }
-    mouseLeave(event) {
-        this.mouseStop(event);
-        return true;
-    }
-    delete() {
-        InteractiveItem.interactiveItems.splice(InteractiveItem.interactiveItems.indexOf(this), 1);
-    }
-}
-InteractiveItem.interactiveItems = new Array();
-exports.InteractiveItem = InteractiveItem;
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
 const Communication_1 = __webpack_require__(1);
-const InteractiveItem_1 = __webpack_require__(3);
+const InteractiveItem_1 = __webpack_require__(4);
 const Settings_1 = __webpack_require__(0);
 const Tipibot_1 = __webpack_require__(2);
 var MoveType;
@@ -1142,6 +1004,139 @@ exports.ThreePen = ThreePen;
 
 
 /***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class InteractiveItem {
+    // constructor(renderer: Renderer, item: paper.Item=null) {
+    constructor(renderer, shape = null, draggable = false, clickCallback = null) {
+        this.clickCallback = clickCallback;
+        this.renderer = renderer;
+        this.draggable = draggable;
+        this.dragging = false;
+        this.previousPosition = new paper.Point(0, 0);
+        this.shape = shape;
+        InteractiveItem.interactiveItems.push(this);
+    }
+    static mouseDown(event) {
+        for (let interactiveItem of InteractiveItem.interactiveItems) {
+            if (!interactiveItem.mouseDown(event)) {
+                return;
+            }
+        }
+    }
+    static mouseMove(event) {
+        for (let interactiveItem of InteractiveItem.interactiveItems) {
+            if (!interactiveItem.mouseMove(event)) {
+                return;
+            }
+        }
+    }
+    static mouseStop(event) {
+        for (let interactiveItem of InteractiveItem.interactiveItems) {
+            if (!interactiveItem.mouseStop(event)) {
+                return;
+            }
+        }
+    }
+    static mouseUp(event) {
+        for (let interactiveItem of InteractiveItem.interactiveItems) {
+            if (!interactiveItem.mouseUp(event)) {
+                return;
+            }
+        }
+    }
+    static mouseLeave(event) {
+        for (let interactiveItem of InteractiveItem.interactiveItems) {
+            if (!interactiveItem.mouseLeave(event)) {
+                return;
+            }
+        }
+    }
+    moveAbove(otherItem) {
+        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
+        InteractiveItem.interactiveItems.splice(thisIndex, 1);
+        let otherIndex = InteractiveItem.interactiveItems.indexOf(otherItem);
+        InteractiveItem.interactiveItems.splice(otherIndex, 0, this);
+    }
+    moveBelow(otherItem) {
+        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
+        InteractiveItem.interactiveItems.splice(thisIndex, 1);
+        let otherIndex = InteractiveItem.interactiveItems.indexOf(otherItem);
+        InteractiveItem.interactiveItems.splice(otherIndex + 1, 0, this);
+    }
+    moveToTop() {
+        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
+        InteractiveItem.interactiveItems.splice(thisIndex, 1);
+        InteractiveItem.interactiveItems.splice(0, 0, this);
+    }
+    moveToBottom() {
+        let thisIndex = InteractiveItem.interactiveItems.indexOf(this);
+        InteractiveItem.interactiveItems.splice(thisIndex, 1);
+        InteractiveItem.interactiveItems.push(this);
+    }
+    setPosition(position) {
+        this.shape.setPosition(position);
+    }
+    setX(x) {
+        this.shape.setX(x);
+    }
+    setY(y) {
+        this.shape.setY(y);
+    }
+    drag(delta) {
+        this.shape.setPosition(this.shape.getPosition().add(delta));
+    }
+    getWorldPosition(event) {
+        return this.renderer.getWorldPosition(event);
+    }
+    mouseDown(event) {
+        let position = this.getWorldPosition(event);
+        if (this.shape.getBounds().contains(position)) {
+            this.dragging = true;
+            this.previousPosition = position.clone();
+            return false;
+        }
+        return true;
+    }
+    mouseMove(event) {
+        if (this.draggable && this.dragging) {
+            let position = this.getWorldPosition(event);
+            this.drag(position.subtract(this.previousPosition));
+            this.previousPosition = position.clone();
+            return false;
+        }
+        return true;
+    }
+    mouseStop(event) {
+        this.dragging = false;
+        return true;
+    }
+    mouseUp(event) {
+        let position = this.getWorldPosition(event);
+        if (this.dragging && this.shape.getBounds().contains(position) && this.clickCallback != null) {
+            this.clickCallback.call(this, event, this);
+            return false;
+        }
+        this.mouseStop(event);
+        return true;
+    }
+    mouseLeave(event) {
+        this.mouseStop(event);
+        return true;
+    }
+    delete() {
+        InteractiveItem.interactiveItems.splice(InteractiveItem.interactiveItems.indexOf(this), 1);
+    }
+}
+InteractiveItem.interactiveItems = new Array();
+exports.InteractiveItem = InteractiveItem;
+
+
+/***/ }),
 /* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1153,7 +1148,7 @@ const Tipibot_1 = __webpack_require__(2);
 const Settings_1 = __webpack_require__(0);
 const Communication_1 = __webpack_require__(1);
 const Renderers_1 = __webpack_require__(6);
-const Pen_1 = __webpack_require__(4);
+const Pen_1 = __webpack_require__(3);
 class Plot extends PlotInterface_1.PlotInterface {
     constructor(renderer, item = null) {
         super(renderer, null, true);
@@ -1600,9 +1595,9 @@ exports.SVGPlot = SVGPlot;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Shapes_1 = __webpack_require__(16);
-const Pen_1 = __webpack_require__(4);
-const RendererInterface_1 = __webpack_require__(15);
+const Shapes_1 = __webpack_require__(18);
+const Pen_1 = __webpack_require__(3);
+const RendererInterface_1 = __webpack_require__(17);
 class PaperRenderer extends RendererInterface_1.Renderer {
     constructor() {
         super();
@@ -1816,7 +1811,7 @@ exports.ThreeRenderer = ThreeRenderer;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const InteractiveItem_1 = __webpack_require__(3);
+const InteractiveItem_1 = __webpack_require__(4);
 class PlotInterface extends InteractiveItem_1.InteractiveItem {
 }
 exports.PlotInterface = PlotInterface;
@@ -2518,6 +2513,77 @@ exports.Telescreen = Telescreen;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
+const Pen_1 = __webpack_require__(3);
+const Tipibot_1 = __webpack_require__(2);
+class VisualFeedback {
+    constructor() {
+        this.drawing = false;
+        this.paths = new paper.Group();
+        let positon = Tipibot_1.tipibot.getPosition();
+        this.circle = paper.Path.Circle(positon, Pen_1.Pen.HOME_RADIUS);
+        this.circle.fillColor = 'yellow';
+        this.circle.strokeColor = 'black';
+        this.circle.strokeWidth = 1;
+        this.lines = new paper.Path();
+        this.lines.add(new paper.Point(0, 0));
+        this.lines.add(positon);
+        this.lines.add(new paper.Point(Settings_1.Settings.tipibot.width, 0));
+        this.lines.strokeWidth = 0.5;
+        this.lines.strokeColor = 'rgba(0, 0, 0, 0.5)';
+        this.lines.dashArray = [2, 2];
+        this.lines.strokeScaling = false;
+        document.addEventListener('MessageReceived', (event) => this.onMessageReceived(event.detail), false);
+    }
+    setPosition(point) {
+        this.circle.position = point;
+        this.lines.segments[1].point = point;
+    }
+    computePoint(data) {
+        let m = data.replace(' - l: ', '');
+        let messages = m.split(', r: ');
+        let x = parseInt(messages[0]);
+        let y = parseInt(messages[1].split(' - x: ')[0]);
+        let lengths = new paper.Point(x, y);
+        let lengthsMm = Tipibot_1.tipibot.stepsToMm(lengths);
+        return Tipibot_1.tipibot.lengthsToCartesian(lengthsMm);
+    }
+    onMessageReceived(data) {
+        if (data.indexOf(' - ') == 0) {
+            this.onFeedback(data);
+        }
+    }
+    onFeedback(data) {
+        let point = this.computePoint(data);
+        if (!Tipibot_1.tipibot.pen.isPenUp) {
+            if (!this.drawing) {
+                let path = new paper.Path();
+                path.strokeWidth = Settings_1.Settings.tipibot.penWidth;
+                path.strokeColor = 'black';
+                this.paths.addChild(path);
+                this.drawing = true;
+            }
+            else {
+                let path = this.paths.lastChild;
+                path.add(point);
+            }
+        }
+        else {
+            this.drawing = false;
+        }
+        this.setPosition(point);
+    }
+}
+exports.VisualFeedback = VisualFeedback;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
 const MAX_INPUT_BUFFER_LENGTH = 500;
 class Interpreter {
     constructor() {
@@ -2540,12 +2606,13 @@ class Interpreter {
     connectionOpened() {
         this.initialize();
     }
-    initialize() {
+    initialize(initializeAtHome = true) {
         this.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
         this.sendSpecs();
         this.sendInvertXY();
-        // Initialize at home position; it is always possible to set position afterward
-        this.sendSetPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY));
+        // Initialize at home position by default; it is always possible to set position afterward
+        // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
+        this.sendSetPosition(initializeAtHome ? new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY) : this.tipibot.getPosition());
         this.sendSpeedAndAcceleration();
         this.tipibot.initializedCommunication = true;
     }
@@ -2555,9 +2622,13 @@ class Interpreter {
         }
         document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }));
         // this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
+        console.log('send: ' + command.data);
         this.socket.emit('data', command.data);
     }
     messageReceived(message) {
+        if (message == null) {
+            return;
+        }
         this.serialInput += message;
         let messages = this.serialInput.split('\n');
         // process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
@@ -2647,11 +2718,11 @@ class Interpreter {
     }
     sendMmPerRev(mmPerRev = Settings_1.Settings.tipibot.mmPerRev) {
     }
-    sendStepMultiplier(stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
+    sendStepMultiplier(microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
     }
     sendPenWidth(penWidth = Settings_1.Settings.tipibot.penWidth) {
     }
-    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
+    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
     }
     sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
     }
@@ -2678,14 +2749,14 @@ exports.Interpreter = Interpreter;
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
-const Interpreter_1 = __webpack_require__(12);
+const Interpreter_1 = __webpack_require__(13);
 class PenPlotter extends Interpreter_1.Interpreter {
     sendSetPosition(point = this.tipibot.getPosition()) {
         super.sendSetPosition(point);
@@ -2716,15 +2787,22 @@ class PenPlotter extends Interpreter_1.Interpreter {
         this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
     }
     sendSpeed(speed = Settings_1.Settings.tipibot.speed) {
-        console.log('set speed: ' + speed);
-        this.queue('G0 F' + speed + '\n');
+        let stepsPerMm = this.tipibot.stepsPerMm();
+        let stepsPerSeconds = speed * stepsPerMm;
+        console.log('set speed: ' + stepsPerSeconds);
+        this.queue('G0 F' + stepsPerSeconds + '\n');
     }
     sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
-        console.log('set acceleration: ' + acceleration);
-        this.queue('G0 S' + acceleration + '\n');
+        let stepsPerMm = this.tipibot.stepsPerMm();
+        let stepsPerSeconds2 = acceleration * stepsPerMm;
+        console.log('set acceleration: ' + stepsPerSeconds2);
+        this.queue('G0 S' + stepsPerSeconds2 + '\n');
     }
     sendSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
-        this.queue('G0 F' + speed + ' S' + acceleration + '\n');
+        let stepsPerMm = this.tipibot.stepsPerMm();
+        let stepsPerSeconds = speed * stepsPerMm;
+        let stepsPerSeconds2 = acceleration * stepsPerMm;
+        this.queue('G0 F' + stepsPerSeconds + ' S' + stepsPerSeconds2 + '\n');
     }
     sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
         console.log('invertX: ' + invertX + ', invertY: ' + invertY);
@@ -2739,19 +2817,19 @@ class PenPlotter extends Interpreter_1.Interpreter {
         this.queue('M4 X' + tipibotWidth.toFixed(2) + '\n');
     }
     sendStepsPerRev(stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev) {
-        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.microstepResolution);
     }
     sendMmPerRev(mmPerRev = Settings_1.Settings.tipibot.mmPerRev) {
-        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, mmPerRev, Settings_1.Settings.tipibot.stepMultiplier);
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, mmPerRev, Settings_1.Settings.tipibot.microstepResolution);
     }
-    sendStepMultiplier(stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
-        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, stepMultiplier);
+    sendStepMultiplier(microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
+        this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, Settings_1.Settings.tipibot.stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, microstepResolution);
     }
-    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, stepMultiplier = Settings_1.Settings.tipibot.stepMultiplier) {
-        let stepsPerRevolution = stepsPerRev * stepMultiplier;
+    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
+        let stepsPerRevolution = stepsPerRev * microstepResolution;
         let millimetersPerStep = mmPerRev / stepsPerRevolution;
-        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev * stepMultiplier) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
-        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * stepMultiplier) + ' P' + mmPerRev + '\n');
+        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev * microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
+        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * microstepResolution) + ' P' + mmPerRev + '\n');
     }
     sendPause(delay) {
         this.queue('G4 P' + delay + '\n');
@@ -2778,7 +2856,51 @@ exports.PenPlotter = PenPlotter;
 
 
 /***/ }),
-/* 14 */
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
+const PenPlotter_1 = __webpack_require__(14);
+class TipibotInterpreter extends PenPlotter_1.PenPlotter {
+    constructor() {
+        super(...arguments);
+        this.continueMessage = 'READY';
+        this.initializationMessage = 'Initialize';
+    }
+    connectionOpened() {
+    }
+    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
+        let stepsPerRevolution = stepsPerRev * microstepResolution;
+        let millimetersPerStep = mmPerRev / stepsPerRevolution;
+        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
+        this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n');
+    }
+    sendSpeed(speed = Settings_1.Settings.tipibot.speed) {
+        console.log('set speed: ' + speed);
+        this.queue('G0 F' + speed + '\n');
+    }
+    sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
+        console.log('set acceleration: ' + acceleration);
+        this.queue('G0 S' + acceleration + '\n');
+    }
+    sendSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.speed, acceleration = Settings_1.Settings.tipibot.acceleration) {
+        this.queue('G0 F' + speed + ' S' + acceleration + '\n');
+    }
+    processMessage(message) {
+        super.processMessage(message);
+        if (message.indexOf(this.initializationMessage) == 0) {
+            this.initialize();
+        }
+    }
+}
+exports.TipibotInterpreter = TipibotInterpreter;
+
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2798,12 +2920,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 const Tipibot_1 = __webpack_require__(2);
 const Renderers_1 = __webpack_require__(6);
-const Pen_1 = __webpack_require__(4);
+const Pen_1 = __webpack_require__(3);
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
 const CommandDisplay_1 = __webpack_require__(8);
-const InteractiveItem_1 = __webpack_require__(3);
+const InteractiveItem_1 = __webpack_require__(4);
 const GUI_1 = __webpack_require__(9);
+const VisualFeedback_1 = __webpack_require__(12);
 const CommeUnDessein_1 = __webpack_require__(10);
 const Telescreen_1 = __webpack_require__(11);
 let communication = null;
@@ -2852,6 +2975,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         renderer.createDrawingLayer();
         let commandDisplay = new CommandDisplay_1.CommandDisplay();
         commandDisplay.createGUI(gui);
+        let visualFeedback = new VisualFeedback_1.VisualFeedback();
         // debug
         w.tipibot = Tipibot_1.tipibot;
         w.settingsManager = Settings_1.settingsManager;
@@ -2859,6 +2983,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         w.renderer = renderer;
         w.communication = communication;
         w.commandDisplay = commandDisplay;
+        w.visualFeedback = visualFeedback;
     }
     initialize();
     let animate = () => {
@@ -2927,7 +3052,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2986,7 +3111,7 @@ exports.Renderer = Renderer;
 
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

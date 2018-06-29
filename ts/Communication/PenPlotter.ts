@@ -2,7 +2,7 @@ import { Settings, settingsManager } from "../Settings"
 import { Interpreter } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {
-	
+
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	super.sendSetPosition(point)
 		let lengths = this.tipibot.cartesianToLengths(point)
@@ -36,17 +36,24 @@ export class PenPlotter extends Interpreter {
 	}
 
 	sendSpeed(speed: number=Settings.tipibot.speed) {
-		console.log('set speed: ' + speed)
-		this.queue('G0 F' + speed + '\n')
+		let stepsPerMm = this.tipibot.stepsPerMm()
+		let stepsPerSeconds = speed * stepsPerMm
+		console.log('set speed: ' + stepsPerSeconds)
+		this.queue('G0 F' + stepsPerSeconds + '\n')
 	}
 
 	sendAcceleration(acceleration: number=Settings.tipibot.acceleration) {
-		console.log('set acceleration: ' + acceleration)
-		this.queue('G0 S' + acceleration + '\n')
+		let stepsPerMm = this.tipibot.stepsPerMm()
+		let stepsPerSeconds2 = acceleration * stepsPerMm
+		console.log('set acceleration: ' + stepsPerSeconds2)
+		this.queue('G0 S' + stepsPerSeconds2 + '\n')
 	}
 
 	sendSpeedAndAcceleration(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
-		this.queue('G0 F' + speed + ' S' + acceleration + '\n')
+		let stepsPerMm = this.tipibot.stepsPerMm()
+		let stepsPerSeconds = speed * stepsPerMm
+		let stepsPerSeconds2 = acceleration * stepsPerMm
+		this.queue('G0 F' + stepsPerSeconds + ' S' + stepsPerSeconds2 + '\n')
 	}
 
 	sendInvertXY(invertX: boolean=Settings.tipibot.invertX, invertY: boolean=Settings.tipibot.invertY) {
@@ -65,22 +72,22 @@ export class PenPlotter extends Interpreter {
 	}
 	
 	sendStepsPerRev(stepsPerRev: number=Settings.tipibot.stepsPerRev) {
-		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
+		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.microstepResolution)
 	}
 
 	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
-		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, mmPerRev, Settings.tipibot.stepMultiplier)
+		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, mmPerRev, Settings.tipibot.microstepResolution)
 	}
 
-	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
-		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, stepMultiplier)
+	sendStepMultiplier(microstepResolution: number=Settings.tipibot.microstepResolution) {
+		this.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, microstepResolution)
 	}
 
-	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
-		let stepsPerRevolution = stepsPerRev*stepMultiplier
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
+		let stepsPerRevolution = stepsPerRev*microstepResolution
 		let millimetersPerStep = mmPerRev / stepsPerRevolution;
-		console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev*stepMultiplier) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep)
-		this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev*stepMultiplier) + ' P' + mmPerRev + '\n')
+		console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev*microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep)
+		this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev*microstepResolution) + ' P' + mmPerRev + '\n')
 	}
 
 	sendPause(delay: number) {

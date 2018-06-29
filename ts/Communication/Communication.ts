@@ -1,10 +1,10 @@
 import { GUI, Controller } from "../GUI"
 import { Settings } from "../Settings"
-import { TipibotInterface} from "../TipibotInterface"
+import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
 import { PenPlotter } from "./PenPlotter"
-
+import { TipibotInterpreter } from "./TipibotInterpreter"
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
@@ -18,7 +18,7 @@ declare var io: any
 class Socket {
 	socket: WebSocket
 	communication: Communication
-	
+
 	constructor(url: string, communication: Communication) {
 		this.socket = new WebSocket(url)
 		this.communication = communication;
@@ -27,18 +27,7 @@ class Socket {
 			let type = json.type;
 			let data = json.data;
 			let interpreter = this.communication.interpreter;
-			if(data && data.indexOf(' - ') == 0) {
-				let m = data.replace(' - l: ', '')
-				let messages = m.split(', r: ')
-				let x = parseInt(messages[0])
-				let y = parseInt(messages[1].split(' - x: ')[0])
-				let lengths = new paper.Point(x, y)
-				let lengthsMm = interpreter.tipibot.stepsToMm(lengths)
-				let point = interpreter.tipibot.lengthsToCartesian(lengthsMm)
-				let pen: any = interpreter.tipibot.pen
-				pen.setPosition(point, false, false)
-				return;
-			}
+
 			if(type == 'opened') {
 				interpreter.connectionOpened()
 			} else if(type == 'list') {
@@ -51,8 +40,13 @@ class Socket {
 				communication.portController.onFinishChange( (value: any) => communication.serialConnectionPortChanged(value) )
 
 			} else if(type == 'data') {
-				interpreter.messageReceived(data + '\n')
-				// interpreter.messageReceived(data)
+				
+				// If receiving messages while not connected: consider it as simulation
+				if(communication.portController.getValue().indexOf('Disconnected') == 0) {
+					data += '\n'
+				}
+
+				interpreter.messageReceived(data)
 			} else if(type == 'error') {
 				console.error(data)
 			}
@@ -83,7 +77,7 @@ export class Communication {
 		this.socket = null
 		this.gui = gui
 		this.portController = null
-		this.interpreter = new PenPlotter()
+		this.interpreter = new TipibotInterpreter()
 		// this.interpreter = new Polargraph()
 		this.connectToSerial()
 	}

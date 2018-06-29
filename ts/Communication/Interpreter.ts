@@ -44,12 +44,13 @@ export class Interpreter {
 		this.initialize()
 	}
 
-	initialize() {
+	initialize(initializeAtHome=true) {
 		this.sendPenWidth(Settings.tipibot.penWidth)
 		this.sendSpecs()
 		this.sendInvertXY()
-		// Initialize at home position; it is always possible to set position afterward
-		this.sendSetPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY))
+		// Initialize at home position by default; it is always possible to set position afterward
+		// This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
+		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY) : this.tipibot.getPosition())
 		this.sendSpeedAndAcceleration()
 		this.tipibot.initializedCommunication = true
 	}
@@ -60,10 +61,15 @@ export class Interpreter {
 		}
 		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
 		// this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
+		console.log('send: ' + command.data)
 		this.socket.emit('data', command.data)
 	}
 
 	messageReceived(message: string) {
+		if(message == null) {
+			return
+		}
+
 		this.serialInput += message
 		
 		let messages = this.serialInput.split('\n')
@@ -178,13 +184,13 @@ export class Interpreter {
 	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
 	}
 
-	sendStepMultiplier(stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	sendStepMultiplier(microstepResolution: number=Settings.tipibot.microstepResolution) {
 	}
 
 	sendPenWidth(penWidth: number=Settings.tipibot.penWidth) {
 	}
 
-	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, stepMultiplier: number=Settings.tipibot.stepMultiplier) {
+	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
 	}
 
 	sendInvertXY(invertX: boolean=Settings.tipibot.invertX, invertY: boolean=Settings.tipibot.invertY) {

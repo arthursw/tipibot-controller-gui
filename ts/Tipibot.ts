@@ -32,11 +32,11 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	mmPerSteps() {
-		return Settings.tipibot.mmPerRev / ( Settings.tipibot.stepsPerRev * Settings.tipibot.stepMultiplier );
+		return Settings.tipibot.mmPerRev / ( Settings.tipibot.stepsPerRev * Settings.tipibot.microstepResolution );
 	}
 
 	stepsPerMm() {
-		return ( Settings.tipibot.stepsPerRev * Settings.tipibot.stepMultiplier ) / Settings.tipibot.mmPerRev;
+		return ( Settings.tipibot.stepsPerRev * Settings.tipibot.microstepResolution ) / Settings.tipibot.mmPerRev;
 	}
 
 	mmToSteps(point: paper.Point): paper.Point {
@@ -77,7 +77,7 @@ export class Tipibot implements TipibotInterface {
 		gui.addButton('Stop & Clear queue', () => communication.interpreter.stopAndClearQueue() )
 		
 		// DEBUG
-		gui.addButton('Send specs', () => communication.interpreter.connectionOpened() )
+		gui.addButton('Send specs', ()=> communication.interpreter.initialize(false))
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -173,6 +173,12 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
+	accelerationChanged(sendChange: boolean) {
+		if(sendChange) {
+			communication.interpreter.sendAcceleration()
+		}
+	}
+
 	getPosition() {
 		return this.pen.getPosition()
 	}
@@ -183,16 +189,12 @@ export class Tipibot implements TipibotInterface {
 
 	setX(x: number, sendChange=true) {
 		let p = this.getPosition()
-		if(Math.abs(x - p.x) > 0.01) {
-			this.setPosition(new paper.Point(x, p.y), sendChange)
-		}
+		this.setPosition(new paper.Point(x, p.y), sendChange)
 	}
 
 	setY(y: number, sendChange=true) {
 		let p = this.getPosition()
-		if(Math.abs(y - p.y) > 0.01) {
-			this.setPosition(new paper.Point(p.x, y), sendChange)
-		}
+		this.setPosition(new paper.Point(p.x, y), sendChange)
 	}
 
 	checkInitialized() {
@@ -258,9 +260,9 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	stepMultiplierChanged(sendChange: boolean) {
+	microstepResolutionChanged(sendChange: boolean) {
 		if(sendChange) {
-			communication.interpreter.sendStepMultiplier(Settings.tipibot.stepMultiplier)
+			communication.interpreter.sendStepMultiplier(Settings.tipibot.microstepResolution)
 		}
 	}
 
@@ -279,7 +281,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	sendSpecs() {
-		communication.interpreter.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.stepMultiplier)
+		communication.interpreter.sendSpecs(Settings.tipibot.width, Settings.tipibot.height, Settings.tipibot.stepsPerRev, Settings.tipibot.mmPerRev, Settings.tipibot.microstepResolution)
 	}
 
 	pause(delay: number) {
