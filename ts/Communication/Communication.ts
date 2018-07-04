@@ -126,7 +126,7 @@ export class Communication {
 			this.startAutoConnection()
 		}
 		// this.interpreter.connectionClosed()	
-		this.gui.setName('Communication - closed')
+		this.gui.setName('Communication - disconnected')
 	}
 
 	initializePortController(options: string[]) {

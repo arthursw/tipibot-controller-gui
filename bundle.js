@@ -540,7 +540,7 @@ class Communication {
             this.startAutoConnection();
         }
         // this.interpreter.connectionClosed()	
-        this.gui.setName('Communication - closed');
+        this.gui.setName('Communication - disconnected');
     }
     initializePortController(options) {
         this.portController = this.portController.options(options);
@@ -1468,7 +1468,10 @@ class Plot extends PlotInterface_1.PlotInterface {
     }
     plot(callback = null) {
         this.plotting = true;
+        let itemVisible = this.item.visible;
+        this.item.visible = true;
         this.plotItem(this.item); // to be overloaded. The draw button calls plot()
+        this.item.visible = itemVisible;
         Tipibot_1.tipibot.goHome(() => this.plotFinished(callback));
     }
     plotItem(item) {
@@ -2369,13 +2372,17 @@ class CommeUnDessein {
         this.currentDrawing = results;
         let drawing = new paper.Group();
         paper.project.importSVG(results.svg, (item, svg) => {
+            if (item.visible == false) {
+                console.error('When receiving next validated drawing: while importing SVG: the imported item is not visible: ignore.');
+                return;
+            }
             for (let path of item.children) {
                 if (path.className != 'Path') {
                     continue;
                 }
                 // Ignore anything that humans can't see to avoid hacks
                 let strokeColor = path.strokeColor;
-                if (path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2) {
+                if (path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
                     continue;
                 }
                 let controlPath = path.clone();
@@ -2451,6 +2458,7 @@ class CommeUnDessein {
         }
         let url = commeundesseinAjaxURL;
         $.ajax({ method: "POST", url: url, data: data }).done((results) => {
+            console.log(results);
             if (this.testMode) {
                 console.log(results);
             }

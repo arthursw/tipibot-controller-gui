@@ -173,7 +173,10 @@ export class CommeUnDessein {
 		let drawing = new paper.Group()
 
 		paper.project.importSVG(results.svg, (item: paper.Item, svg: string)=> {
-
+			if(item.visible == false) {
+				console.error('When receiving next validated drawing: while importing SVG: the imported item is not visible: ignore.')
+				return
+			}
 			for (let path of item.children) {
 
 				if(path.className != 'Path') {
@@ -182,7 +185,7 @@ export class CommeUnDessein {
 
 				// Ignore anything that humans can't see to avoid hacks
 				let strokeColor: any = path.strokeColor
-				if(path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2) {
+				if(path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
 					continue
 				}
 
@@ -274,6 +277,7 @@ export class CommeUnDessein {
 
 		let url = commeundesseinAjaxURL
 		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
+			console.log(results)
 			if(this.testMode) {
 				console.log(results)
 			}

@@ -230,7 +230,10 @@ export class Plot extends PlotInterface {
 
 	plot(callback: ()=> void = null) {
 		this.plotting = true
+		let itemVisible = this.item.visible
+		this.item.visible = true
 		this.plotItem(this.item)			// to be overloaded. The draw button calls plot()
+		this.item.visible = itemVisible
 		tipibot.goHome(()=> this.plotFinished(callback))
 	}
 
