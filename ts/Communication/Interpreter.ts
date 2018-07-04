@@ -53,6 +53,7 @@ export class Interpreter {
 		// This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY) : this.tipibot.getPosition())
 		this.sendMaxSpeedAndAcceleration()
+		this.sendServoSpeed()
 		this.tipibot.initializedCommunication = true
 	}
 
@@ -117,8 +118,16 @@ export class Interpreter {
 
 	}
 
+	stop() {
+		if(!this.pause) {
+			this.setPause(true)
+		}
+		this.sendStop()
+	}
+
 	setPause(pause: boolean) {
 		this.pause = pause;
+		this.tipibot.pauseButton.setValueNoCallback(this.pause)
 		if(!this.pause && this.commandQueue.length > 0) {
 			this.send(this.commandQueue[0])
 		}
@@ -149,11 +158,6 @@ export class Interpreter {
 	clearQueue() {
 		this.commandQueue = []
 		document.dispatchEvent(new CustomEvent('ClearQueue', { detail: null }))
-	}
-
-	stopAndClearQueue() {
-		this.clearQueue()
-		this.sendStop()
 	}
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {

@@ -1,10 +1,11 @@
 import { Rectangle, Circle} from "./Shapes"
-import { GUI } from "./GUI"
+import { GUI, Controller } from "./GUI"
 
 export interface TipibotInterface {
 	tipibotArea: Rectangle
 	drawArea: Rectangle
 	initializedCommunication: boolean
+	pauseButton: Controller
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isPenUp: boolean }
 
 	createGUI(gui:GUI): void

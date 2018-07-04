@@ -369,11 +369,12 @@ export class SVGPlot extends Plot {
 	public static drawClicked(event: any) {
 		if(PlotInterface.currentPlot != null) {
 			if(!PlotInterface.currentPlot.plotting) {
-				SVGPlot.gui.getController('Draw').name('Stop & Clear queue')
+				SVGPlot.gui.getController('Draw').name('Stop & Clear commands')
 				PlotInterface.currentPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
-				communication.interpreter.stopAndClearQueue()
+				communication.interpreter.stop()
+				communication.interpreter.clearQueue()
 			}
 		}
 	}

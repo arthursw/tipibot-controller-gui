@@ -24,6 +24,7 @@ export class Tipibot implements TipibotInterface {
 	penStateButton: Controller = null
 	motorsEnableButton: Controller = null
 	settingPosition: boolean = false
+	pauseButton: Controller = null
 
 	initialPosition: paper.Point = null
 	initializedCommunication = false
@@ -60,8 +61,9 @@ export class Tipibot implements TipibotInterface {
 		this.penStateButton = gui.addButton('Pen down', () => this.togglePenState() )
 		this.motorsEnableButton = gui.addButton('Disable motors', ()=> this.toggleMotors())
 
-		gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
-		gui.addButton('Stop & Clear queue', () => communication.interpreter.stopAndClearQueue() )
+		this.pauseButton = gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
+		gui.addButton('Emergency stop', () => communication.interpreter.stop() )
+		gui.addButton('Clear commands', () => communication.interpreter.clearQueue() )
 		
 		// DEBUG
 		gui.addButton('Send specs', ()=> communication.interpreter.initialize(false))

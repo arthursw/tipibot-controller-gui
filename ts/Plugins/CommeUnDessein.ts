@@ -118,7 +118,8 @@ export class CommeUnDessein {
 		if(SVGPlot.svgPlot != null) {
 			SVGPlot.svgPlot.clear()
 		}
-		communication.interpreter.stopAndClearQueue()
+		communication.interpreter.stop()
+		communication.interpreter.clearQueue()
 		this.state = State.NextDrawing
 	}
 
@@ -261,7 +262,7 @@ export class CommeUnDessein {
 
 	setDrawingStatusDrawn(pk: string) {
 		if(visualFeedback.paths.children.length > 0) {
-			visualFeedback.paths.firstChild.remove()
+			visualFeedback.paths.removeChildren()
 		}
 
 		if(this.state != State.Drawing) {

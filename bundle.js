@@ -630,6 +630,7 @@ class Tipibot {
         this.penStateButton = null;
         this.motorsEnableButton = null;
         this.settingPosition = false;
+        this.pauseButton = null;
         this.initialPosition = null;
         this.initializedCommunication = false;
         this.motorsEnabled = true;
@@ -656,8 +657,9 @@ class Tipibot {
         let goHomeButton = gui.addButton('Go home', () => this.goHome(() => console.log('I am home :-)')));
         this.penStateButton = gui.addButton('Pen down', () => this.togglePenState());
         this.motorsEnableButton = gui.addButton('Disable motors', () => this.toggleMotors());
-        gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
-        gui.addButton('Stop & Clear queue', () => Communication_1.communication.interpreter.stopAndClearQueue());
+        this.pauseButton = gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
+        gui.addButton('Emergency stop', () => Communication_1.communication.interpreter.stop());
+        gui.addButton('Clear commands', () => Communication_1.communication.interpreter.clearQueue());
         // DEBUG
         gui.addButton('Send specs', () => Communication_1.communication.interpreter.initialize(false));
     }
@@ -1616,12 +1618,13 @@ class SVGPlot extends Plot {
     static drawClicked(event) {
         if (PlotInterface_1.PlotInterface.currentPlot != null) {
             if (!PlotInterface_1.PlotInterface.currentPlot.plotting) {
-                SVGPlot.gui.getController('Draw').name('Stop & Clear queue');
+                SVGPlot.gui.getController('Draw').name('Stop & Clear commands');
                 PlotInterface_1.PlotInterface.currentPlot.plot();
             }
             else {
                 SVGPlot.gui.getController('Draw').name('Draw');
-                Communication_1.communication.interpreter.stopAndClearQueue();
+                Communication_1.communication.interpreter.stop();
+                Communication_1.communication.interpreter.clearQueue();
             }
         }
     }
@@ -2347,7 +2350,8 @@ class CommeUnDessein {
         if (Plot_1.SVGPlot.svgPlot != null) {
             Plot_1.SVGPlot.svgPlot.clear();
         }
-        Communication_1.communication.interpreter.stopAndClearQueue();
+        Communication_1.communication.interpreter.stop();
+        Communication_1.communication.interpreter.clearQueue();
         this.state = State.NextDrawing;
     }
     requestNextDrawing() {
@@ -2469,7 +2473,7 @@ class CommeUnDessein {
     }
     setDrawingStatusDrawn(pk) {
         if (VisualFeedback_1.visualFeedback.paths.children.length > 0) {
-            VisualFeedback_1.visualFeedback.paths.firstChild.remove();
+            VisualFeedback_1.visualFeedback.paths.removeChildren();
         }
         if (this.state != State.Drawing) {
             console.error('CommeUnDessein trying to setDrawingStatusDrawn while not in Drawing state');
@@ -2842,6 +2846,7 @@ class Interpreter {
         // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
         this.sendSetPosition(initializeAtHome ? new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY) : this.tipibot.getPosition());
         this.sendMaxSpeedAndAcceleration();
+        this.sendServoSpeed();
         this.tipibot.initializedCommunication = true;
     }
     send(command) {
@@ -2895,8 +2900,15 @@ class Interpreter {
     }
     queueEmpty() {
     }
+    stop() {
+        if (!this.pause) {
+            this.setPause(true);
+        }
+        this.sendStop();
+    }
     setPause(pause) {
         this.pause = pause;
+        this.tipibot.pauseButton.setValueNoCallback(this.pause);
         if (!this.pause && this.commandQueue.length > 0) {
             this.send(this.commandQueue[0]);
         }
@@ -2921,10 +2933,6 @@ class Interpreter {
     clearQueue() {
         this.commandQueue = [];
         document.dispatchEvent(new CustomEvent('ClearQueue', { detail: null }));
-    }
-    stopAndClearQueue() {
-        this.clearQueue();
-        this.sendStop();
     }
     sendSetPosition(point = this.tipibot.getPosition()) {
     }
