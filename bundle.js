@@ -801,17 +801,21 @@ class Tipibot {
     }
     move(moveType, point, callback = null, movePen = true) {
         this.checkInitialized();
+        let moveCallback = movePen ? callback : () => {
+            this.pen.setPosition(point, true, false);
+            callback();
+        };
         if (moveType == Pen_1.MoveType.Direct) {
-            Communication_1.communication.interpreter.sendMoveDirect(point, callback);
+            Communication_1.communication.interpreter.sendMoveDirect(point, moveCallback);
         }
         else if (moveType == Pen_1.MoveType.DirectFullSpeed) {
-            Communication_1.communication.interpreter.sendMoveDirectFullSpeed(point, callback);
+            Communication_1.communication.interpreter.sendMoveDirectFullSpeed(point, moveCallback);
         }
         else if (moveType == Pen_1.MoveType.Linear) {
-            Communication_1.communication.interpreter.sendMoveLinear(point, callback);
+            Communication_1.communication.interpreter.sendMoveLinear(point, moveCallback);
         }
         else if (moveType == Pen_1.MoveType.LinearFullSpeed) {
-            Communication_1.communication.interpreter.sendMoveLinearFullSpeed(point, callback);
+            Communication_1.communication.interpreter.sendMoveLinearFullSpeed(point, moveCallback);
         }
         this.enableMotors(false);
         if (movePen) {
@@ -911,14 +915,15 @@ class Tipibot {
     }
     goHome(callback = null) {
         let homePoint = new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY);
-        let goHomeCallback = () => {
-            this.pen.setPosition(homePoint, true, false);
-            callback();
-        };
+        // let goHomeCallback = ()=> {
+        // 	this.pen.setPosition(homePoint, true, false)
+        // 	callback()
+        // }
         this.penUp(Settings_1.SettingsManager.servoUpAngle(), Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, null, true);
         // this.penUp(null, null, null, true)
         // The pen will make me (tipibot) move :-)
-        this.pen.setPosition(homePoint, true, true, Pen_1.MoveType.Direct, goHomeCallback);
+        // this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
+        this.moveDirect(homePoint, callback, false);
     }
     keyDown(event) {
         let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;

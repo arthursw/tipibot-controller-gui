@@ -225,14 +225,19 @@ export class Tipibot implements TipibotInterface {
 	move(moveType: MoveType, point: paper.Point, callback: () => any = null, movePen=true) {
 		this.checkInitialized()
 
+		let moveCallback = movePen ? callback : ()=> {
+			this.pen.setPosition(point, true, false)
+			callback()
+		}
+
 		if(moveType == MoveType.Direct) {
-			communication.interpreter.sendMoveDirect(point, callback)
+			communication.interpreter.sendMoveDirect(point, moveCallback)
 		} else if(moveType == MoveType.DirectFullSpeed) {
-			communication.interpreter.sendMoveDirectFullSpeed(point, callback)
+			communication.interpreter.sendMoveDirectFullSpeed(point, moveCallback)
 		} else if(moveType == MoveType.Linear) {
-			communication.interpreter.sendMoveLinear(point, callback)
+			communication.interpreter.sendMoveLinear(point, moveCallback)
 		} else if(moveType == MoveType.LinearFullSpeed) {
-			communication.interpreter.sendMoveLinearFullSpeed(point, callback)
+			communication.interpreter.sendMoveLinearFullSpeed(point, moveCallback)
 		}
 
 		this.enableMotors(false)
@@ -351,14 +356,15 @@ export class Tipibot implements TipibotInterface {
 
 	goHome(callback: ()=> any = null) {
 		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
-		let goHomeCallback = ()=> {
-			this.pen.setPosition(homePoint, true, false)
-			callback()
-		}
+		// let goHomeCallback = ()=> {
+		// 	this.pen.setPosition(homePoint, true, false)
+		// 	callback()
+		// }
 		this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
 		// this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
-		this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
+		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
+		this.moveDirect(homePoint, callback, false)
 	}
 
 	keyDown(event:KeyboardEvent) {
