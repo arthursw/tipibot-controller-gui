@@ -24,7 +24,7 @@ import { InteractiveItem } from "./InteractiveItem"
 import { GUI } from "./GUI"
 import { Console } from "./Console"
 import { Circle } from "./Shapes"
-import { VisualFeedback } from "./VisualFeedback"
+import { VisualFeedback, visualFeedback } from "./VisualFeedback"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
 
@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		let commandDisplay = new CommandDisplay()
 		commandDisplay.createGUI(gui)
 
-		let visualFeedback = new VisualFeedback()
+		VisualFeedback.initialize()
 
 		// debug
 		w.tipibot = tipibot

@@ -3,6 +3,7 @@ import { GUI } from "../GUI"
 import { SVGPlot } from "../Plot"
 import { communication } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
+import { visualFeedback } from "../VisualFeedback"
 
 
 const RequestTimeout = 2000
@@ -255,6 +256,9 @@ export class CommeUnDessein {
 	}
 
 	setDrawingStatusDrawn(pk: string) {
+		if(visualFeedback.paths.children.length > 0) {
+			visualFeedback.paths.firstChild.remove()
+		}
 
 		if(this.state != State.Drawing) {
 			console.error('CommeUnDessein trying to setDrawingStatusDrawn while not in Drawing state')

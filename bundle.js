@@ -2256,6 +2256,7 @@ const Settings_1 = __webpack_require__(0);
 const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
 const Tipibot_1 = __webpack_require__(2);
+const VisualFeedback_1 = __webpack_require__(12);
 const RequestTimeout = 2000;
 let scale = 1000;
 let CommeUnDesseinSize = new paper.Size(4000, 3000);
@@ -2465,6 +2466,9 @@ class CommeUnDessein {
         Plot_1.SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk));
     }
     setDrawingStatusDrawn(pk) {
+        if (VisualFeedback_1.visualFeedback.paths.children.length > 0) {
+            VisualFeedback_1.visualFeedback.paths.firstChild.remove();
+        }
         if (this.state != State.Drawing) {
             console.error('CommeUnDessein trying to setDrawingStatusDrawn while not in Drawing state');
             return;
@@ -2708,6 +2712,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 const Pen_1 = __webpack_require__(3);
 const Tipibot_1 = __webpack_require__(2);
+exports.visualFeedback = null;
 class VisualFeedback {
     constructor() {
         this.drawing = false;
@@ -2729,6 +2734,9 @@ class VisualFeedback {
         this.lines.dashArray = [2, 2];
         this.lines.strokeScaling = false;
         document.addEventListener('MessageReceived', (event) => this.onMessageReceived(event.detail), false);
+    }
+    static initialize() {
+        exports.visualFeedback = new VisualFeedback();
     }
     clear() {
         this.paths.removeChildren();
@@ -3226,7 +3234,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         renderer.createDrawingLayer();
         let commandDisplay = new CommandDisplay_1.CommandDisplay();
         commandDisplay.createGUI(gui);
-        let visualFeedback = new VisualFeedback_1.VisualFeedback();
+        VisualFeedback_1.VisualFeedback.initialize();
         // debug
         w.tipibot = Tipibot_1.tipibot;
         w.settingsManager = Settings_1.settingsManager;
@@ -3234,7 +3242,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         w.renderer = renderer;
         w.communication = communication;
         w.commandDisplay = commandDisplay;
-        w.visualFeedback = visualFeedback;
+        w.visualFeedback = VisualFeedback_1.visualFeedback;
         w.SVGPlot = Plot_1.SVGPlot;
     }
     initialize();

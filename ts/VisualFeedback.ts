@@ -2,6 +2,8 @@ import { Settings, SettingsManager } from "./Settings"
 import { Pen } from "./Pen"
 import { tipibot } from "./Tipibot"
 
+export let visualFeedback: VisualFeedback = null
+
 export class VisualFeedback {
 
 	paths: paper.Group
@@ -13,6 +15,10 @@ export class VisualFeedback {
 	readonly positionPrefix = 'position: l: '
 	readonly subTargetPrefix = 'sub target: l: '
 	
+	static initialize() {
+		visualFeedback = new VisualFeedback()
+	}
+
 	constructor() {
 		this.paths = new paper.Group()
 		this.subTargets = new paper.Group()
