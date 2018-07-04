@@ -288,7 +288,7 @@ class SettingsManager {
                 this.tipibot.setHome(false);
             }
         }
-        else if (parentNames[0] == 'Machine') {
+        else if (parentNames[0] == 'Motors') {
             if (name == 'maxSpeed') {
                 let maxSpeedMm = value * SettingsManager.mmPerSteps();
                 this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm);
@@ -2807,7 +2807,7 @@ class Interpreter {
         }
         document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }));
         // this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
-        console.log('send: ' + command.data);
+        console.log('send: ' + command.message + ' - ' + command.data);
         this.socket.emit('data', command.data);
     }
     messageReceived(message) {
@@ -3157,7 +3157,7 @@ let drawing = {
 };
 let w = window;
 w.send = function (message) {
-    communication.interpreter.send({ id: -1, data: message, callback: () => console.log('Command' + message + ' done.') });
+    communication.interpreter.send({ id: -1, data: message, callback: () => console.log('Command' + message + ' done.'), message: message });
 };
 w.addPlugin = function (pluginName, testMode) {
     if (pluginName == 'CommeUnDessein') {

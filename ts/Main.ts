@@ -47,7 +47,7 @@ let drawing = {
 let w = <any>window
 
 w.send = function(message: string) {
-	communication.interpreter.send({ id: -1, data: message, callback: ()=> console.log('Command' + message + ' done.') })
+	communication.interpreter.send({ id: -1, data: message, callback: ()=> console.log('Command' + message + ' done.'), message: message })
 }
 
 w.addPlugin = function(pluginName: string, testMode: boolean) {

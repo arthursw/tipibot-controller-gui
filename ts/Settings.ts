@@ -242,7 +242,7 @@ export class SettingsManager {
 				this.homeFolder.getController('Position').setValueNoCallback('Custom')
 				this.tipibot.setHome(false)
 			}
-		} else if(parentNames[0] == 'Machine') {
+		} else if(parentNames[0] == 'Motors') {
 			if(name == 'maxSpeed') {
 				let maxSpeedMm = value * SettingsManager.mmPerSteps()
 				this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm)

@@ -109,15 +109,16 @@ export class Polargraph extends Interpreter {
 		else {
 			command = commands.CMD_CHANGELENGTH + Math.round(p.x) + "," + Math.round(p.y) + ',END';
 		}
-
-		this.queue(command, callback);
+		let message = 'Move ' + direct ? 'direct' : 'linear' + ': ' + p.x.toFixed(2) + ', ' + p.y.toFixed(2)
+		this.queue(command, message, callback);
 	}
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	point = this.tipibot.cartesianToLengths(point)
 		let pointInSteps = SettingsManager.mmToSteps(point).divide(Settings.tipibot.microstepResolution);
 		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
-		this.queue(command);
+		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
+		this.queue(command, message);
     }
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
@@ -131,25 +132,30 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
-		this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END');
-		this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END');
+		let message = 'Set max speed: ' + speed.toFixed(2)
+		this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END', message);
+		message = 'Set acceleration: ' + acceleration.toFixed(2)
+		this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END', message);
 	}
 	
 	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
-		this.queue(commands.CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END');
+		let message = 'Set size: ' + tipibotWidth.toFixed(2) + ',' + tipibotHeight.toFixed(2)
+		this.queue(commands.CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END', message);
 	}
 	
 	sendStepsPerRev(stepsPerRev: number=Settings.tipibot.stepsPerRev) {
-		
-		this.queue(commands.CMD_CHANGEMACHINESTEPSPERREV + stepsPerRev + ',END');
+		let message = 'Set steps per rev: ' + stepsPerRev
+		this.queue(commands.CMD_CHANGEMACHINESTEPSPERREV + stepsPerRev + ',END', message);
 	}
 
 	sendMmPerRev(mmPerRev: number=Settings.tipibot.mmPerRev) {
-		this.queue(commands.CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END');
+		let message = 'Set mm per rev: ' + mmPerRev
+		this.queue(commands.CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END', message);
 	}
 
 	sendStepMultiplier(microstepResolution: number=Settings.tipibot.microstepResolution) {
-		this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + microstepResolution + ',END');
+		let message = 'Set microstepResolution: ' + microstepResolution
+		this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + microstepResolution + ',END', message);
 	}
 
 	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
@@ -159,14 +165,18 @@ export class Polargraph extends Interpreter {
 		this.sendStepMultiplier(microstepResolution)
 	}
 
-	sendPause(delay: number) {
+	sendPause(delay: number, callback: ()=> void = null) {
+		// Todo: floor delay
+		let message = 'Wait: ' + delay
+		this.queue(commands.CMD_DELAY + delay + ",END", message, callback);
 	}
 
 	sendMotorOff() {
 	}
 
 	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
-		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
+		let message = 'Set pen lift range: ' + servoDownValue + ',' + servoUpValue
+		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END', message);
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
@@ -174,23 +184,25 @@ export class Polargraph extends Interpreter {
 
 	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		if(servoUpTempoBefore > 0) {
-			this.queue(commands.CMD_DELAY + servoUpTempoBefore + ",END", callback);
+			this.sendPause(servoUpTempoBefore, callback)
 		}
-		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", callback);
+		let message = 'Set pen up: ' + SettingsManager.servoUpAngle()
+		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", message, callback);
 		// this.queue(commands.CMD_PENUP + "END", callback);
 		if(servoUpTempoAfter > 0) {
-			this.queue(commands.CMD_DELAY + servoUpTempoAfter + ",END", callback);
+			this.sendPause(servoUpTempoAfter, callback)
 		}
 	}
 
 	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		if(servoDownTempoBefore > 0) {
-			this.queue(commands.CMD_DELAY + servoDownTempoBefore + ",END", callback);
+			this.sendPause(servoDownTempoBefore, callback)
 		}
-		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", callback);
+		let message = 'Set pen down: ' + SettingsManager.servoDownAngle()
+		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", message, callback);
 		// this.queue(commands.CMD_PENDOWN + "END", callback);
 		if(servoDownTempoAfter > 0) {
-			this.queue(commands.CMD_DELAY + servoDownTempoAfter + ",END", callback);
+			this.sendPause(servoDownTempoAfter, callback)
 		}
 	}
 
@@ -198,6 +210,7 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendPenWidth(penWidth: number) {
-		this.queue(commands.CMD_CHANGEPENWIDTH + penWidth.toFixed(2) + ',END')
+		let message = 'Set pen width: ' + penWidth.toFixed(2)
+		this.queue(commands.CMD_CHANGEPENWIDTH + penWidth.toFixed(2) + ',END', message)
 	}
 }

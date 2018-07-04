@@ -62,7 +62,7 @@ export class Interpreter {
 		}
 		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
 		// this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
-		console.log('send: ' + command.data)
+		console.log('send: ' + command.message + ' - ' + command.data)
 		this.socket.emit('data', command.data)
 	}
 
