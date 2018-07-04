@@ -36,7 +36,7 @@ export class CommandDisplay {
 	}
 
 	createCommandItem(command: Command): any {
-		let liJ = $('<li id="' + command.id + '"">' + command.data + '</li>')
+		let liJ = $('<li id="' + command.id + '"">' + command.message + '<br>' + command.data + '</li>')
 		let closeButtonJ = $('<button>x</button>')
 		closeButtonJ.click((event)=> this.removeCommand(command.id))
 		liJ.append(closeButtonJ)
@@ -51,6 +51,7 @@ export class CommandDisplay {
 	updateName() {
 		this.gui.setName('Command list (' + this.listJ.children().length + ')')
 	}
+
 	queueCommand(command: Command) {
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()

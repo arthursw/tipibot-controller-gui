@@ -5,6 +5,7 @@ const MAX_INPUT_BUFFER_LENGTH = 500
 
 export declare type Command = {
 	data: string
+	message: string
 	callback: ()=> any
 	id: number
 }
@@ -123,12 +124,12 @@ export class Interpreter {
 		}
 	}
 
-	queue(data: string, callback: () => any = null) {
+	queue(data: string, message: string, callback: () => any = null) {
 		if(this.socket == null) {
 			return
 		}
 
-		let command = { id: this.commandID++, data: data, callback: callback }
+		let command = { id: this.commandID++, data: data, callback: callback, message: message }
 		document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }))
 
 		this.commandQueue.push(command)

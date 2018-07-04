@@ -655,7 +655,7 @@ class Tipibot {
         gui.add(position, 'moveY', 0, Settings_1.Settings.tipibot.height).name('Move Y').onFinishChange((value) => this.setY(value));
         let goHomeButton = gui.addButton('Go home', () => this.goHome(() => console.log('I am home :-)')));
         this.penStateButton = gui.addButton('Pen down', () => this.togglePenState());
-        this.motorsEnableButton = gui.addButton('Motors off', () => this.toggleMotors());
+        this.motorsEnableButton = gui.addButton('Disable motors', () => this.toggleMotors());
         gui.add({ 'Pause': false }, 'Pause').onChange((value) => Communication_1.communication.interpreter.setPause(value));
         gui.addButton('Stop & Clear queue', () => Communication_1.communication.interpreter.stopAndClearQueue());
         // DEBUG
@@ -871,14 +871,14 @@ class Tipibot {
         if (send) {
             Communication_1.communication.interpreter.sendMotorOff();
         }
-        this.motorsEnableButton.setName('Motors on');
+        this.motorsEnableButton.setName('Enable motors');
         this.motorsEnabled = false;
     }
     enableMotors(send) {
         if (send) {
             Communication_1.communication.interpreter.sendMotorOn();
         }
-        this.motorsEnableButton.setName('Motors off');
+        this.motorsEnableButton.setName('Disable motors');
         this.motorsEnabled = true;
     }
     toggleMotors() {
@@ -2008,7 +2008,7 @@ class CommandDisplay {
         }
     }
     createCommandItem(command) {
-        let liJ = $('<li id="' + command.id + '"">' + command.data + '</li>');
+        let liJ = $('<li id="' + command.id + '"">' + command.message + '<br>' + command.data + '</li>');
         let closeButtonJ = $('<button>x</button>');
         closeButtonJ.click((event) => this.removeCommand(command.id));
         liJ.append(closeButtonJ);
@@ -2858,11 +2858,11 @@ class Interpreter {
             this.send(this.commandQueue[0]);
         }
     }
-    queue(data, callback = null) {
+    queue(data, message, callback = null) {
         if (this.socket == null) {
             return;
         }
-        let command = { id: this.commandID++, data: data, callback: callback };
+        let command = { id: this.commandID++, data: data, callback: callback, message: message };
         document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }));
         this.commandQueue.push(command);
         if (this.commandQueue.length == 1) {
@@ -2953,47 +2953,56 @@ class PenPlotter extends Interpreter_1.Interpreter {
         super.sendSetPosition(point);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
-        console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
-        this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n');
+        // console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+        let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message);
     }
     sendMoveDirect(point, callback = null) {
         super.sendMoveDirect(point, callback);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
-        console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
-        this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+        let message = 'Move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        // console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+        this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
     sendMoveLinear(point, callback = null) {
         super.sendMoveLinear(point, callback);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
-        console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
-        this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+        let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        // console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+        this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
     sendMaxSpeed(speed = Settings_1.Settings.tipibot.maxSpeed) {
-        console.log('set speed: ' + speed);
-        this.queue('G0 F' + speed.toFixed(2) + '\n');
+        // console.log('set speed: ' + speed)
+        let message = 'Set max speed: ' + speed;
+        this.queue('G0 F' + speed.toFixed(2) + '\n', message);
     }
     sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
         console.log('set acceleration: ' + acceleration);
-        this.queue('G0 S' + acceleration.toFixed(2) + '\n');
+        let message = 'Set acceleration: ' + acceleration;
+        this.queue('G0 S' + acceleration.toFixed(2) + '\n', message);
     }
     sendMaxSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.maxSpeed, acceleration = Settings_1.Settings.tipibot.acceleration) {
         console.log('set speed: ' + speed);
         console.log('set acceleration: ' + acceleration);
-        this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n');
+        let message = 'Set speed: ' + acceleration + ', set acceleration: ' + acceleration;
+        this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n', message);
     }
     sendInvertXY(invertMotorLeft = Settings_1.Settings.tipibot.invertMotorLeft, invertMotorRight = Settings_1.Settings.tipibot.invertMotorRight) {
-        console.log('invertMotorLeft: ' + invertMotorLeft + ', invertMotorRight: ' + invertMotorRight);
-        this.queue('M12 X' + (invertMotorLeft ? -1 : 1) + ' Y' + (invertMotorRight ? -1 : 1) + '\n');
+        // console.log('invertMotorLeft: ' + invertMotorLeft + ', invertMotorRight: ' + invertMotorRight)
+        let message = 'Invert motors: left: ' + invertMotorLeft + ', right: ' + invertMotorRight;
+        this.queue('M12 X' + (invertMotorLeft ? -1 : 1) + ' Y' + (invertMotorRight ? -1 : 1) + '\n', message);
     }
     sendProgressiveMicrosteps(progressiveMicrosteps = Settings_1.Settings.tipibot.progressiveMicrosteps) {
-        console.log('progressiveMicrosteps: ' + progressiveMicrosteps);
-        this.queue('M13 F' + (progressiveMicrosteps ? -1 : 1) + '\n');
+        // console.log('progressiveMicrosteps: ' + progressiveMicrosteps)
+        let message = 'Set progressiveMicrosteps: ' + progressiveMicrosteps;
+        this.queue('M13 F' + (progressiveMicrosteps ? -1 : 1) + '\n', message);
     }
     sendSize(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height) {
         // todo: test
-        this.queue('M4 X' + tipibotWidth.toFixed(2) + '\n');
+        let message = 'Send size: ' + tipibotWidth.toFixed(2);
+        this.queue('M4 X' + tipibotWidth.toFixed(2) + '\n', message);
     }
     sendStepsPerRev(stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev) {
         this.sendSpecs(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height, stepsPerRev, Settings_1.Settings.tipibot.mmPerRev, Settings_1.Settings.tipibot.microstepResolution);
@@ -3007,14 +3016,18 @@ class PenPlotter extends Interpreter_1.Interpreter {
     sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
         let stepsPerRevolution = stepsPerRev * microstepResolution;
         let millimetersPerStep = mmPerRev / stepsPerRevolution;
-        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev * microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
-        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * microstepResolution) + ' P' + mmPerRev + '\n');
+        let message = 'Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev * microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep;
+        console.log(message);
+        this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev * microstepResolution) + ' P' + mmPerRev + '\n', message);
     }
-    sendPause(delay) {
-        this.queue('G4 P' + delay + '\n');
+    sendPause(delay, callback = null) {
+        // Todo: floor delay
+        let message = 'Wait: ' + delay;
+        this.queue('G4 P' + delay + '\n', message, callback);
     }
     sendMotorOff() {
-        this.queue('M84\n');
+        let message = 'Disable motors';
+        this.queue('M84\n', message);
     }
     convertServoValue(servoValue) {
         // pen plotter needs servo value in microseconds
@@ -3023,9 +3036,11 @@ class PenPlotter extends Interpreter_1.Interpreter {
     }
     sendPenState(servoValue, delayBefore = 0, delayAfter = 0, callback = null) {
         servoValue = this.convertServoValue(servoValue);
-        this.queue('G4 P' + delayBefore + '\n');
-        this.queue('M340 P3 S' + servoValue + '\n');
-        this.queue('G4 P' + delayAfter + '\n', callback);
+        let message = 'Move servo: ' + servoValue;
+        this.sendPause(delayBefore);
+        this.queue('M340 P3 S' + servoValue + '\n', message);
+        this.sendPause(delayAfter, callback);
+        // this.queue('G4 P' + delayAfter + '\n', callback)
     }
     sendPenUp(servoUpValue = Settings_1.SettingsManager.servoUpAngle(), delayBefore = Settings_1.Settings.servo.delay.up.before, delayAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
         this.sendPenState(servoUpValue, delayBefore, delayAfter, callback);
@@ -3034,7 +3049,8 @@ class PenPlotter extends Interpreter_1.Interpreter {
         this.sendPenState(servoDownValue, delayBefore, delayAfter, callback);
     }
     sendStop() {
-        this.queue('M0\n');
+        let message = 'Stop';
+        this.queue('M0\n', message);
     }
 }
 exports.PenPlotter = PenPlotter;
@@ -3061,30 +3077,35 @@ class TipibotInterpreter extends PenPlotter_1.PenPlotter {
         super.sendMoveDirectFullSpeed(point, callback);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
-        console.log('move direct max speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
-        this.queue('G2 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+        // console.log('move direct max speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+        let message = 'Move direct full speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        this.queue('G2 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
     sendMoveLinearFullSpeed(point, callback = null) {
         super.sendMoveLinearFullSpeed(point, callback);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
-        console.log('move linear full speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y));
-        this.queue('G3 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback);
+        // console.log('move linear full speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+        let message = 'Move linear full speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        this.queue('G3 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
     sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
         let stepsPerRevolution = stepsPerRev * microstepResolution;
         let millimetersPerStep = mmPerRev / stepsPerRevolution;
-        console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
-        this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n');
+        // console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep)
+        let message = 'Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep;
+        this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n', message);
     }
     sendServoSpeed(servoSpeed = Settings_1.Settings.servo.speed) {
-        this.queue('M14 F' + servoSpeed + '\n');
+        let message = 'Set servo speed: ' + servoSpeed;
+        this.queue('M14 F' + servoSpeed + '\n', message);
     }
     convertServoValue(servoValue) {
         return servoValue;
     }
     sendMotorOn() {
-        this.queue('M85\n');
+        let message = 'Enable motors';
+        this.queue('M85\n', message);
     }
     processMessage(message) {
         super.processMessage(message);

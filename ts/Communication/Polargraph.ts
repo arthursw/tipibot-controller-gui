@@ -77,7 +77,7 @@ export class Polargraph extends Interpreter {
 		super.send(command)
 	}
 	
-	queue(data: string, callback: () => any = null) {
+	queue(data: string, message: string, callback: () => any = null) {
 		// clearTimeout(this.keepTipibotAwakeInterval)
 		// this.keepTipibotAwakeInterval = null
 
@@ -88,7 +88,7 @@ export class Polargraph extends Interpreter {
 			// 	console.log("Queue command: " + commandName)
 			// }
 		}
-		super.queue(data, callback)
+		super.queue(data, message, callback)
 	}
 
 	queueEmpty() {

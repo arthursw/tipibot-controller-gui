@@ -58,7 +58,7 @@ export class Tipibot implements TipibotInterface {
 		let goHomeButton = gui.addButton('Go home', ()=> this.goHome(()=> console.log('I am home :-)')))
 
 		this.penStateButton = gui.addButton('Pen down', () => this.togglePenState() )
-		this.motorsEnableButton = gui.addButton('Motors off', ()=> this.toggleMotors())
+		this.motorsEnableButton = gui.addButton('Disable motors', ()=> this.toggleMotors())
 
 		gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
 		gui.addButton('Stop & Clear queue', () => communication.interpreter.stopAndClearQueue() )
@@ -306,7 +306,7 @@ export class Tipibot implements TipibotInterface {
 		if(send) {
 			communication.interpreter.sendMotorOff()
 		}
-		this.motorsEnableButton.setName('Motors on')
+		this.motorsEnableButton.setName('Enable motors')
 		this.motorsEnabled = false
 	}
 
@@ -314,7 +314,7 @@ export class Tipibot implements TipibotInterface {
 		if(send) {
 			communication.interpreter.sendMotorOn()
 		}
-		this.motorsEnableButton.setName('Motors off')
+		this.motorsEnableButton.setName('Disable motors')
 		this.motorsEnabled = true
 	}
 
