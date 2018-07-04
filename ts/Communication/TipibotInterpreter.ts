@@ -34,6 +34,10 @@ export class TipibotInterpreter extends PenPlotter {
 		this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n')
 	}
 
+	sendServoSpeed(servoSpeed: number=Settings.servo.speed) {
+		this.queue('M14 F' + servoSpeed + '\n')
+	}
+
 	convertServoValue(servoValue: number) {
 		return servoValue
 	}

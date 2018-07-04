@@ -43,9 +43,9 @@ export class PenPlotter extends Interpreter {
 		this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n')
 	}
 
-	sendInvertXY(invertX: boolean=Settings.tipibot.invertX, invertY: boolean=Settings.tipibot.invertY) {
-		console.log('invertX: ' + invertX + ', invertY: ' + invertY)
-		this.queue('M12 X' + (invertX ? -1 : 1) + ' Y' + (invertY ? -1 : 1) + '\n')
+	sendInvertXY(invertMotorLeft: boolean=Settings.tipibot.invertMotorLeft, invertMotorRight: boolean=Settings.tipibot.invertMotorRight) {
+		console.log('invertMotorLeft: ' + invertMotorLeft + ', invertMotorRight: ' + invertMotorRight)
+		this.queue('M12 X' + (invertMotorLeft ? -1 : 1) + ' Y' + (invertMotorRight ? -1 : 1) + '\n')
 	}
 
 	sendProgressiveMicrosteps(progressiveMicrosteps: boolean = Settings.tipibot.progressiveMicrosteps) {

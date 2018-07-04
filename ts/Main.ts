@@ -81,7 +81,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		
 		let communicationFolder = gui.addFolder('Communication')
 		communication = new Communication(communicationFolder)
-		communicationFolder.open()
 
 		let commandFolder = gui.addFolder('Commands')
 		commandFolder.open()
@@ -113,6 +112,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		w.communication = communication
 		w.commandDisplay = commandDisplay
 		w.visualFeedback = visualFeedback
+		w.SVGPlot = SVGPlot
 	}
 
 	initialize()

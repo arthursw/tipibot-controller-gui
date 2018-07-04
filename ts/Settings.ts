@@ -11,13 +11,14 @@ let homeX = 0
 let homeY = 388
 
 export let Settings = {
+	autoConnect: true,
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
 		homeX: tipibotWidth / 2,
 		homeY: paperHeight + homeY,
-		invertX: false,
-		invertY: false,
+		invertMotorLeft: false,
+		invertMotorRight: false,
 		maxSpeed: 500,
 		acceleration: 200,
 		stepsPerRev: 200,
@@ -53,7 +54,8 @@ export let Settings = {
 		flatten: true,
 		flattenPrecision: 0.25,
 		subdivide: false,
-		maxSegmentLength: 10
+		maxSegmentLength: 10,
+		fullSpeed: true
 	}
 }
 
@@ -66,7 +68,7 @@ export class SettingsManager {
 	gui: GUI = null
 	tipibotPositionFolder: GUI = null
 	drawAreaDimensionsFolder: GUI = null
-	machineFolder: GUI = null
+	motorsFolder: GUI = null
 	homeFolder: GUI = null
 	tipibot: TipibotInterface
 
@@ -126,7 +128,7 @@ export class SettingsManager {
 		this.homeFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
 		this.homeFolder.open()
 
-		let tipibotDimensionsFolder = settingsFolder.addFolder('Tipibot dimensions')
+		let tipibotDimensionsFolder = settingsFolder.addFolder('Machine dimensions')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
 
@@ -154,17 +156,17 @@ export class SettingsManager {
 		delaysDownFolder.add(Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before')
 		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
 
-		this.machineFolder = settingsFolder.addFolder('Machine')
+		this.motorsFolder = settingsFolder.addFolder('Motors')
 
-		this.machineFolder.add(Settings.tipibot, 'invertX').name('Invert X')
-		this.machineFolder.add(Settings.tipibot, 'invertY').name('Invert Y')
-		this.machineFolder.add(Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.')
-		this.machineFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.')
-		this.machineFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')
-		this.machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
-		this.machineFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
-		this.machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
-		this.machineFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
+		this.motorsFolder.add(Settings.tipibot, 'invertMotorLeft').name('Invert left motor')
+		this.motorsFolder.add(Settings.tipibot, 'invertMotorRight').name('Invert right motor')
+		this.motorsFolder.add(Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.')
+		this.motorsFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.')
+		this.motorsFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')
+		this.motorsFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
+		this.motorsFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
+		this.motorsFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
+		this.motorsFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
 
 		let controllers = this.getControllers()
 
@@ -243,11 +245,11 @@ export class SettingsManager {
 		} else if(parentNames[0] == 'Machine') {
 			if(name == 'maxSpeed') {
 				let maxSpeedMm = value * SettingsManager.mmPerSteps()
-				this.machineFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm)
+				this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm)
 				this.tipibot.maxSpeedChanged(changeFinished)
 			} else if(name == 'maxSpeedMm') {
 				let maxSpeedSteps = value / SettingsManager.mmPerSteps()
-				this.machineFolder.getController('maxSpeed').setValueNoCallback(maxSpeedSteps)
+				this.motorsFolder.getController('maxSpeed').setValueNoCallback(maxSpeedSteps)
 				Settings.tipibot.maxSpeed = maxSpeedSteps
 				this.tipibot.maxSpeedChanged(changeFinished)
 			} else if(name == 'acceleration') {
@@ -260,7 +262,7 @@ export class SettingsManager {
 				this.tipibot.microstepResolutionChanged(changeFinished)
 			} else if(name == 'penWidth') {
 				this.tipibot.penWidthChanged(changeFinished)
-			} else if(name == 'invertX' || name == 'invertY' && changeFinished) {
+			} else if(name == 'invertMotorLeft' || name == 'invertMotorRight' && changeFinished) {
 				this.tipibot.sendInvertXY()
 			} else if(name == 'progressiveMicrosteps' && changeFinished) {
 				this.tipibot.sendProgressiveMicrosteps()

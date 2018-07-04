@@ -376,14 +376,17 @@ export class SVGPlot extends Plot {
 	}
 
 	public static createGUI(gui: GUI) {
-		SVGPlot.gui = gui.addFolder('SVG')
+		SVGPlot.gui = gui.addFolder('Plot')
 		SVGPlot.gui.open()
+
+		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed')
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
 		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
 		clearSVGButton.hide()
 		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
 		drawButton.hide()
+
 
 	}
 
@@ -420,6 +423,17 @@ export class SVGPlot extends Plot {
 		// Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
 	}
 
+	mustMoveFullSpeed(segment: paper.Segment) {
+		if(segment.previous == null || segment.point == null || segment.next == null) {
+			return false
+		}
+		// no need to transform points to compute angle
+		let pointToPrevious = segment.previous.point.subtract(segment.point)
+		let pointToNext = segment.next.point.subtract(segment.point)
+		let  angle = pointToPrevious.getDirectedAngle(pointToNext)
+		return Math.abs(angle) > 135
+	}
+
 	plotItem(item: paper.Item) {
 		if(!item.visible) {
 			return
@@ -428,6 +442,7 @@ export class SVGPlot extends Plot {
 		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
 			let path: paper.Path = <paper.Path>item
 			if(path.segments != null) {
+
 				for(let segment of path.segments) {
 					let point = segment.point.transform(matrix)
 					if(segment == path.firstSegment) {
@@ -437,12 +452,20 @@ export class SVGPlot extends Plot {
 						}
 						tipibot.penDown()
 					} else {
-						tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						if(Settings.plot.fullSpeed && this.mustMoveFullSpeed(segment)) {
+							tipibot.moveLinearFullSpeed(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						} else {
+							tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						}
 					}
 				}
 				if(path.closed) {
 					let point = path.firstSegment.point.transform(matrix)
-					tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+					if(Settings.plot.fullSpeed && this.mustMoveFullSpeed(path.firstSegment)) {
+						tipibot.moveLinearFullSpeed(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+					} else {
+						tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+					}
 				}
 			}
 		}

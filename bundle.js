@@ -80,13 +80,14 @@ let paperWidth = 1200;
 let homeX = 0;
 let homeY = 388;
 exports.Settings = {
+    autoConnect: true,
     tipibot: {
         width: tipibotWidth,
         height: tipibotHeight,
         homeX: tipibotWidth / 2,
         homeY: paperHeight + homeY,
-        invertX: false,
-        invertY: false,
+        invertMotorLeft: false,
+        invertMotorRight: false,
         maxSpeed: 500,
         acceleration: 200,
         stepsPerRev: 200,
@@ -122,7 +123,8 @@ exports.Settings = {
         flatten: true,
         flattenPrecision: 0.25,
         subdivide: false,
-        maxSegmentLength: 10
+        maxSegmentLength: 10,
+        fullSpeed: true
     }
 };
 const MAX_SPEED = 10000;
@@ -131,7 +133,7 @@ class SettingsManager {
         this.gui = null;
         this.tipibotPositionFolder = null;
         this.drawAreaDimensionsFolder = null;
-        this.machineFolder = null;
+        this.motorsFolder = null;
         this.homeFolder = null;
         this.loadLocalStorage();
     }
@@ -175,7 +177,7 @@ class SettingsManager {
         this.homeFolder.add(exports.Settings.tipibot, 'homeX', 0, exports.Settings.tipibot.width).name('Home X');
         this.homeFolder.add(exports.Settings.tipibot, 'homeY', 0, exports.Settings.tipibot.height).name('Home Y');
         this.homeFolder.open();
-        let tipibotDimensionsFolder = settingsFolder.addFolder('Tipibot dimensions');
+        let tipibotDimensionsFolder = settingsFolder.addFolder('Machine dimensions');
         tipibotDimensionsFolder.add(exports.Settings.tipibot, 'width', 100, 10000, 1).name('Width');
         tipibotDimensionsFolder.add(exports.Settings.tipibot, 'height', 100, 10000, 1).name('Height');
         this.drawAreaDimensionsFolder = settingsFolder.addFolder('Draw area dimensions');
@@ -196,16 +198,16 @@ class SettingsManager {
         let delaysDownFolder = delaysFolder.addFolder('Down');
         delaysDownFolder.add(exports.Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before');
         delaysDownFolder.add(exports.Settings.servo.delay.down, 'after', 0, 3000, 1).name('After');
-        this.machineFolder = settingsFolder.addFolder('Machine');
-        this.machineFolder.add(exports.Settings.tipibot, 'invertX').name('Invert X');
-        this.machineFolder.add(exports.Settings.tipibot, 'invertY').name('Invert Y');
-        this.machineFolder.add(exports.Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.');
-        this.machineFolder.add({ maxSpeedMm: exports.Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps() }, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.');
-        this.machineFolder.add(exports.Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration');
-        this.machineFolder.add(exports.Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.');
-        this.machineFolder.add(exports.Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier');
-        this.machineFolder.add(exports.Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.');
-        this.machineFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
+        this.motorsFolder = settingsFolder.addFolder('Motors');
+        this.motorsFolder.add(exports.Settings.tipibot, 'invertMotorLeft').name('Invert left motor');
+        this.motorsFolder.add(exports.Settings.tipibot, 'invertMotorRight').name('Invert right motor');
+        this.motorsFolder.add(exports.Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.');
+        this.motorsFolder.add({ maxSpeedMm: exports.Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps() }, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.');
+        this.motorsFolder.add(exports.Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration');
+        this.motorsFolder.add(exports.Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.');
+        this.motorsFolder.add(exports.Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier');
+        this.motorsFolder.add(exports.Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.');
+        this.motorsFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
         let controllers = this.getControllers();
         for (let controller of controllers) {
             let name = controller.getName();
@@ -289,12 +291,12 @@ class SettingsManager {
         else if (parentNames[0] == 'Machine') {
             if (name == 'maxSpeed') {
                 let maxSpeedMm = value * SettingsManager.mmPerSteps();
-                this.machineFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm);
+                this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm);
                 this.tipibot.maxSpeedChanged(changeFinished);
             }
             else if (name == 'maxSpeedMm') {
                 let maxSpeedSteps = value / SettingsManager.mmPerSteps();
-                this.machineFolder.getController('maxSpeed').setValueNoCallback(maxSpeedSteps);
+                this.motorsFolder.getController('maxSpeed').setValueNoCallback(maxSpeedSteps);
                 exports.Settings.tipibot.maxSpeed = maxSpeedSteps;
                 this.tipibot.maxSpeedChanged(changeFinished);
             }
@@ -313,7 +315,7 @@ class SettingsManager {
             else if (name == 'penWidth') {
                 this.tipibot.penWidthChanged(changeFinished);
             }
-            else if (name == 'invertX' || name == 'invertY' && changeFinished) {
+            else if (name == 'invertMotorLeft' || name == 'invertMotorRight' && changeFinished) {
                 this.tipibot.sendInvertXY();
             }
             else if (name == 'progressiveMicrosteps' && changeFinished) {
@@ -444,6 +446,7 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
 const TipibotInterpreter_1 = __webpack_require__(15);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
@@ -460,15 +463,25 @@ class Socket {
             let data = json.data;
             let interpreter = this.communication.interpreter;
             if (type == 'opened') {
-                interpreter.connectionOpened();
+                communication.onConnectionOpened();
+            }
+            else if (type == 'closed') {
+                communication.onConnectionClosed();
             }
             else if (type == 'list') {
                 let options = ['Disconnected'];
                 for (let port of data) {
                     options.push(port.comName);
                 }
-                communication.portController = communication.portController.options(options);
-                communication.portController.onFinishChange((value) => communication.serialConnectionPortChanged(value));
+                communication.initializePortController(options);
+                if (Settings_1.Settings.autoConnect) {
+                    for (let port of data) {
+                        if (port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
+                            communication.portController.setValue(port.comName);
+                            break;
+                        }
+                    }
+                }
             }
             else if (type == 'data') {
                 // If receiving messages while not connected: consider it as simulation
@@ -492,6 +505,8 @@ class Socket {
 }
 class Communication {
     constructor(gui) {
+        this.autoConnectIntervalID = -1;
+        this.connectionOpened = false;
         exports.communication = this;
         this.socket = null;
         this.gui = gui;
@@ -499,18 +514,56 @@ class Communication {
         this.interpreter = new TipibotInterpreter_1.TipibotInterpreter();
         // this.interpreter = new Polargraph()
         this.connectToSerial();
+        if (Settings_1.Settings.autoConnect) {
+            this.startAutoConnection();
+        }
     }
     setTipibot(tipibot) {
         this.interpreter.setTipibot(tipibot);
     }
+    startAutoConnection() {
+        this.autoConnectIntervalID = setInterval(() => this.tryConnection(), 1000);
+    }
+    stopAutoConnection() {
+        clearInterval(this.autoConnectIntervalID);
+        this.autoConnectIntervalID = null;
+    }
+    onConnectionOpened() {
+        this.connectionOpened = true;
+        this.stopAutoConnection();
+        this.interpreter.connectionOpened();
+        this.gui.setName('Communication - connected');
+    }
+    onConnectionClosed() {
+        this.connectionOpened = false;
+        if (Settings_1.Settings.autoConnect) {
+            this.startAutoConnection();
+        }
+        // this.interpreter.connectionClosed()	
+        this.gui.setName('Communication - closed');
+    }
+    initializePortController(options) {
+        this.portController = this.portController.options(options);
+        $(this.portController.domElement.parentElement.parentElement).mousedown((event) => {
+            this.autoConnectController.setValue(false);
+        });
+        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
+    }
     connectToSerial() {
+        this.autoConnectController = this.gui.add(Settings_1.Settings, 'autoConnect').name('Auto connect').onFinishChange((value) => {
+            if (value) {
+                this.startAutoConnection();
+            }
+            else {
+                this.stopAutoConnection();
+            }
+        });
         this.portController = this.gui.add({ 'Connection': 'Disconnected' }, 'Connection');
+        this.gui.addButton('Disconnect', () => this.disconnect());
         this.gui.addButton('Refresh', () => {
-            this.portController.setValue('Disconnected');
             this.socket.emit('list');
         });
-        this.portController = this.portController.options(['Disconnected']);
-        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
+        this.initializePortController(['Disconnected']);
         // this.socket = io('ws://localhost:' + PORT)
         // this.socket = io('ws://localhost:' + PORT, {transports: ['websocket', 'polling', 'flashsocket']})
         this.socket = new Socket('ws://localhost:' + PORT, this);
@@ -530,16 +583,28 @@ class Communication {
         // 	this.socket.emit('data', message)
         // }
     }
+    disconnect() {
+        this.autoConnectController.setValue(false);
+        this.onConnectionClosed();
+        this.socket.emit('close');
+        document.dispatchEvent(new CustomEvent('Disconnect'));
+        this.portController.setValue('Disconnected');
+    }
     serialConnectionPortChanged(portName) {
-        if (portName == 'Disconnected') {
-            this.socket.emit('close');
-            document.dispatchEvent(new CustomEvent('Disconnect'));
+        if (portName == 'Disconnected' && this.connectionOpened) {
+            this.disconnect();
         }
         else {
             this.interpreter.setSerialPort(portName);
             document.dispatchEvent(new CustomEvent('Connect', { detail: portName }));
             this.socket.emit('open', { name: portName, baudRate: exports.SERIAL_COMMUNICATION_SPEED });
         }
+    }
+    tryConnection() {
+        if (!Settings_1.Settings.autoConnect || this.connectionOpened) {
+            return;
+        }
+        this.socket.emit('list');
     }
 }
 exports.Communication = Communication;
@@ -734,29 +799,36 @@ class Tipibot {
     sendProgressiveMicrosteps() {
         Communication_1.communication.interpreter.sendProgressiveMicrosteps();
     }
-    moveDirect(point, callback = null, movePen = true) {
+    move(moveType, point, callback = null, movePen = true) {
         this.checkInitialized();
-        Communication_1.communication.interpreter.sendMoveDirect(point, callback);
+        if (moveType == Pen_1.MoveType.Direct) {
+            Communication_1.communication.interpreter.sendMoveDirect(point, callback);
+        }
+        else if (moveType == Pen_1.MoveType.DirectFullSpeed) {
+            Communication_1.communication.interpreter.sendMoveDirectFullSpeed(point, callback);
+        }
+        else if (moveType == Pen_1.MoveType.Linear) {
+            Communication_1.communication.interpreter.sendMoveLinear(point, callback);
+        }
+        else if (moveType == Pen_1.MoveType.LinearFullSpeed) {
+            Communication_1.communication.interpreter.sendMoveLinearFullSpeed(point, callback);
+        }
         this.enableMotors(false);
         if (movePen) {
             this.pen.setPosition(point, true, false);
         }
+    }
+    moveDirect(point, callback = null, movePen = true) {
+        this.move(Pen_1.MoveType.Direct, point, callback, movePen);
     }
     moveDirectFullSpeed(point, callback = null, movePen = true) {
-        this.checkInitialized();
-        Communication_1.communication.interpreter.sendMoveDirectFullSpeed(point, callback);
-        this.enableMotors(false);
-        if (movePen) {
-            this.pen.setPosition(point, true, false);
-        }
+        this.move(Pen_1.MoveType.DirectFullSpeed, point, callback, movePen);
     }
     moveLinear(point, callback = null, movePen = true) {
-        this.checkInitialized();
-        Communication_1.communication.interpreter.sendMoveLinear(point, callback);
-        this.enableMotors(false);
-        if (movePen) {
-            this.pen.setPosition(point, true, false);
-        }
+        this.move(Pen_1.MoveType.Linear, point, callback, movePen);
+    }
+    moveLinearFullSpeed(point, callback = null, movePen = true) {
+        this.move(Pen_1.MoveType.LinearFullSpeed, point, callback, movePen);
     }
     setSpeed(speed) {
         Communication_1.communication.interpreter.sendMaxSpeed(speed);
@@ -1526,8 +1598,9 @@ class SVGPlot extends Plot {
         }
     }
     static createGUI(gui) {
-        SVGPlot.gui = gui.addFolder('SVG');
+        SVGPlot.gui = gui.addFolder('Plot');
         SVGPlot.gui.open();
+        SVGPlot.gui.add(Settings_1.Settings.plot, 'fullSpeed').name('Full speed');
         SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event) => SVGPlot.handleFileSelect(event));
         let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked);
         clearSVGButton.hide();
@@ -1549,6 +1622,16 @@ class SVGPlot extends Plot {
         // Plot.gui.getFolder('Transform').getController('X').setValueNoCallback(this.item.position.x)
         // Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
     }
+    mustMoveFullSpeed(segment) {
+        if (segment.previous == null || segment.point == null || segment.next == null) {
+            return false;
+        }
+        // no need to transform points to compute angle
+        let pointToPrevious = segment.previous.point.subtract(segment.point);
+        let pointToNext = segment.next.point.subtract(segment.point);
+        let angle = pointToPrevious.getDirectedAngle(pointToNext);
+        return Math.abs(angle) > 135;
+    }
     plotItem(item) {
         if (!item.visible) {
             return;
@@ -1567,12 +1650,22 @@ class SVGPlot extends Plot {
                         Tipibot_1.tipibot.penDown();
                     }
                     else {
-                        Tipibot_1.tipibot.moveLinear(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                        if (Settings_1.Settings.plot.fullSpeed && this.mustMoveFullSpeed(segment)) {
+                            Tipibot_1.tipibot.moveLinearFullSpeed(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                        }
+                        else {
+                            Tipibot_1.tipibot.moveLinear(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                        }
                     }
                 }
                 if (path.closed) {
                     let point = path.firstSegment.point.transform(matrix);
-                    Tipibot_1.tipibot.moveLinear(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                    if (Settings_1.Settings.plot.fullSpeed && this.mustMoveFullSpeed(path.firstSegment)) {
+                        Tipibot_1.tipibot.moveLinearFullSpeed(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                    }
+                    else {
+                        Tipibot_1.tipibot.moveLinear(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                    }
                 }
             }
         }
@@ -2820,7 +2913,7 @@ class Interpreter {
     }
     sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
     }
-    sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
+    sendInvertXY(invertMotorLeft = Settings_1.Settings.tipibot.invertMotorLeft, invertMotorRight = Settings_1.Settings.tipibot.invertMotorRight) {
     }
     sendProgressiveMicrosteps(progressiveMicrosteps = Settings_1.Settings.tipibot.progressiveMicrosteps) {
     }
@@ -2890,9 +2983,9 @@ class PenPlotter extends Interpreter_1.Interpreter {
         console.log('set acceleration: ' + acceleration);
         this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n');
     }
-    sendInvertXY(invertX = Settings_1.Settings.tipibot.invertX, invertY = Settings_1.Settings.tipibot.invertY) {
-        console.log('invertX: ' + invertX + ', invertY: ' + invertY);
-        this.queue('M12 X' + (invertX ? -1 : 1) + ' Y' + (invertY ? -1 : 1) + '\n');
+    sendInvertXY(invertMotorLeft = Settings_1.Settings.tipibot.invertMotorLeft, invertMotorRight = Settings_1.Settings.tipibot.invertMotorRight) {
+        console.log('invertMotorLeft: ' + invertMotorLeft + ', invertMotorRight: ' + invertMotorRight);
+        this.queue('M12 X' + (invertMotorLeft ? -1 : 1) + ' Y' + (invertMotorRight ? -1 : 1) + '\n');
     }
     sendProgressiveMicrosteps(progressiveMicrosteps = Settings_1.Settings.tipibot.progressiveMicrosteps) {
         console.log('progressiveMicrosteps: ' + progressiveMicrosteps);
@@ -2984,6 +3077,9 @@ class TipibotInterpreter extends PenPlotter_1.PenPlotter {
         console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep);
         this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n');
     }
+    sendServoSpeed(servoSpeed = Settings_1.Settings.servo.speed) {
+        this.queue('M14 F' + servoSpeed + '\n');
+    }
     convertServoValue(servoValue) {
         return servoValue;
     }
@@ -3063,7 +3159,6 @@ document.addEventListener("DOMContentLoaded", function (event) {
         customContainer.appendChild(gui.getDomElement());
         let communicationFolder = gui.addFolder('Communication');
         communication = new Communication_1.Communication(communicationFolder);
-        communicationFolder.open();
         let commandFolder = gui.addFolder('Commands');
         commandFolder.open();
         Settings_1.settingsManager.createGUI(gui);
@@ -3086,6 +3181,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         w.communication = communication;
         w.commandDisplay = commandDisplay;
         w.visualFeedback = visualFeedback;
+        w.SVGPlot = Plot_1.SVGPlot;
     }
     initialize();
     let animate = () => {

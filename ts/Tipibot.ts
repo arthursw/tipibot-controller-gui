@@ -222,31 +222,39 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendProgressiveMicrosteps()
 	}
 
-	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
+	move(moveType: MoveType, point: paper.Point, callback: () => any = null, movePen=true) {
 		this.checkInitialized()
-		communication.interpreter.sendMoveDirect(point, callback)
+
+		if(moveType == MoveType.Direct) {
+			communication.interpreter.sendMoveDirect(point, callback)
+		} else if(moveType == MoveType.DirectFullSpeed) {
+			communication.interpreter.sendMoveDirectFullSpeed(point, callback)
+		} else if(moveType == MoveType.Linear) {
+			communication.interpreter.sendMoveLinear(point, callback)
+		} else if(moveType == MoveType.LinearFullSpeed) {
+			communication.interpreter.sendMoveLinearFullSpeed(point, callback)
+		}
+
 		this.enableMotors(false)
 		if(movePen) {
 			this.pen.setPosition(point, true, false)
 		}
+	}
+
+	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
+		this.move(MoveType.Direct, point, callback, movePen)
 	}
 
 	moveDirectFullSpeed(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.checkInitialized()
-		communication.interpreter.sendMoveDirectFullSpeed(point, callback)
-		this.enableMotors(false)
-		if(movePen) {
-			this.pen.setPosition(point, true, false)
-		}
+		this.move(MoveType.DirectFullSpeed, point, callback, movePen)
 	}
 
 	moveLinear(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.checkInitialized()
-		communication.interpreter.sendMoveLinear(point, callback)
-		this.enableMotors(false)
-		if(movePen) {
-			this.pen.setPosition(point, true, false)
-		}
+		this.move(MoveType.Linear, point, callback, movePen)
+	}
+
+	moveLinearFullSpeed(point: paper.Point, callback: () => any = null, movePen=true) {
+		this.move(MoveType.LinearFullSpeed, point, callback, movePen)
 	}
 
 	setSpeed(speed: number) {

@@ -7,7 +7,7 @@ declare type DatController = {
 	__gui: { name: string, parent: any }
 	onChange: (value: any) => any
 	onFinishChange: (value: any) => any
-	setValue: (value: number | string) => any
+	setValue: (value: number | string | boolean) => any
 	max: (value: number) => any
 	min: (value: number) => any
 	step: (value: number) => any
@@ -78,14 +78,14 @@ export class Controller {
 		return this
 	}
 
-	setValue(value: number | string, callback=true) {
+	setValue(value: number | string | boolean, callback=true) {
 		if(callback) {
 			return this.controller.setValue(value)
 		}
 		this.setValueNoCallback(value)
 	}
 
-	setValueNoCallback(value: number | string) {
+	setValueNoCallback(value: number | string | boolean) {
 		this.controller.object[this.controller.property] = value
 		this.controller.updateDisplay()
 	}
