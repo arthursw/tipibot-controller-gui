@@ -1,19 +1,26 @@
 import { Communication, communication } from "./Communication/Communication"
 import { InteractiveItem } from "./InteractiveItem"
-import { Settings, settingsManager } from "./Settings"
+import { Settings, SettingsManager, settingsManager } from "./Settings"
 import { tipibot } from "./Tipibot"
 import { Renderer } from "./RendererInterface"
 
 export enum MoveType {
     Direct,
-    DirectMaxSpeed,
-    Linear
+    DirectFullSpeed,
+    Linear,
+    LinearFullSpeed,
 }
 
 export class Pen extends InteractiveItem {
 	public static HOME_RADIUS = 10
 	public static RADIUS = 20
 	isPenUp: boolean
+
+	static moveTypeFromMouseEvent(event: MouseEvent) {
+		return 	event.metaKey && event.altKey || event.ctrlKey && event.altKey ? MoveType.LinearFullSpeed : 
+				event.ctrlKey || event.shiftKey || event.metaKey ? MoveType.Linear : 
+				event.altKey ? MoveType.DirectFullSpeed : MoveType.Direct
+	}
 
 	constructor(renderer: Renderer) {
 		super(renderer, null, true)
@@ -37,24 +44,27 @@ export class Pen extends InteractiveItem {
 		if(move) {
 			if(moveType == MoveType.Direct) {
 				tipibot.moveDirect(point, callback)
-			} else if(moveType == MoveType.DirectMaxSpeed) {
-				tipibot.moveDirectMaxSpeed(point, callback)
+			} else if(moveType == MoveType.DirectFullSpeed) {
+				tipibot.moveDirectFullSpeed(point, callback)
 			} else {
 				tipibot.moveLinear(point, callback)
 			}
 		}
 	}
 
-	mouseStop(event: MouseEvent): boolean {
+	mouseStop(event: MouseEvent) {
+		if(this.dragging) {
+			this.setPosition(this.getPosition(), true, true, Pen.moveTypeFromMouseEvent(event))
+		}
 		return super.mouseStop(event)
 	}
 
-	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 		this.isPenUp = true
 	}
 	
-	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 		this.isPenUp = false
 	}
@@ -112,24 +122,17 @@ export class PaperPen extends Pen {
 		this.setPosition(this.circle.position.add(delta), true, false)
 	}
 
-	mouseStop(event: MouseEvent) {
-		if(this.dragging) {
-			this.setPosition(this.circle.position, true, true, event.ctrlKey ? MoveType.Linear : event.altKey ? MoveType.DirectMaxSpeed : MoveType.Direct)
-		}
-		return super.mouseStop(event)
-	}
-
 	tipibotWidthChanged() {
 		this.lines.segments[2].point.x = Settings.tipibot.width
 	}
 
-	penUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 		this.circle.fillColor = null
 		this.isPenUp = true
 	}
 	
-	penDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 		this.circle.fillColor = 'rgba(0, 0, 0, 0.25)'
 		this.isPenUp = false

@@ -30,7 +30,7 @@ export class PaperRenderer extends Renderer {
 
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
 		if(zoom) {
-			let margin = 100
+			let margin = 200
 			let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
 		}

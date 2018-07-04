@@ -1,4 +1,4 @@
-import { Settings } from "../Settings"
+import { Settings, SettingsManager } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
@@ -51,7 +51,7 @@ export class Interpreter {
 		// Initialize at home position by default; it is always possible to set position afterward
 		// This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY) : this.tipibot.getPosition())
-		this.sendSpeedAndAcceleration()
+		this.sendMaxSpeedAndAcceleration()
 		this.tipibot.initializedCommunication = true
 	}
 
@@ -89,6 +89,7 @@ export class Interpreter {
 
 	processMessage(message: string) {
 		console.log(message)
+		
 		// if(message.indexOf('++')==0) {
 		// 	console.log(message)
 		// }
@@ -160,19 +161,22 @@ export class Interpreter {
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 	}
 
-	sendMoveDirectMaxSpeed(point: paper.Point, callback: () => any = null) {
+	sendMoveDirectFullSpeed(point: paper.Point, callback: () => any = null) {
+	}
+
+	sendMoveLinearFullSpeed(point: paper.Point, callback: () => any = null) {
 	}
 
 	sendMoveLinear(point: paper.Point, callback: () => any = null) {
 	}
 
-	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
+	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
 	}
 	
 	sendAcceleration(acceleration: number=Settings.tipibot.acceleration) {
 	}
 
-	sendSpeedAndAcceleration(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
+	sendMaxSpeedAndAcceleration(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
 	}
 
 	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
@@ -190,6 +194,9 @@ export class Interpreter {
 	sendPenWidth(penWidth: number=Settings.tipibot.penWidth) {
 	}
 
+	sendServoSpeed(servoSpeed: number=Settings.servo.speed) {
+	}
+
 	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
 	}
 
@@ -205,19 +212,22 @@ export class Interpreter {
 	sendMotorOff() {
 	}
 
+	sendMotorOn() {
+	}
+
 	sendPenState(servoValue: number, servoTempo: number = 0) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
 	sendStop() {
 	}
 
-	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
+	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {

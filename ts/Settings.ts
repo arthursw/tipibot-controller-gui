@@ -18,7 +18,7 @@ export let Settings = {
 		homeY: paperHeight + homeY,
 		invertX: false,
 		invertY: false,
-		speed: 500,
+		maxSpeed: 500,
 		acceleration: 200,
 		stepsPerRev: 200,
 		microstepResolution: 32,
@@ -27,9 +27,11 @@ export let Settings = {
 		penWidth: 2
 	},
 	servo: {
+		speed: 100,
 		position: {
-			up: 900,
-			down: 1500,
+			invert: false,
+			up: 90,
+			down: 180,
 		},
 		delay: {
 			up: {
@@ -55,6 +57,8 @@ export let Settings = {
 	}
 }
 
+const MAX_SPEED = 10000
+
 declare let saveAs: any
 
 export class SettingsManager {
@@ -62,8 +66,33 @@ export class SettingsManager {
 	gui: GUI = null
 	tipibotPositionFolder: GUI = null
 	drawAreaDimensionsFolder: GUI = null
+	machineFolder: GUI = null
 	homeFolder: GUI = null
 	tipibot: TipibotInterface
+
+	static mmPerSteps() {
+		return Settings.tipibot.mmPerRev / ( Settings.tipibot.stepsPerRev * Settings.tipibot.microstepResolution );
+	}
+
+	static stepsPerMm() {
+		return ( Settings.tipibot.stepsPerRev * Settings.tipibot.microstepResolution ) / Settings.tipibot.mmPerRev;
+	}
+
+	static mmToSteps(point: paper.Point): paper.Point {
+		return point.multiply(SettingsManager.stepsPerMm())
+	}
+
+	static stepsToMm(point: paper.Point): paper.Point {
+		return point.multiply(SettingsManager.mmPerSteps())
+	}
+
+	static servoUpAngle() {
+		return Settings.servo.position.invert ? Settings.servo.position.down : Settings.servo.position.up
+	}
+
+	static servoDownAngle() {
+		return Settings.servo.position.invert ?  Settings.servo.position.up : Settings.servo.position.down
+	}
 
 	constructor() {
 		this.loadLocalStorage()
@@ -83,7 +112,8 @@ export class SettingsManager {
 		loadSaveFolder.add(this, 'save').name('Save')
 
 		this.tipibotPositionFolder = settingsFolder.addFolder('Position')
-		this.tipibotPositionFolder.addButton('Set position', () => this.tipibot.toggleSetPosition() )
+		this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition() )
+		this.tipibotPositionFolder.addButton('Set position to home', () => this.tipibot.setPositionToHome() )
 		
 		let position = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X')
@@ -108,10 +138,12 @@ export class SettingsManager {
 		let penFolder = settingsFolder.addFolder('Pen')
 
 		penFolder.add(Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width')
+		penFolder.add(Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.')
 
 		let anglesFolder = penFolder.addFolder('Angles')
-		anglesFolder.add(Settings.servo.position, 'up', 0, 3600, 1).name('Up')
-		anglesFolder.add(Settings.servo.position, 'down', 0, 3600, 1).name('Down')
+		anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
+		anglesFolder.add(Settings.servo.position, 'up', 0, 180, 1).name('Up')
+		anglesFolder.add(Settings.servo.position, 'down', 0, 180, 1).name('Down')
 
 		let delaysFolder = penFolder.addFolder('Delays')
 		let delaysUpFolder = delaysFolder.addFolder('Up')
@@ -122,16 +154,17 @@ export class SettingsManager {
 		delaysDownFolder.add(Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before')
 		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
 
-		let machineFolder = settingsFolder.addFolder('Machine')
+		this.machineFolder = settingsFolder.addFolder('Machine')
 
-		machineFolder.add(Settings.tipibot, 'invertX').name('Invert X')
-		machineFolder.add(Settings.tipibot, 'invertY').name('Invert Y')
-		machineFolder.add(Settings.tipibot, 'speed', 1, 2500, 1).name('Speed')
-		machineFolder.add(Settings.tipibot, 'acceleration', 1, 500, 1).name('Acceleration')
-		machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
-		machineFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
-		machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
-		machineFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
+		this.machineFolder.add(Settings.tipibot, 'invertX').name('Invert X')
+		this.machineFolder.add(Settings.tipibot, 'invertY').name('Invert Y')
+		this.machineFolder.add(Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.')
+		this.machineFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.')
+		this.machineFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')
+		this.machineFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
+		this.machineFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
+		this.machineFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
+		this.machineFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
 
 		let controllers = this.getControllers()
 
@@ -208,8 +241,15 @@ export class SettingsManager {
 				this.tipibot.setHome(false)
 			}
 		} else if(parentNames[0] == 'Machine') {
-			if(name == 'speed') {
-				this.tipibot.speedChanged(changeFinished)
+			if(name == 'maxSpeed') {
+				let maxSpeedMm = value * SettingsManager.mmPerSteps()
+				this.machineFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm)
+				this.tipibot.maxSpeedChanged(changeFinished)
+			} else if(name == 'maxSpeedMm') {
+				let maxSpeedSteps = value / SettingsManager.mmPerSteps()
+				this.machineFolder.getController('maxSpeed').setValueNoCallback(maxSpeedSteps)
+				Settings.tipibot.maxSpeed = maxSpeedSteps
+				this.tipibot.maxSpeedChanged(changeFinished)
 			} else if(name == 'acceleration') {
 				this.tipibot.accelerationChanged(changeFinished)
 			} else if(name == 'mmPerRev') {
@@ -235,9 +275,13 @@ export class SettingsManager {
 			if(changeFinished) {
 				this.tipibot.servoChanged(changeFinished)
 			}
-		} else if(parentNames[0] == 'Pen' && name == 'penWidth') {
-			if(changeFinished) {
-				this.tipibot.penWidthChanged(true)
+		} else if(parentNames[0] == 'Pen') {
+			if(name == 'penWidth') {
+				if(changeFinished) {
+					this.tipibot.penWidthChanged(true)
+				}
+			} else if(name == 'speed') {
+				this.tipibot.servoChanged(changeFinished)
 			}
 		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(changeFinished)
@@ -264,7 +308,7 @@ export class SettingsManager {
 			controller.updateDisplay()
 		}
 
-		this.tipibot.speedChanged(true)
+		this.tipibot.maxSpeedChanged(true)
 		this.tipibot.mmPerRevChanged(true)
 		this.tipibot.stepsPerRevChanged(true)
 		this.tipibot.microstepResolutionChanged(true)

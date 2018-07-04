@@ -1,16 +1,22 @@
-import { Settings } from "./Settings"
+import { Settings, SettingsManager } from "./Settings"
 import { Pen } from "./Pen"
 import { tipibot } from "./Tipibot"
 
 export class VisualFeedback {
 
 	paths: paper.Group
+	subTargets: paper.Group
 	circle: paper.Path
 	lines: paper.Path
 	drawing: boolean = false
+
+	readonly positionPrefix = 'position: l: '
+	readonly subTargetPrefix = 'sub target: l: '
 	
 	constructor() {
 		this.paths = new paper.Group()
+		this.subTargets = new paper.Group()
+
 		let positon = tipibot.getPosition()
 		this.circle = paper.Path.Circle(positon, Pen.HOME_RADIUS)
 		this.circle.fillColor = 'yellow'
@@ -30,29 +36,36 @@ export class VisualFeedback {
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
 	}
 
+	clear() {
+		this.paths.removeChildren()
+		this.subTargets.removeChildren()
+	}
+
 	setPosition(point: paper.Point) {
 		this.circle.position = point
 		this.lines.segments[1].point = point
 	}
 
-	computePoint(data: string) {
-		let m = data.replace(' - l: ', '')
+	computePoint(data: string, prefix: string) {
+		let m = data.replace(prefix, '')
 		let messages = m.split(', r: ')
 		let x = parseInt(messages[0])
-		let y = parseInt(messages[1].split(' - x: ')[0])
+		let y = parseInt(messages[1])
 		let lengths = new paper.Point(x, y)
-		let lengthsMm = tipibot.stepsToMm(lengths)
+		let lengthsMm = SettingsManager.stepsToMm(lengths)
 		return tipibot.lengthsToCartesian(lengthsMm)
 	}
 
 	onMessageReceived(data: string) {
-		if(data.indexOf(' - ') == 0) {
-			this.onFeedback(data)
+		if(data.indexOf(this.positionPrefix) == 0) {
+			this.updatePosition(data)
+		} else if(data.indexOf(this.subTargetPrefix) == 0) {
+			this.setSubTarget(data)
 		}
 	}
 
-	onFeedback(data: string) {
-		let point = this.computePoint(data)
+	updatePosition(data: string) {
+		let point = this.computePoint(data, this.positionPrefix)
 
 		if(!tipibot.pen.isPenUp) {
 			if(!this.drawing) {
@@ -70,6 +83,25 @@ export class VisualFeedback {
 		}
 
 		this.setPosition(point)
+	}
+
+	setSubTarget(data: string) {
+		let point = this.computePoint(data, this.subTargetPrefix)
+
+		if(!tipibot.pen.isPenUp) {
+			let path = new paper.Path()
+			path.strokeWidth = 0.1
+			path.strokeColor = 'red'
+			this.subTargets.addChild(path)
+
+			let size = 2
+			path.add(point.add(size))
+			path.add(point.add(-size))
+			path.add(point)
+			path.add(point.add(new paper.Point(size, -size)))
+			path.add(point.add(new paper.Point(-size, size)))
+
+		}
 	}
 
 }

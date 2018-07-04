@@ -1,4 +1,4 @@
-import { Settings, settingsManager } from "../Settings"
+import { Settings, SettingsManager, settingsManager } from "../Settings"
 import { Interpreter, Command } from "./Interpreter"
 
 const commands = {
@@ -101,7 +101,7 @@ export class Polargraph extends Interpreter {
 
 	sendMoveToNativePosition(direct: boolean, p: paper.Point, callback: () => any = null ) {
 		p = this.tipibot.cartesianToLengths(p)
-		p = this.tipibot.mmToSteps(p).divide(Settings.tipibot.microstepResolution)
+		p = SettingsManager.mmToSteps(p).divide(Settings.tipibot.microstepResolution)
 		let command: string = null;
 		if (direct) {
 			command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
@@ -115,7 +115,7 @@ export class Polargraph extends Interpreter {
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	point = this.tipibot.cartesianToLengths(point)
-		let pointInSteps = this.tipibot.mmToSteps(point).divide(Settings.tipibot.microstepResolution);
+		let pointInSteps = SettingsManager.mmToSteps(point).divide(Settings.tipibot.microstepResolution);
 		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		this.queue(command);
     }
@@ -130,12 +130,9 @@ export class Polargraph extends Interpreter {
 		this.sendMoveToNativePosition(true, point, callback);
 	}
 
-	sendSpeed(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
-		let stepsPerMm = this.tipibot.stepsPerMm()
-		let stepsPerSeconds = speed * stepsPerMm
-		let stepsPerSeconds2 = acceleration * stepsPerMm
-		this.queue(commands.CMD_SETMOTORSPEED + stepsPerSeconds.toFixed(2) + ',1,END');
-		this.queue(commands.CMD_SETMOTORACCEL + stepsPerSeconds2.toFixed(2) + ',1,END');
+	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
+		this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END');
+		this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END');
 	}
 	
 	sendSize(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height) {
@@ -168,39 +165,29 @@ export class Polargraph extends Interpreter {
 	sendMotorOff() {
 	}
 
-	sendPenLiftRange(servoDownValue: number=Settings.servo.position.down, servoUpValue: number=Settings.servo.position.up) {
+	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
 		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END');
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
-		if (servoUpValue != Settings.servo.position.up) {
-			Settings.servo.position.up = servoUpValue;
-			settingsManager.updateSliders();
-			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
-		}
+	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		if(servoUpTempoBefore > 0) {
 			this.queue(commands.CMD_DELAY + servoUpTempoBefore + ",END", callback);
 		}
-		this.queue(commands.CMD_PENUP + Settings.servo.position.up + ",END", callback);
+		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", callback);
 		// this.queue(commands.CMD_PENUP + "END", callback);
 		if(servoUpTempoAfter > 0) {
 			this.queue(commands.CMD_DELAY + servoUpTempoAfter + ",END", callback);
 		}
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
-		if (servoDownValue != Settings.servo.position.down) {
-			Settings.servo.position.down = servoDownValue;
-			settingsManager.updateSliders();
-			this.sendPenLiftRange(Settings.servo.position.down, Settings.servo.position.up);
-		}
+	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		if(servoDownTempoBefore > 0) {
 			this.queue(commands.CMD_DELAY + servoDownTempoBefore + ",END", callback);
 		}
-		this.queue(commands.CMD_PENDOWN + Settings.servo.position.down + ",END", callback);
+		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", callback);
 		// this.queue(commands.CMD_PENDOWN + "END", callback);
 		if(servoDownTempoAfter > 0) {
 			this.queue(commands.CMD_DELAY + servoDownTempoAfter + ",END", callback);

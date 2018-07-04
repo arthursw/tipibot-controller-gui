@@ -29,6 +29,7 @@ import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
 
 declare var addWheelListener: any
+declare var dat: any
 
 let communication: Communication = null
 
@@ -70,6 +71,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function initialize() {
 
+		dat.GUI.DEFAULT_WIDTH = 325
 		gui = new GUI({ autoPlace: false })
 
 		// let console = new Console()
@@ -158,7 +160,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 			InteractiveItem.mouseUp(event)
 		}
 		renderer.mouseUp(event)
-		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position').contains(<HTMLElement>event.target) ) {
+		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(<HTMLElement>event.target) ) {
 			if(positionPreview != null) {
 				positionPreview.remove()
 				positionPreview = null

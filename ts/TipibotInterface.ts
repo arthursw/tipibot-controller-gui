@@ -12,6 +12,7 @@ export interface TipibotInterface {
 	setX(x: number, sendChange?: boolean): void
 	setY(y: number, sendChange?: boolean): void
 	toggleSetPosition(setPosition?: boolean): void
+	setPositionToHome(sendChange?: boolean): void
 	setHome(setPosition?: boolean):  void
 
 	sizeChanged(sendChange: boolean): void
@@ -20,16 +21,12 @@ export interface TipibotInterface {
 	penUp(servoUpValue?: number, servoUpTempoBefore?: number): void
 	penDown(servoDownValue?: number, servoDownTempoBefore?: number): void
 
-	mmPerSteps(): number
-	stepsPerMm(): number
-	mmToSteps(point: paper.Point): paper.Point
-	stepsToMm(point: paper.Point): paper.Point
 	cartesianToLengths(point: paper.Point): paper.Point
 	lengthsToCartesian(lengths: paper.Point): paper.Point
 
 	sendInvertXY(): void
 	sendProgressiveMicrosteps(): void
-	speedChanged(sendChange?: boolean): void
+	maxSpeedChanged(sendChange?: boolean): void
 	accelerationChanged(sendChange?: boolean): void
 	stepsPerRevChanged(sendChange?: boolean): void
 	mmPerRevChanged(sendChange?: boolean): void

@@ -1,59 +1,46 @@
-import { Settings, settingsManager } from "../Settings"
+import { Settings, SettingsManager, settingsManager } from "../Settings"
 import { Interpreter } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {
 
-    sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
-    	super.sendSetPosition(point)
+	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
+		super.sendSetPosition(point)
 		let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = this.tipibot.mmToSteps(lengths)
-    	console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n')
-    }
+	}
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 		super.sendMoveDirect(point, callback)
-    	let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = this.tipibot.mmToSteps(lengths)
-    	console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+		let lengths = this.tipibot.cartesianToLengths(point)
+		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback)
-	}
-
-	sendMoveDirectMaxSpeed(point: paper.Point, callback: () => any = null) {
-		super.sendMoveDirectMaxSpeed(point, callback)
-    	let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = this.tipibot.mmToSteps(lengths)
-    	console.log('move direct max speed: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
-		this.queue('G2 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback)
 	}
 
 	sendMoveLinear(point: paper.Point, callback: () => any = null) {
 		super.sendMoveLinear(point, callback)
 		let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = this.tipibot.mmToSteps(lengths)
-    	console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', callback)
 	}
 
-	sendSpeed(speed: number=Settings.tipibot.speed) {
-		let stepsPerMm = this.tipibot.stepsPerMm()
-		let stepsPerSeconds = speed * stepsPerMm
-		console.log('set speed: ' + stepsPerSeconds)
-		this.queue('G0 F' + stepsPerSeconds + '\n')
+	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed) {
+		console.log('set speed: ' + speed)
+		this.queue('G0 F' + speed.toFixed(2) + '\n')
 	}
 
 	sendAcceleration(acceleration: number=Settings.tipibot.acceleration) {
-		let stepsPerMm = this.tipibot.stepsPerMm()
-		let stepsPerSeconds2 = acceleration * stepsPerMm
-		console.log('set acceleration: ' + stepsPerSeconds2)
-		this.queue('G0 S' + stepsPerSeconds2 + '\n')
+		console.log('set acceleration: ' + acceleration)
+		this.queue('G0 S' + acceleration.toFixed(2) + '\n')
 	}
 
-	sendSpeedAndAcceleration(speed: number=Settings.tipibot.speed, acceleration: number=Settings.tipibot.acceleration) {
-		let stepsPerMm = this.tipibot.stepsPerMm()
-		let stepsPerSeconds = speed * stepsPerMm
-		let stepsPerSeconds2 = acceleration * stepsPerMm
-		this.queue('G0 F' + stepsPerSeconds + ' S' + stepsPerSeconds2 + '\n')
+	sendMaxSpeedAndAcceleration(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
+		console.log('set speed: ' + speed)
+		console.log('set acceleration: ' + acceleration)
+		this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n')
 	}
 
 	sendInvertXY(invertX: boolean=Settings.tipibot.invertX, invertY: boolean=Settings.tipibot.invertY) {
@@ -98,18 +85,25 @@ export class PenPlotter extends Interpreter {
 		this.queue('M84\n')
 	}
 
-	sendPenState(servoValue: number, servoTempo: number = 0, callback: ()=> void = null) {
-		this.queue('G4 P' + servoTempo + '\n')
+	convertServoValue(servoValue: number) {
+		// pen plotter needs servo value in microseconds
+		// see https://www.arduino.cc/en/Reference/ServoWriteMicroseconds
+		return 700 + 1600 * servoValue / 180
+	}
+
+	sendPenState(servoValue: number, delayBefore: number = 0, delayAfter: number = 0, callback: ()=> void = null) {
+		servoValue = this.convertServoValue(servoValue)
+		this.queue('G4 P' + delayBefore + '\n')
 		this.queue('M340 P3 S' + servoValue + '\n')
-		this.queue('G4 P' + servoTempo + '\n', callback)
+		this.queue('G4 P' + delayAfter + '\n', callback)
 	}
 
-	sendPenUp(servoUpValue: number = Settings.servo.position.up, servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
-		this.sendPenState(servoUpValue, servoUpTempoBefore, callback)
+	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), delayBefore: number = Settings.servo.delay.up.before, delayAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+		this.sendPenState(servoUpValue, delayBefore, delayAfter, callback)
 	}
 
-	sendPenDown(servoDownValue: number = Settings.servo.position.down, servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
-		this.sendPenState(servoDownValue, servoDownTempoBefore, callback)
+	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+		this.sendPenState(servoDownValue, delayBefore, delayAfter, callback)
 	}
 
 	sendStop() {
