@@ -350,10 +350,15 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	goHome(callback: ()=> any = null) {
+		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
+		let goHomeCallback = ()=> {
+			this.pen.setPosition(homePoint, true, false)
+			callback()
+		}
 		this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
 		// this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
-		this.pen.setPosition(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), true, true, MoveType.Direct, callback)
+		this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
 	}
 
 	keyDown(event:KeyboardEvent) {

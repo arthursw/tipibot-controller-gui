@@ -910,10 +910,15 @@ class Tipibot {
         this.updateMoveToButtons();
     }
     goHome(callback = null) {
+        let homePoint = new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY);
+        let goHomeCallback = () => {
+            this.pen.setPosition(homePoint, true, false);
+            callback();
+        };
         this.penUp(Settings_1.SettingsManager.servoUpAngle(), Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, null, true);
         // this.penUp(null, null, null, true)
         // The pen will make me (tipibot) move :-)
-        this.pen.setPosition(new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY), true, true, Pen_1.MoveType.Direct, callback);
+        this.pen.setPosition(homePoint, true, true, Pen_1.MoveType.Direct, goHomeCallback);
     }
     keyDown(event) {
         let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;
