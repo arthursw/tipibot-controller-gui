@@ -14,7 +14,7 @@ export enum MoveType {
 export class Pen extends InteractiveItem {
 	public static HOME_RADIUS = 10
 	public static RADIUS = 20
-	isPenUp: boolean
+	isPenUp: boolean 						// TODO: this variable is both used to tell feedback and to store gui controller state: this must be improved!
 
 	static moveTypeFromMouseEvent(event: MouseEvent) {
 		return 	event.metaKey && event.altKey || event.ctrlKey && event.altKey ? MoveType.LinearFullSpeed : 
@@ -60,12 +60,24 @@ export class Pen extends InteractiveItem {
 	}
 
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
-		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
+		let penUpCallback = ()=> {
+			this.isPenUp = true
+			if(callback != null) {
+				callback()
+			}
+		}
+		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.isPenUp = true
 	}
 	
 	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
-		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
+		let penDownCallback = ()=> {
+			this.isPenUp = false
+			if(callback != null) {
+				callback()
+			}
+		}
+		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.isPenUp = false
 	}
 }

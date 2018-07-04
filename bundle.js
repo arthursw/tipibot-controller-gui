@@ -683,10 +683,10 @@ class Tipibot {
     togglePenState() {
         let callback = () => console.log('pen state changed');
         if (this.pen.isPenUp) {
-            this.penDown(Settings_1.SettingsManager.servoDownAngle(), Settings_1.Settings.servo.delay.down.before, Settings_1.Settings.servo.delay.down.after, callback);
+            this.penDown(Settings_1.SettingsManager.servoDownAngle(), Settings_1.Settings.servo.delay.down.before, Settings_1.Settings.servo.delay.down.after, callback, true);
         }
         else {
-            this.penUp(Settings_1.SettingsManager.servoUpAngle(), Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, callback);
+            this.penUp(Settings_1.SettingsManager.servoUpAngle(), Settings_1.Settings.servo.delay.up.before, Settings_1.Settings.servo.delay.up.after, callback, true);
         }
     }
     computeTipibotArea() {
@@ -803,7 +803,9 @@ class Tipibot {
         this.checkInitialized();
         let moveCallback = movePen ? callback : () => {
             this.pen.setPosition(point, true, false);
-            callback();
+            if (callback != null) {
+                callback();
+            }
         };
         if (moveType == Pen_1.MoveType.Direct) {
             Communication_1.communication.interpreter.sendMoveDirect(point, moveCallback);
@@ -977,6 +979,7 @@ class Pen extends InteractiveItem_1.InteractiveItem {
         super(renderer, null, true);
         this.isPenUp = true;
     }
+    // TODO: this variable is both used to tell feedback and to store gui controller state: this must be improved!
     static moveTypeFromMouseEvent(event) {
         return event.metaKey && event.altKey || event.ctrlKey && event.altKey ? MoveType.LinearFullSpeed :
             event.ctrlKey || event.shiftKey || event.metaKey ? MoveType.Linear :
@@ -1013,11 +1016,23 @@ class Pen extends InteractiveItem_1.InteractiveItem {
         return super.mouseStop(event);
     }
     penUp(servoUpValue = Settings_1.SettingsManager.servoUpAngle(), servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
-        Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback);
+        let penUpCallback = () => {
+            this.isPenUp = true;
+            if (callback != null) {
+                callback();
+            }
+        };
+        Communication_1.communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback);
         this.isPenUp = true;
     }
     penDown(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
-        Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback);
+        let penDownCallback = () => {
+            this.isPenUp = false;
+            if (callback != null) {
+                callback();
+            }
+        };
+        Communication_1.communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback);
         this.isPenUp = false;
     }
 }

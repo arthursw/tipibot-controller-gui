@@ -90,9 +90,9 @@ export class Tipibot implements TipibotInterface {
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
 		if(this.pen.isPenUp) {
-			this.penDown(SettingsManager.servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback)
+			this.penDown(SettingsManager.servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
 		} else {
-			this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback)
+			this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
 		}
 	}
 
@@ -227,7 +227,9 @@ export class Tipibot implements TipibotInterface {
 
 		let moveCallback = movePen ? callback : ()=> {
 			this.pen.setPosition(point, true, false)
-			callback()
+			if(callback != null) {
+				callback()
+			}
 		}
 
 		if(moveType == MoveType.Direct) {
