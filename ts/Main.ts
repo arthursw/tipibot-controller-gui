@@ -103,6 +103,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		commandDisplay.createGUI(gui)
 
 		VisualFeedback.initialize()
+		
+		w.addPlugin('CommeUnDessein')
 
 		// debug
 		w.tipibot = tipibot

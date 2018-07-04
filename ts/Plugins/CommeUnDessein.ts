@@ -36,6 +36,8 @@ let posOnPlanetToDrawArea = function(point: paper.Point, planet: paper.Point) {
 }
 
 let commeundesseinAjaxURL = '/ajaxCall/'
+
+const ModeKey = 'Mode'
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret'
 
 
@@ -84,6 +86,8 @@ export class CommeUnDessein {
 
 	constructor(testMode=false) {
 		this.testMode = testMode
+		this.mode = localStorage.getItem(ModeKey) || 'CommeUnDessein'
+
 		let secret = localStorage.getItem(CommeUnDesseinSecretKey)
 		if (secret != null) {
 			this.secret = secret
@@ -96,7 +100,7 @@ export class CommeUnDessein {
 			folderName += ' (Test mode)'
 		}
 		let commeUnDesseinGUI = gui.addFolder(folderName)
-		commeUnDesseinGUI.add(this, 'mode')
+		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		
 		CommeUnDesseinSize.width = tipibot.drawArea.getBounds().width

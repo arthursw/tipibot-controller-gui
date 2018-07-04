@@ -2281,6 +2281,7 @@ let posOnPlanetToDrawArea = function (point, planet) {
     return commeUnDesseinToDrawArea(posOnProject);
 };
 let commeundesseinAjaxURL = '/ajaxCall/';
+const ModeKey = 'Mode';
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret';
 $.ajaxSetup({
     beforeSend: function (xhr, settings) {
@@ -2320,6 +2321,7 @@ class CommeUnDessein {
         this.secret = '******';
         this.state = State.NextDrawing;
         this.testMode = testMode;
+        this.mode = localStorage.getItem(ModeKey) || 'CommeUnDessein';
         let secret = localStorage.getItem(CommeUnDesseinSecretKey);
         if (secret != null) {
             this.secret = secret;
@@ -2331,7 +2333,7 @@ class CommeUnDessein {
             folderName += ' (Test mode)';
         }
         let commeUnDesseinGUI = gui.addFolder(folderName);
-        commeUnDesseinGUI.add(this, 'mode');
+        commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value));
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
         CommeUnDesseinSize.width = Tipibot_1.tipibot.drawArea.getBounds().width;
         CommeUnDesseinSize.height = Tipibot_1.tipibot.drawArea.getBounds().height;
@@ -3235,6 +3237,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
         let commandDisplay = new CommandDisplay_1.CommandDisplay();
         commandDisplay.createGUI(gui);
         VisualFeedback_1.VisualFeedback.initialize();
+        w.addPlugin('CommeUnDessein');
         // debug
         w.tipibot = Tipibot_1.tipibot;
         w.settingsManager = Settings_1.settingsManager;
