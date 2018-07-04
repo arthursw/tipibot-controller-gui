@@ -121,7 +121,11 @@ export class PenPlotter extends Interpreter {
 		this.sendPenState(servoDownValue, delayBefore, delayAfter, callback)
 	}
 
-	sendStop() {
+	sendStop(force = true) {
+		if(force) {
+			this.socket.emit('data', 'M0\n')
+			return
+		}
 		let message = 'Stop'
 		this.queue('M0\n', message)
 	}

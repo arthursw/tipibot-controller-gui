@@ -122,7 +122,7 @@ export class Interpreter {
 		if(!this.pause) {
 			this.setPause(true)
 		}
-		this.sendStop()
+		this.sendStop(true)
 	}
 
 	setPause(pause: boolean) {
@@ -229,7 +229,7 @@ export class Interpreter {
 	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
-	sendStop() {
+	sendStop(force = true) {
 	}
 
 	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {

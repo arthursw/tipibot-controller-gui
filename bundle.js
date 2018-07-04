@@ -2904,7 +2904,7 @@ class Interpreter {
         if (!this.pause) {
             this.setPause(true);
         }
-        this.sendStop();
+        this.sendStop(true);
     }
     setPause(pause) {
         this.pause = pause;
@@ -2980,7 +2980,7 @@ class Interpreter {
     }
     sendPenDown(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
     }
-    sendStop() {
+    sendStop(force = true) {
     }
     sendPenLiftRange(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoUpValue = Settings_1.SettingsManager.servoUpAngle()) {
     }
@@ -3099,7 +3099,11 @@ class PenPlotter extends Interpreter_1.Interpreter {
     sendPenDown(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), delayBefore = Settings_1.Settings.servo.delay.down.before, delayAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
         this.sendPenState(servoDownValue, delayBefore, delayAfter, callback);
     }
-    sendStop() {
+    sendStop(force = true) {
+        if (force) {
+            this.socket.emit('data', 'M0\n');
+            return;
+        }
         let message = 'Stop';
         this.queue('M0\n', message);
     }
