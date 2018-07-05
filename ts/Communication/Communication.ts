@@ -8,7 +8,7 @@ import { TipibotInterpreter } from "./TipibotInterpreter"
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
-// export const SERIAL_COMMUNICATION_SPEED = 57600
+// export const 57600 = 57600
 export const SERIAL_COMMUNICATION_SPEED = 115200
 
 let PORT = window.localStorage.getItem('port') || 6842
@@ -90,8 +90,9 @@ export class Communication {
 		this.socket = null
 		this.gui = gui
 		this.portController = null
-		this.interpreter = new TipibotInterpreter()
+		// this.interpreter = new TipibotInterpreter()
 		// this.interpreter = new Polargraph()
+		this.initializeInterpreter(Settings.firmware)
 		this.connectToSerial()
 
 		if(Settings.autoConnect) {
@@ -140,7 +141,27 @@ export class Communication {
 		this.portController.onFinishChange( (value: any) => this.serialConnectionPortChanged(value) )
 	}
 
+	initializeInterpreter(interpreterName: string) {
+		let tipibot = this.interpreter ? this.interpreter.tipibot : null
+		if(this.connectionOpened) {
+			this.disconnect()
+		}
+		if(interpreterName == 'Tipibot') {
+			this.interpreter = new TipibotInterpreter()
+		} else if(interpreterName == 'Polargraph') {
+			this.interpreter = new Polargraph()
+		} else if(interpreterName == 'PenPlotter') {
+			this.interpreter = new PenPlotter()
+		}
+		this.interpreter.setTipibot(tipibot)
+		this.interpreter.setSocket(this.socket)
+		console.log('initialize '+interpreterName)
+	}
+
 	connectToSerial() {
+		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter'] )
+		firmwareController.onFinishChange((value)=> this.initializeInterpreter(value))
+
 		this.autoConnectController = this.gui.add(Settings, 'autoConnect').name('Auto connect').onFinishChange((value)=> {
 			if(value) {
 				this.startAutoConnection()
@@ -199,10 +220,11 @@ export class Communication {
 	serialConnectionPortChanged(portName: string) {
 		if(portName == 'Disconnected' && this.connectionOpened) {
 			this.disconnect()
-		} else {
+		} else if(portName != 'Disconnected') {
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(new CustomEvent('Connect', { detail: portName }))
-			this.socket.emit('open', { name: portName, baudRate: SERIAL_COMMUNICATION_SPEED })
+			console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed)
+			this.socket.emit('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed })
 		}
 	}
 

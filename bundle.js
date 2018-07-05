@@ -81,6 +81,7 @@ let homeX = 0;
 let homeY = 388;
 exports.Settings = {
     autoConnect: true,
+    firmware: 'Tipibot',
     tipibot: {
         width: tipibotWidth,
         height: tipibotHeight,
@@ -457,10 +458,12 @@ exports.settingsManager = new SettingsManager();
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
+const Polargraph_1 = __webpack_require__(19);
+const PenPlotter_1 = __webpack_require__(14);
 const TipibotInterpreter_1 = __webpack_require__(15);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
-// export const SERIAL_COMMUNICATION_SPEED = 57600
+// export const 57600 = 57600
 exports.SERIAL_COMMUNICATION_SPEED = 115200;
 let PORT = window.localStorage.getItem('port') || 6842;
 class Socket {
@@ -521,8 +524,9 @@ class Communication {
         this.socket = null;
         this.gui = gui;
         this.portController = null;
-        this.interpreter = new TipibotInterpreter_1.TipibotInterpreter();
+        // this.interpreter = new TipibotInterpreter()
         // this.interpreter = new Polargraph()
+        this.initializeInterpreter(Settings_1.Settings.firmware);
         this.connectToSerial();
         if (Settings_1.Settings.autoConnect) {
             this.startAutoConnection();
@@ -559,7 +563,27 @@ class Communication {
         });
         this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
     }
+    initializeInterpreter(interpreterName) {
+        let tipibot = this.interpreter ? this.interpreter.tipibot : null;
+        if (this.connectionOpened) {
+            this.disconnect();
+        }
+        if (interpreterName == 'Tipibot') {
+            this.interpreter = new TipibotInterpreter_1.TipibotInterpreter();
+        }
+        else if (interpreterName == 'Polargraph') {
+            this.interpreter = new Polargraph_1.Polargraph();
+        }
+        else if (interpreterName == 'PenPlotter') {
+            this.interpreter = new PenPlotter_1.PenPlotter();
+        }
+        this.interpreter.setTipibot(tipibot);
+        this.interpreter.setSocket(this.socket);
+        console.log('initialize ' + interpreterName);
+    }
     connectToSerial() {
+        let firmwareController = this.gui.add(Settings_1.Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter']);
+        firmwareController.onFinishChange((value) => this.initializeInterpreter(value));
         this.autoConnectController = this.gui.add(Settings_1.Settings, 'autoConnect').name('Auto connect').onFinishChange((value) => {
             if (value) {
                 this.startAutoConnection();
@@ -604,10 +628,11 @@ class Communication {
         if (portName == 'Disconnected' && this.connectionOpened) {
             this.disconnect();
         }
-        else {
+        else if (portName != 'Disconnected') {
             this.interpreter.setSerialPort(portName);
             document.dispatchEvent(new CustomEvent('Connect', { detail: portName }));
-            this.socket.emit('open', { name: portName, baudRate: exports.SERIAL_COMMUNICATION_SPEED });
+            console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed);
+            this.socket.emit('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed });
         }
     }
     tryConnection() {
@@ -2836,6 +2861,7 @@ class Interpreter {
     constructor() {
         this.commandID = 0;
         this.continueMessage = 'READY';
+        this.serialCommunicationSpeed = 115200;
         this.commandQueue = [];
         this.pause = false;
         this.serialInput = '';
@@ -4058,6 +4084,213 @@ class ThreeShape extends Shape {
     }
 }
 exports.ThreeShape = ThreeShape;
+
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
+const Interpreter_1 = __webpack_require__(13);
+const commands = {
+    CMD_CHANGELENGTH: "C01,",
+    CMD_CHANGEPENWIDTH: "C02,",
+    CMD_CHANGEMOTORSPEED: "C03,",
+    CMD_CHANGEMOTORACCEL: "C04,",
+    CMD_DRAWPIXEL: "C05,",
+    CMD_DRAWSCRIBBLEPIXEL: "C06,",
+    CMD_DRAWRECT: "C07,",
+    CMD_CHANGEDRAWINGDIRECTION: "C08,",
+    CMD_SETPOSITION: "C09,",
+    CMD_TESTPATTERN: "C10,",
+    CMD_TESTPENWIDTHSQUARE: "C11,",
+    CMD_TESTPENWIDTHSCRIBBLE: "C12,",
+    CMD_PENDOWN: "C13,",
+    CMD_PENUP: "C14,",
+    CMD_DRAWSAWPIXEL: "C15,",
+    CMD_DRAWROUNDPIXEL: "C16,",
+    CMD_CHANGELENGTHDIRECT: "C17,",
+    CMD_TXIMAGEBLOCK: "C18,",
+    CMD_STARTROVE: "C19,",
+    CMD_STOPROVE: "C20,",
+    CMD_SET_ROVE_AREA: "C21,",
+    CMD_LOADMAGEFILE: "C23,",
+    CMD_CHANGEMACHINESIZE: "C24,",
+    CMD_CHANGEMACHINENAME: "C25,",
+    CMD_REQUESTMACHINESIZE: "C26,",
+    CMD_RESETMACHINE: "C27,",
+    CMD_DRAWDIRECTIONTEST: "C28,",
+    CMD_CHANGEMACHINEMMPERREV: "C29,",
+    CMD_CHANGEMACHINESTEPSPERREV: "C30,",
+    CMD_SETMOTORSPEED: "C31,",
+    CMD_SETMOTORACCEL: "C32,",
+    CMD_MACHINE_MODE_STORE_COMMANDS: "C33,",
+    CMD_MACHINE_MODE_EXEC_FROM_STORE: "C34,",
+    CMD_MACHINE_MODE_LIVE: "C35,",
+    CMD_RANDOM_DRAW: "C36,",
+    CMD_SETMACHINESTEPMULTIPLIER: "C37,",
+    CMD_START_TEXT: "C38,",
+    CMD_DRAW_SPRITE: "C39,",
+    CMD_CHANGELENGTH_RELATIVE: "C40,",
+    CMD_SWIRLING: "C41,",
+    CMD_DRAW_RANDOM_SPRITE: "C42,",
+    CMD_DRAW_NORWEGIAN: "C43,",
+    CMD_DRAW_NORWEGIAN_OUTLINE: "C44,",
+    CMD_SETPENLIFTRANGE: "C45,",
+    CMD_SELECT_ROVE_SOURCE_IMAGE: "C46",
+    CMD_RENDER_ROVE: "C47",
+    CMD_ACTIVATE_MACHINE_BUTTON: "C49",
+    CMD_DEACTIVATE_MACHINE_BUTTON: "C50",
+    CMD_DELAY: "C60,"
+};
+class Polargraph extends Interpreter_1.Interpreter {
+    constructor() {
+        super();
+        this.keepTipibotAwakeInterval = null;
+        this.serialCommunicationSpeed = 57600;
+    }
+    // startKeepingTipibotAwake() {
+    // 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
+    // }
+    // keepTipibotAwake() {
+    // 	this.sendPenUp()
+    // }
+    send(command) {
+        // let commandCode = command.data.substr(0, 3)
+        // for(let commandName in commands) {
+        // 	let code: string = (<any>commands)[commandName].substr(0, 3)
+        // 	if(code == commandCode) {
+        // 		console.log("Send command: " + commandName)
+        // 	}
+        // }
+        command.data += String.fromCharCode(10);
+        // command.data += '\n'
+        super.send(command);
+    }
+    queue(data, message, callback = null) {
+        // clearTimeout(this.keepTipibotAwakeInterval)
+        // this.keepTipibotAwakeInterval = null
+        let commandCode = data.substr(0, 3);
+        for (let commandName in commands) {
+            let code = commands[commandName].substr(0, 3);
+            // if(code == commandCode) {
+            // 	console.log("Queue command: " + commandName)
+            // }
+        }
+        super.queue(data, message, callback);
+    }
+    queueEmpty() {
+        // this.startKeepingTipibotAwake()
+    }
+    messageReceived(message) {
+        // super.messageReceived(message + '\n')
+        super.messageReceived(message);
+    }
+    getMaxSegmentLength() {
+        return 2;
+    }
+    sendMoveToNativePosition(direct, p, callback = null) {
+        p = this.tipibot.cartesianToLengths(p);
+        p = Settings_1.SettingsManager.mmToSteps(p).divide(Settings_1.Settings.tipibot.microstepResolution);
+        let command = null;
+        if (direct) {
+            command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
+        }
+        else {
+            command = commands.CMD_CHANGELENGTH + Math.round(p.x) + "," + Math.round(p.y) + ',END';
+        }
+        let message =  true ? 'direct' : 'linear' + ': ' + p.x.toFixed(2) + ', ' + p.y.toFixed(2);
+        this.queue(command, message, callback);
+    }
+    sendSetPosition(point = this.tipibot.getPosition()) {
+        point = this.tipibot.cartesianToLengths(point);
+        let pointInSteps = Settings_1.SettingsManager.mmToSteps(point).divide(Settings_1.Settings.tipibot.microstepResolution);
+        let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
+        let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2);
+        this.queue(command, message);
+    }
+    sendMoveDirect(point, callback = null) {
+        this.sendMoveToNativePosition(true, point, callback);
+    }
+    sendMoveLinear(point, callback = null) {
+        // Just like in Polagraph controller:
+        // this.sendMoveToNativePosition(false, point, callback);
+        this.sendMoveToNativePosition(true, point, callback);
+    }
+    sendMaxSpeed(speed = Settings_1.Settings.tipibot.maxSpeed, acceleration = Settings_1.Settings.tipibot.acceleration) {
+        let message = 'Set max speed: ' + speed.toFixed(2);
+        this.queue(commands.CMD_SETMOTORSPEED + speed.toFixed(2) + ',1,END', message);
+        message = 'Set acceleration: ' + acceleration.toFixed(2);
+        this.queue(commands.CMD_SETMOTORACCEL + acceleration.toFixed(2) + ',1,END', message);
+    }
+    sendSize(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height) {
+        let message = 'Set size: ' + tipibotWidth.toFixed(2) + ',' + tipibotHeight.toFixed(2);
+        this.queue(commands.CMD_CHANGEMACHINESIZE + tipibotWidth + ',' + tipibotHeight + ',END', message);
+    }
+    sendStepsPerRev(stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev) {
+        let message = 'Set steps per rev: ' + stepsPerRev;
+        this.queue(commands.CMD_CHANGEMACHINESTEPSPERREV + stepsPerRev + ',END', message);
+    }
+    sendMmPerRev(mmPerRev = Settings_1.Settings.tipibot.mmPerRev) {
+        let message = 'Set mm per rev: ' + mmPerRev;
+        this.queue(commands.CMD_CHANGEMACHINEMMPERREV + mmPerRev + ',END', message);
+    }
+    sendStepMultiplier(microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
+        let message = 'Set microstepResolution: ' + microstepResolution;
+        this.queue(commands.CMD_SETMACHINESTEPMULTIPLIER + microstepResolution + ',END', message);
+    }
+    sendSpecs(tipibotWidth = Settings_1.Settings.tipibot.width, tipibotHeight = Settings_1.Settings.tipibot.height, stepsPerRev = Settings_1.Settings.tipibot.stepsPerRev, mmPerRev = Settings_1.Settings.tipibot.mmPerRev, microstepResolution = Settings_1.Settings.tipibot.microstepResolution) {
+        this.sendSize(tipibotWidth, tipibotHeight);
+        this.sendMmPerRev(mmPerRev);
+        this.sendStepsPerRev(stepsPerRev);
+        this.sendStepMultiplier(microstepResolution);
+    }
+    sendPause(delay, callback = null) {
+        // Todo: floor delay
+        let message = 'Wait: ' + delay;
+        this.queue(commands.CMD_DELAY + delay + ",END", message, callback);
+    }
+    sendMotorOff() {
+    }
+    sendPenLiftRange(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoUpValue = Settings_1.SettingsManager.servoUpAngle()) {
+        let message = 'Set pen lift range: ' + servoDownValue + ',' + servoUpValue;
+        this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END', message);
+    }
+    sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down.before, servoUpDelay = Settings_1.Settings.servo.delay.up.before) {
+    }
+    sendPenUp(servoUpValue = Settings_1.SettingsManager.servoUpAngle(), servoUpTempoBefore = Settings_1.Settings.servo.delay.up.before, servoUpTempoAfter = Settings_1.Settings.servo.delay.up.after, callback = null) {
+        if (servoUpTempoBefore > 0) {
+            this.sendPause(servoUpTempoBefore, callback);
+        }
+        let message = 'Set pen up: ' + Settings_1.SettingsManager.servoUpAngle();
+        this.queue(commands.CMD_PENUP + Settings_1.SettingsManager.servoUpAngle() + ",END", message, callback);
+        // this.queue(commands.CMD_PENUP + "END", callback);
+        if (servoUpTempoAfter > 0) {
+            this.sendPause(servoUpTempoAfter, callback);
+        }
+    }
+    sendPenDown(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoDownTempoBefore = Settings_1.Settings.servo.delay.down.before, servoDownTempoAfter = Settings_1.Settings.servo.delay.down.after, callback = null) {
+        if (servoDownTempoBefore > 0) {
+            this.sendPause(servoDownTempoBefore, callback);
+        }
+        let message = 'Set pen down: ' + Settings_1.SettingsManager.servoDownAngle();
+        this.queue(commands.CMD_PENDOWN + Settings_1.SettingsManager.servoDownAngle() + ",END", message, callback);
+        // this.queue(commands.CMD_PENDOWN + "END", callback);
+        if (servoDownTempoAfter > 0) {
+            this.sendPause(servoDownTempoAfter, callback);
+        }
+    }
+    sendStop() {
+    }
+    sendPenWidth(penWidth) {
+        let message = 'Set pen width: ' + penWidth.toFixed(2);
+        this.queue(commands.CMD_CHANGEPENWIDTH + penWidth.toFixed(2) + ',END', message);
+    }
+}
+exports.Polargraph = Polargraph;
 
 
 /***/ })

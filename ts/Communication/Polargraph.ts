@@ -56,6 +56,11 @@ const commands = {
 export class Polargraph extends Interpreter {
 
 	keepTipibotAwakeInterval: number = null
+	
+	constructor() {
+		super()
+		this.serialCommunicationSpeed = 57600
+	}
 
 	// startKeepingTipibotAwake() {
 	// 	this.keepTipibotAwakeInterval = setTimeout(()=> this.keepTipibotAwake(), 30000)
@@ -64,6 +69,7 @@ export class Polargraph extends Interpreter {
 	// keepTipibotAwake() {
 	// 	this.sendPenUp()
 	// }
+
 
 	send(command: Command) {
 		// let commandCode = command.data.substr(0, 3)
@@ -74,6 +80,7 @@ export class Polargraph extends Interpreter {
 		// 	}
 		// }
 		command.data += String.fromCharCode(10)
+		// command.data += '\n'
 		super.send(command)
 	}
 	
@@ -93,6 +100,11 @@ export class Polargraph extends Interpreter {
 
 	queueEmpty() {
 		// this.startKeepingTipibotAwake()
+	}
+	
+	messageReceived(message: string) {
+		// super.messageReceived(message + '\n')
+		super.messageReceived(message)
 	}
 
 	getMaxSegmentLength() {

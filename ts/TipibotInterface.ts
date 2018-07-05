@@ -36,4 +36,5 @@ export interface TipibotInterface {
 	servoChanged(sendChange: boolean): void
 
 	windowResize(): void
+	feedbackChanged(sendChange: boolean): void
 }

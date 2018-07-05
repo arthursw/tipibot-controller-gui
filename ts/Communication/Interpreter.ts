@@ -21,6 +21,7 @@ export class Interpreter {
 	tempoNextCommand: boolean
 	serialInput: string
 	readonly continueMessage = 'READY'
+	serialCommunicationSpeed = 115200
 
 	constructor() {
 		this.commandQueue = []

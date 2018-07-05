@@ -12,6 +12,7 @@ let homeY = 388
 
 export let Settings = {
 	autoConnect: true,
+	firmware: 'Tipibot',
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
