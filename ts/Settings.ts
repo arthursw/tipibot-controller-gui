@@ -56,7 +56,8 @@ export let Settings = {
 		flattenPrecision: 0.25,
 		subdivide: false,
 		maxSegmentLength: 10,
-		fullSpeed: true
+		fullSpeed: true,
+		forceLinearMoves: true
 	},
 	feedback: {
 		enable: true,

@@ -298,7 +298,9 @@ export class Tipibot implements TipibotInterface {
 		if(sendChange) {
 			communication.interpreter.sendPenWidth(Settings.tipibot.penWidth)
 		}
-		PlotInterface.currentPlot.updateShape()
+		if(PlotInterface.currentPlot != null) {
+			PlotInterface.currentPlot.updateShape()
+		}
 	}
 
 	servoChanged(sendChange: boolean) {

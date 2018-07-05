@@ -384,6 +384,7 @@ export class SVGPlot extends Plot {
 		SVGPlot.gui.open()
 
 		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed')
+		SVGPlot.gui.add(Settings.plot, 'forceLinearMoves').name('Force linear moves')
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
 		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
@@ -452,7 +453,11 @@ export class SVGPlot extends Plot {
 					if(segment == path.firstSegment) {
 						if(!tipibot.getPosition().equals(point)) {
 							tipibot.penUp()
-							tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+							if(Settings.plot.forceLinearMoves) {
+								tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+							} else {
+								tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+							}
 						}
 						tipibot.penDown()
 					} else {

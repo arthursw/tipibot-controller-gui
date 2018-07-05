@@ -125,7 +125,8 @@ exports.Settings = {
         flattenPrecision: 0.25,
         subdivide: false,
         maxSegmentLength: 10,
-        fullSpeed: true
+        fullSpeed: true,
+        forceLinearMoves: true
     },
     feedback: {
         enable: true,
@@ -900,7 +901,9 @@ class Tipibot {
         if (sendChange) {
             Communication_1.communication.interpreter.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
         }
-        PlotInterface_1.PlotInterface.currentPlot.updateShape();
+        if (PlotInterface_1.PlotInterface.currentPlot != null) {
+            PlotInterface_1.PlotInterface.currentPlot.updateShape();
+        }
     }
     servoChanged(sendChange) {
         if (sendChange) {
@@ -1672,6 +1675,7 @@ class SVGPlot extends Plot {
         SVGPlot.gui = gui.addFolder('Plot');
         SVGPlot.gui.open();
         SVGPlot.gui.add(Settings_1.Settings.plot, 'fullSpeed').name('Full speed');
+        SVGPlot.gui.add(Settings_1.Settings.plot, 'forceLinearMoves').name('Force linear moves');
         SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event) => SVGPlot.handleFileSelect(event));
         let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked);
         clearSVGButton.hide();
@@ -1716,7 +1720,12 @@ class SVGPlot extends Plot {
                     if (segment == path.firstSegment) {
                         if (!Tipibot_1.tipibot.getPosition().equals(point)) {
                             Tipibot_1.tipibot.penUp();
-                            Tipibot_1.tipibot.moveDirect(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                            if (Settings_1.Settings.plot.forceLinearMoves) {
+                                Tipibot_1.tipibot.moveLinear(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                            }
+                            else {
+                                Tipibot_1.tipibot.moveDirect(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+                            }
                         }
                         Tipibot_1.tipibot.penDown();
                     }
