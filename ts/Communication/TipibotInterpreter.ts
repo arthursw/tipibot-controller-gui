@@ -41,6 +41,14 @@ export class TipibotInterpreter extends PenPlotter {
 		let message = 'Set servo speed: ' + servoSpeed
 		this.queue('M14 F' + servoSpeed + '\n', message)
 	}
+	
+	sendFeedback(enable = Settings.feedback.enable, rate = Settings.feedback.rate) {
+		if(!enable) {
+			rate = 0
+		}
+		let message = 'Set feedback: ' + enable + ', rate: ' + rate
+		this.queue('M15 F' + rate + '\n', message)
+	}
 
 	convertServoValue(servoValue: number) {
 		return servoValue

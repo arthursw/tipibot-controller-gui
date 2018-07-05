@@ -54,6 +54,7 @@ export class Interpreter {
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY) : this.tipibot.getPosition())
 		this.sendMaxSpeedAndAcceleration()
 		this.sendServoSpeed()
+		this.sendFeedback()
 		this.tipibot.initializedCommunication = true
 	}
 
@@ -90,7 +91,9 @@ export class Interpreter {
 	}
 
 	processMessage(message: string) {
-		console.log(message)
+		if(message.indexOf('-p: l: ') != 0) {
+			console.log(message)
+		}
 		
 		// if(message.indexOf('++')==0) {
 		// 	console.log(message)
@@ -236,5 +239,9 @@ export class Interpreter {
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
+	}
+
+	sendFeedback(enable = Settings.feedback.enable, rate = Settings.feedback.rate) {
+
 	}
 }

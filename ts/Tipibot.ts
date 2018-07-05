@@ -288,6 +288,12 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
+	feedbackChanged(sendChange: boolean) {
+		if(sendChange) {
+			communication.interpreter.sendFeedback(Settings.feedback.enable, Settings.feedback.rate)
+		}
+	}
+
 	penWidthChanged(sendChange: boolean) {
 		if(sendChange) {
 			communication.interpreter.sendPenWidth(Settings.tipibot.penWidth)

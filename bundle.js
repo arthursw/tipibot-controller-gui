@@ -125,6 +125,10 @@ exports.Settings = {
         subdivide: false,
         maxSegmentLength: 10,
         fullSpeed: true
+    },
+    feedback: {
+        enable: true,
+        rate: 10
     }
 };
 const MAX_SPEED = 10000;
@@ -208,6 +212,9 @@ class SettingsManager {
         this.motorsFolder.add(exports.Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier');
         this.motorsFolder.add(exports.Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.');
         this.motorsFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
+        let feedbackFolder = settingsFolder.addFolder('Feedback');
+        feedbackFolder.add(exports.Settings.feedback, 'enable').name('Enable feedback');
+        feedbackFolder.add(exports.Settings.feedback, 'rate', 1, 100).name('Feedback rate (info/sec.)');
         let controllers = this.getControllers();
         for (let controller of controllers) {
             let name = controller.getName();
@@ -348,6 +355,9 @@ class SettingsManager {
         else if (parentNames[0] == 'Draw area dimensions') {
             this.tipibot.drawAreaChanged(changeFinished);
             this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true);
+        }
+        else if (parentNames[0] == 'Feedback') {
+            this.tipibot.feedbackChanged(changeFinished);
         }
         this.save(false);
     }
@@ -854,6 +864,11 @@ class Tipibot {
     microstepResolutionChanged(sendChange) {
         if (sendChange) {
             Communication_1.communication.interpreter.sendStepMultiplier(Settings_1.Settings.tipibot.microstepResolution);
+        }
+    }
+    feedbackChanged(sendChange) {
+        if (sendChange) {
+            Communication_1.communication.interpreter.sendFeedback(Settings_1.Settings.feedback.enable, Settings_1.Settings.feedback.rate);
         }
     }
     penWidthChanged(sendChange) {
@@ -2722,8 +2737,8 @@ exports.visualFeedback = null;
 class VisualFeedback {
     constructor() {
         this.drawing = false;
-        this.positionPrefix = 'position: l: ';
-        this.subTargetPrefix = 'sub target: l: ';
+        this.positionPrefix = '-p: l: ';
+        this.subTargetPrefix = '-st: l: ';
         this.paths = new paper.Group();
         this.subTargets = new paper.Group();
         let positon = Tipibot_1.tipibot.getPosition();
@@ -2847,6 +2862,7 @@ class Interpreter {
         this.sendSetPosition(initializeAtHome ? new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY) : this.tipibot.getPosition());
         this.sendMaxSpeedAndAcceleration();
         this.sendServoSpeed();
+        this.sendFeedback();
         this.tipibot.initializedCommunication = true;
     }
     send(command) {
@@ -2877,7 +2893,9 @@ class Interpreter {
         }
     }
     processMessage(message) {
-        console.log(message);
+        if (message.indexOf('-p: l: ') != 0) {
+            console.log(message);
+        }
         // if(message.indexOf('++')==0) {
         // 	console.log(message)
         // }
@@ -2985,6 +3003,8 @@ class Interpreter {
     sendPenLiftRange(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoUpValue = Settings_1.SettingsManager.servoUpAngle()) {
     }
     sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down.before, servoUpDelay = Settings_1.Settings.servo.delay.up.before) {
+    }
+    sendFeedback(enable = Settings_1.Settings.feedback.enable, rate = Settings_1.Settings.feedback.rate) {
     }
 }
 exports.Interpreter = Interpreter;
@@ -3154,6 +3174,13 @@ class TipibotInterpreter extends PenPlotter_1.PenPlotter {
     sendServoSpeed(servoSpeed = Settings_1.Settings.servo.speed) {
         let message = 'Set servo speed: ' + servoSpeed;
         this.queue('M14 F' + servoSpeed + '\n', message);
+    }
+    sendFeedback(enable = Settings_1.Settings.feedback.enable, rate = Settings_1.Settings.feedback.rate) {
+        if (!enable) {
+            rate = 0;
+        }
+        let message = 'Set feedback: ' + enable + ', rate: ' + rate;
+        this.queue('M15 F' + rate + '\n', message);
     }
     convertServoValue(servoValue) {
         return servoValue;

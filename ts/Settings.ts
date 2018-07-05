@@ -56,6 +56,10 @@ export let Settings = {
 		subdivide: false,
 		maxSegmentLength: 10,
 		fullSpeed: true
+	},
+	feedback: {
+		enable: true,
+		rate: 10
 	}
 }
 
@@ -167,6 +171,10 @@ export class SettingsManager {
 		this.motorsFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
 		this.motorsFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
 		this.motorsFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
+
+		let feedbackFolder = settingsFolder.addFolder('Feedback')
+		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
+		feedbackFolder.add(Settings.feedback, 'rate', 1, 100).name('Feedback rate (info/sec.)')
 
 		let controllers = this.getControllers()
 
@@ -288,6 +296,8 @@ export class SettingsManager {
 		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(changeFinished)
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
+		} else if(parentNames[0] == 'Feedback') {
+			this.tipibot.feedbackChanged(changeFinished)
 		}
 		this.save(false)
 	}

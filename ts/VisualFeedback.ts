@@ -12,8 +12,8 @@ export class VisualFeedback {
 	lines: paper.Path
 	drawing: boolean = false
 
-	readonly positionPrefix = 'position: l: '
-	readonly subTargetPrefix = 'sub target: l: '
+	readonly positionPrefix = '-p: l: '
+	readonly subTargetPrefix = '-st: l: '
 	
 	static initialize() {
 		visualFeedback = new VisualFeedback()
