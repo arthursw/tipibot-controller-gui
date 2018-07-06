@@ -103,11 +103,15 @@ export class CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		
-		CommeUnDesseinSize.width = tipibot.drawArea.getBounds().width
-		CommeUnDesseinSize.height = tipibot.drawArea.getBounds().height
+		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.getBounds().width
+		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.getBounds().height
 
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, Settings.tipibot.width).name('Width')
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, Settings.tipibot.height).name('Height')
+		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
+			window.localStorage.setItem('commeUnDesseinWidth', value)
+		})
+		commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, 5000, 1).name('Height').onFinishChange((value)=> {
+			window.localStorage.setItem('commeUnDesseinHeight', value)
+		})
 
 		commeUnDesseinGUI.addButton('Start', ()=> this.requestNextDrawing())
 		commeUnDesseinGUI.addButton('Stop & Clear', ()=> this.stopAndClear())

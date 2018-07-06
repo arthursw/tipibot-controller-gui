@@ -2411,10 +2411,14 @@ class CommeUnDessein {
         let commeUnDesseinGUI = gui.addFolder(folderName);
         commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value));
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
-        CommeUnDesseinSize.width = Tipibot_1.tipibot.drawArea.getBounds().width;
-        CommeUnDesseinSize.height = Tipibot_1.tipibot.drawArea.getBounds().height;
-        commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, Settings_1.Settings.tipibot.width).name('Width');
-        commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, Settings_1.Settings.tipibot.height).name('Height');
+        CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || Tipibot_1.tipibot.drawArea.getBounds().width;
+        CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || Tipibot_1.tipibot.drawArea.getBounds().height;
+        commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value) => {
+            window.localStorage.setItem('commeUnDesseinWidth', value);
+        });
+        commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, 5000, 1).name('Height').onFinishChange((value) => {
+            window.localStorage.setItem('commeUnDesseinHeight', value);
+        });
         commeUnDesseinGUI.addButton('Start', () => this.requestNextDrawing());
         commeUnDesseinGUI.addButton('Stop & Clear', () => this.stopAndClear());
         commeUnDesseinGUI.open();
