@@ -205,12 +205,12 @@ export class CommeUnDessein {
 				}
 				drawing.addChild(controlPath)
 			}
+			item.remove()
 			if(SVGPlot.svgPlot != null) {
 				SVGPlot.svgPlot.clear()
 			}
 			SVGPlot.svgPlot = new SVGPlot(drawing)
 			SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
-
 		})
 	}
 

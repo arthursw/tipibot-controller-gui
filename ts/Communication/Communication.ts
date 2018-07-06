@@ -48,6 +48,12 @@ class Socket {
 						}
 					}
 				}
+			} else if(type == 'connected') {
+				// if(communication.mustStartAutoConnection) {
+
+				// }
+				// this.autoConnectIntervalID = setInterval(()=> this.tryConnection(), 1000)
+			} else if(type == 'connected') {
 
 			} else if(type == 'data') {
 				
@@ -57,6 +63,10 @@ class Socket {
 				}
 
 				interpreter.messageReceived(data)
+			} else if(type == 'warning') {
+				if(data == 'Port is already opened') {
+					communication.onConnectionOpened()
+				}
 			} else if(type == 'error') {
 				console.error(data)
 			}
@@ -84,6 +94,7 @@ export class Communication {
 	autoConnectController: Controller
 	autoConnectIntervalID = -1
 	connectionOpened = false
+	// mustStartAutoConnection = false
 
 	constructor(gui:GUI) {
 		communication = this
@@ -97,12 +108,20 @@ export class Communication {
 
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
+			// this.checkConnectedBeforeStartAutoConnection()
 		}
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
 		this.interpreter.setTipibot(tipibot)
 	}
+
+	// checkConnectedBeforeStartAutoConnection() {
+	// 	this.mustStartAutoConnection = true
+	// 	if(this.socket != null) {
+	// 		this.socket.emit('isConnected')
+	// 	}
+	// }
 
 	startAutoConnection() {
 		this.autoConnectIntervalID = setInterval(()=> this.tryConnection(), 1000)

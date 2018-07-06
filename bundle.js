@@ -497,12 +497,24 @@ class Socket {
                     }
                 }
             }
+            else if (type == 'connected') {
+                // if(communication.mustStartAutoConnection) {
+                // }
+                // this.autoConnectIntervalID = setInterval(()=> this.tryConnection(), 1000)
+            }
+            else if (type == 'connected') {
+            }
             else if (type == 'data') {
                 // If receiving messages while not connected: consider it as simulation
                 if (communication.portController.getValue().indexOf('Disconnected') == 0) {
                     data += '\n';
                 }
                 interpreter.messageReceived(data);
+            }
+            else if (type == 'warning') {
+                if (data == 'Port is already opened') {
+                    communication.onConnectionOpened();
+                }
             }
             else if (type == 'error') {
                 console.error(data);
@@ -518,6 +530,7 @@ class Socket {
     }
 }
 class Communication {
+    // mustStartAutoConnection = false
     constructor(gui) {
         this.autoConnectIntervalID = -1;
         this.connectionOpened = false;
@@ -531,11 +544,18 @@ class Communication {
         this.connectToSerial();
         if (Settings_1.Settings.autoConnect) {
             this.startAutoConnection();
+            // this.checkConnectedBeforeStartAutoConnection()
         }
     }
     setTipibot(tipibot) {
         this.interpreter.setTipibot(tipibot);
     }
+    // checkConnectedBeforeStartAutoConnection() {
+    // 	this.mustStartAutoConnection = true
+    // 	if(this.socket != null) {
+    // 		this.socket.emit('isConnected')
+    // 	}
+    // }
     startAutoConnection() {
         this.autoConnectIntervalID = setInterval(() => this.tryConnection(), 1000);
     }
@@ -1602,6 +1622,10 @@ class Plot extends PlotInterface_1.PlotInterface {
             this.item.remove();
         }
         this.item = null;
+        if (this.originalItem != null) {
+            this.originalItem.remove();
+        }
+        this.originalItem = null;
         if (PlotInterface_1.PlotInterface.currentPlot == this) {
             PlotInterface_1.PlotInterface.currentPlot = null;
         }
@@ -2474,6 +2498,7 @@ class CommeUnDessein {
                 }
                 drawing.addChild(controlPath);
             }
+            item.remove();
             if (Plot_1.SVGPlot.svgPlot != null) {
                 Plot_1.SVGPlot.svgPlot.clear();
             }

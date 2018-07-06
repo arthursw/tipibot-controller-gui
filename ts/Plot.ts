@@ -309,6 +309,10 @@ export class Plot extends PlotInterface {
 			this.item.remove()
 		}
 		this.item = null
+		if(this.originalItem != null) {
+			this.originalItem.remove()
+		}
+		this.originalItem = null
 		if(PlotInterface.currentPlot == this) {
 			PlotInterface.currentPlot = null
 		}
