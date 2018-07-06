@@ -70,6 +70,11 @@ export class Polargraph extends Interpreter {
 	// 	this.sendPenUp()
 	// }
 
+	initialize(initializeAtHome=true) {
+		super.initialize(initializeAtHome)
+		this.sendPenDown()
+		this.sendPenUp()
+	}
 
 	send(command: Command) {
 		// let commandCode = command.data.substr(0, 3)

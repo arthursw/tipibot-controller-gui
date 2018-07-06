@@ -4192,6 +4192,11 @@ class Polargraph extends Interpreter_1.Interpreter {
     // keepTipibotAwake() {
     // 	this.sendPenUp()
     // }
+    initialize(initializeAtHome = true) {
+        super.initialize(initializeAtHome);
+        this.sendPenDown();
+        this.sendPenUp();
+    }
     send(command) {
         // let commandCode = command.data.substr(0, 3)
         // for(let commandName in commands) {
