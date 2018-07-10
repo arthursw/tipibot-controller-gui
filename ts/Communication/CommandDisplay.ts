@@ -11,7 +11,7 @@ export class CommandDisplay {
 
 	constructor() {
 
-		$('#commands-content').click((event)=> this.click(event))
+		// $('#commands-content').click((event)=> this.click(event))
 
 		document.addEventListener('QueueCommand', (event: CustomEvent)=> this.queueCommand(event.detail), false)
 		document.addEventListener('SendCommand', (event: CustomEvent)=> this.sendCommand(event.detail), false)
@@ -20,11 +20,12 @@ export class CommandDisplay {
 	}
 
 	createGUI(gui: GUI) {
-		let folderName = 'Command list'
-		this.gui = gui.addFolder(folderName)
-		this.listJ = $('<ul id="command-list">')
-		this.gui.open()
-		this.listJ.insertAfter($(this.gui.gui.domElement).find('li'))
+		// let folderName = 'Command list'
+		// this.gui = gui.addFolder(folderName)
+		// this.listJ = $('<ul id="command-list">')
+		// this.gui.open()
+		// this.listJ.insertAfter($(this.gui.gui.domElement).find('li'))
+		this.listJ = $('#command-list')
 	}
 
 	click(event: any) {
@@ -49,12 +50,13 @@ export class CommandDisplay {
 	}
 
 	updateName() {
-		this.gui.setName('Command list (' + this.listJ.children().length + ')')
+		$('#commands h3').text('Command list (' + this.listJ.children().length + ')')
 	}
 
 	queueCommand(command: Command) {
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
+		document.dispatchEvent(new CustomEvent('AddedCommand'))
 	}
 
 	sendCommand(command: Command) {

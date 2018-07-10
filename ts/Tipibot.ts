@@ -132,8 +132,6 @@ export class Tipibot implements TipibotInterface {
 		let point = moveToButton.shape.getBounds().getCenter()
 		if(moveType == MoveType.Direct) {
 			this.moveDirect(point)
-		} else if(moveType == MoveType.DirectFullSpeed) {
-			this.moveDirectFullSpeed(point)
 		} else {
 			this.moveLinear(point)
 		}
@@ -224,7 +222,7 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendProgressiveMicrosteps()
 	}
 
-	move(moveType: MoveType, point: paper.Point, callback: () => any = null, movePen=true) {
+	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, callback: () => any = null, movePen=true) {
 		this.checkInitialized()
 
 		let moveCallback = movePen ? callback : ()=> {
@@ -236,12 +234,8 @@ export class Tipibot implements TipibotInterface {
 
 		if(moveType == MoveType.Direct) {
 			communication.interpreter.sendMoveDirect(point, moveCallback)
-		} else if(moveType == MoveType.DirectFullSpeed) {
-			communication.interpreter.sendMoveDirectFullSpeed(point, moveCallback)
 		} else if(moveType == MoveType.Linear) {
-			communication.interpreter.sendMoveLinear(point, moveCallback)
-		} else if(moveType == MoveType.LinearFullSpeed) {
-			communication.interpreter.sendMoveLinearFullSpeed(point, moveCallback)
+			communication.interpreter.sendMoveLinear(point, minSpeed, moveCallback)
 		}
 
 		this.enableMotors(false)
@@ -251,19 +245,11 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.move(MoveType.Direct, point, callback, movePen)
+		this.move(MoveType.Direct, point, 0, callback, movePen)
 	}
 
-	moveDirectFullSpeed(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.move(MoveType.DirectFullSpeed, point, callback, movePen)
-	}
-
-	moveLinear(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.move(MoveType.Linear, point, callback, movePen)
-	}
-
-	moveLinearFullSpeed(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.move(MoveType.LinearFullSpeed, point, callback, movePen)
+	moveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null, movePen=true) {
+		this.move(MoveType.Linear, point, minSpeed, callback, movePen)
 	}
 
 	setSpeed(speed: number) {

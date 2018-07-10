@@ -1,5 +1,5 @@
 import { GUI, Controller } from "../GUI"
-import { Settings } from "../Settings"
+import { Settings, settingsManager } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
@@ -15,76 +15,6 @@ let PORT = window.localStorage.getItem('port') || 6842
 
 declare var io: any
 
-class Socket {
-	socket: WebSocket
-	communication: Communication
-
-	constructor(url: string, communication: Communication) {
-		this.socket = new WebSocket(url)
-		this.communication = communication;
-		this.socket.addEventListener('message',  (event:any)=> {
-			let json = JSON.parse(event.data);
-			let type = json.type;
-			let data = json.data;
-			let interpreter = this.communication.interpreter;
-
-			if(type == 'opened') {
-				communication.onConnectionOpened()
-			} else if(type == 'closed') {
-				communication.onConnectionClosed()
-			} else if(type == 'list') {
-
-				let options = ['Disconnected']
-				for(let port of data) {
-					options.push(port.comName)
-				}
-				communication.initializePortController(options)
-
-				if(Settings.autoConnect) {
-					for(let port of data) {
-						if(port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
-							communication.portController.setValue(port.comName)
-							break
-						}
-					}
-				}
-			} else if(type == 'connected') {
-				// if(communication.mustStartAutoConnection) {
-
-				// }
-				// this.autoConnectIntervalID = setInterval(()=> this.tryConnection(), 1000)
-			} else if(type == 'connected') {
-
-			} else if(type == 'data') {
-				
-				// If receiving messages while not connected: consider it as simulation
-				if(communication.portController.getValue().indexOf('Disconnected') == 0) {
-					data += '\n'
-				}
-
-				interpreter.messageReceived(data)
-			} else if(type == 'warning') {
-				if(data == 'Port is already opened') {
-					communication.onConnectionOpened()
-				}
-			} else if(type == 'error') {
-				console.error(data)
-			}
-
-		});
-	}
-
-	on() {
-		// this.socket.addEventListener.apply(this.socket, arguments)
-	}
-
-	emit() {
-		let message = { type: arguments[0], data: arguments[1] }
-		this.socket.send.apply(this.socket, [JSON.stringify(message)])
-	}
-
-}
-
 export class Communication {
 
 	socket: any
@@ -93,22 +23,18 @@ export class Communication {
 	interpreter: Interpreter
 	autoConnectController: Controller
 	autoConnectIntervalID = -1
-	connectionOpened = false
-	// mustStartAutoConnection = false
+	serialPortConnectionOpened = false
 
 	constructor(gui:GUI) {
 		communication = this
 		this.socket = null
 		this.gui = gui
 		this.portController = null
-		// this.interpreter = new TipibotInterpreter()
-		// this.interpreter = new Polargraph()
 		this.initializeInterpreter(Settings.firmware)
 		this.connectToSerial()
 
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
-			// this.checkConnectedBeforeStartAutoConnection()
 		}
 	}
 
@@ -116,15 +42,8 @@ export class Communication {
 		this.interpreter.setTipibot(tipibot)
 	}
 
-	// checkConnectedBeforeStartAutoConnection() {
-	// 	this.mustStartAutoConnection = true
-	// 	if(this.socket != null) {
-	// 		this.socket.emit('isConnected')
-	// 	}
-	// }
-
 	startAutoConnection() {
-		this.autoConnectIntervalID = setInterval(()=> this.tryConnection(), 1000)
+		this.autoConnectIntervalID = setInterval(()=> this.tryConnectSerialPort(), 1000)
 	}
 
 	stopAutoConnection() {
@@ -132,21 +51,29 @@ export class Communication {
 		this.autoConnectIntervalID = null
 	}
 
-	onConnectionOpened() {
-		this.connectionOpened = true
+	setPortName(port: {path: string, isOpened: boolean, baudRate: number}) {
+		this.portController.object[this.portController.property] = port.path
+		this.portController.updateDisplay()
+	}
+
+	onSerialPortConnectionOpened(port: {path: string, isOpened: boolean, baudRate: number} = null) {
+		if(port != null) {
+			this.setPortName(port)
+		}
+		this.serialPortConnectionOpened = true
 		this.stopAutoConnection()
-		this.interpreter.connectionOpened()
+		this.interpreter.serialPortConnectionOpened()
 
 		this.gui.setName('Communication - connected')
 	}
 
-	onConnectionClosed() {
-		this.connectionOpened = false
+	onSerialPortConnectionClosed() {
+		this.serialPortConnectionOpened = false
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
 		}
 		// this.interpreter.connectionClosed()	
-		this.gui.setName('Communication - disconnected')
+		this.gui.setName('Communication - disconnectSerialPorted')
 	}
 
 	initializePortController(options: string[]) {
@@ -162,26 +89,68 @@ export class Communication {
 
 	initializeInterpreter(interpreterName: string) {
 		let tipibot = this.interpreter ? this.interpreter.tipibot : null
-		if(this.connectionOpened) {
-			this.disconnect()
+		if(this.serialPortConnectionOpened) {
+			this.disconnectSerialPort()
 		}
 		if(interpreterName == 'Tipibot') {
-			this.interpreter = new TipibotInterpreter()
+			this.interpreter = new TipibotInterpreter(this)
 		} else if(interpreterName == 'Polargraph') {
-			this.interpreter = new Polargraph()
+			this.interpreter = new Polargraph(this)
 		} else if(interpreterName == 'PenPlotter') {
-			this.interpreter = new PenPlotter()
+			this.interpreter = new PenPlotter(this)
 		}
 		this.interpreter.setTipibot(tipibot)
-		this.interpreter.setSocket(this.socket)
 		console.log('initialize '+interpreterName)
 	}
 
+	onMessage(event: any) {
+		let json = JSON.parse(event.data);
+		let type = json.type;
+		let data = json.data;
+
+		if(type == 'opened') {
+			this.onSerialPortConnectionOpened()
+		} else if(type == 'closed') {
+			this.onSerialPortConnectionClosed()
+		} else if(type == 'list') {
+
+			let options = ['Disconnected']
+			for(let port of data) {
+				options.push(port.comName)
+			}
+			this.initializePortController(options)
+
+			if(Settings.autoConnect) {
+				for(let port of data) {
+					if(port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
+						this.portController.setValue(port.comName)
+						break
+					}
+				}
+			}
+		} else if(type == 'connected') {
+			this.setPortName(data)
+		} else if(type == 'not-connected') {
+
+		} else if(type == 'data') {
+			this.interpreter.messageReceived(data)
+		} else if(type == 'warning') {
+		} else if(type == 'already-opened') {
+			this.onSerialPortConnectionOpened(data)
+		} else if(type == 'error') {
+			console.error(data)
+		}
+	}
+
 	connectToSerial() {
-		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter'] )
-		firmwareController.onFinishChange((value)=> this.initializeInterpreter(value))
+		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter'] ).name('Firmware')
+		firmwareController.onFinishChange((value)=> {
+			settingsManager.save(false)
+			this.initializeInterpreter(value)
+		})
 
 		this.autoConnectController = this.gui.add(Settings, 'autoConnect').name('Auto connect').onFinishChange((value)=> {
+			settingsManager.save(false)
 			if(value) {
 				this.startAutoConnection()
 			} else {
@@ -191,67 +160,51 @@ export class Communication {
 
 		this.portController = this.gui.add( {'Connection': 'Disconnected'}, 'Connection' )
 		
-		this.gui.addButton('Disconnect', ()=> this.disconnect() )
+		this.gui.addButton('Disconnect', ()=> this.disconnectSerialPort() )
 
 		this.gui.addButton('Refresh', ()=> {
-			this.socket.emit('list')
+			this.send('list')
 		})
 
 		this.initializePortController(['Disconnected'])
 
-		// this.socket = io('ws://localhost:' + PORT)
-		// this.socket = io('ws://localhost:' + PORT, {transports: ['websocket', 'polling', 'flashsocket']})
-		
-		this.socket = new Socket('ws://localhost:' + PORT, this)
+		this.socket = new WebSocket('ws://localhost:' + PORT)
 
-		this.interpreter.setSocket(this.socket)
-		
-		this.socket.on('list', (ports: any) => {
-
-			
-		})
-
-		this.socket.on('opened', () => {
-			this.interpreter.connectionOpened()
-		})
-
-		this.socket.on('data', (data: any) => {
-			this.interpreter.messageReceived(data)
-		})
-
-		this.socket.on('error', (message: any) => {
-			console.error(message)
-		})
-
-		// window.sendToSerial = (message: string)=> {
-		// 	this.socket.emit('data', message)
-		// }
+		this.socket.addEventListener('message',  (event:any)=> this.onMessage(event))
+		this.socket.addEventListener('open',  (event:any)=> this.send('is-connected'))
 	}
 
-	disconnect() {
+	disconnectSerialPort() {
+		this.interpreter.clearQueue()
+		this.interpreter.sendStop(true)
 		this.autoConnectController.setValue(false)
-		this.onConnectionClosed()
-		this.socket.emit('close')
+		this.onSerialPortConnectionClosed()
+		this.send('close')
 		document.dispatchEvent(new CustomEvent('Disconnect'))
 		this.portController.setValue('Disconnected')
 	}
 
 	serialConnectionPortChanged(portName: string) {
-		if(portName == 'Disconnected' && this.connectionOpened) {
-			this.disconnect()
+		if(portName == 'Disconnected' && this.serialPortConnectionOpened) {
+			this.disconnectSerialPort()
 		} else if(portName != 'Disconnected') {
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(new CustomEvent('Connect', { detail: portName }))
 			console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed)
-			this.socket.emit('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed })
+			this.send('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed })
 		}
 	}
 
-	tryConnection() {
-		if(!Settings.autoConnect || this.connectionOpened) {
+	tryConnectSerialPort() {
+		if(!Settings.autoConnect || this.serialPortConnectionOpened) {
 			return
 		}
-		this.socket.emit('list')
+		this.send('list')
+	}
+
+	send(type: string, data: any = null) {
+		let message = { type: type, data: data }
+		this.socket.send(JSON.stringify(message))
 	}
 }
 

@@ -1,5 +1,5 @@
 import { Settings, SettingsManager, settingsManager } from "../Settings"
-import { Interpreter, Command } from "./Interpreter"
+import { Interpreter, Command, Communication } from "./Interpreter"
 
 const commands = {
 	CMD_CHANGELENGTH: "C01,",
@@ -57,8 +57,8 @@ export class Polargraph extends Interpreter {
 
 	keepTipibotAwakeInterval: number = null
 	
-	constructor() {
-		super()
+	constructor(communication: Communication) {
+		super(communication)
 		this.serialCommunicationSpeed = 57600
 	}
 
@@ -142,7 +142,7 @@ export class Polargraph extends Interpreter {
 		this.sendMoveToNativePosition(true, point, callback);
 	}
 
-	sendMoveLinear(point: paper.Point, callback: () => any = null) {
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
 		// Just like in Polagraph controller:
 		// this.sendMoveToNativePosition(false, point, callback);
 		this.sendMoveToNativePosition(true, point, callback);
@@ -201,10 +201,10 @@ export class Polargraph extends Interpreter {
 
 	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		if(servoUpTempoBefore > 0) {
-			this.sendPause(servoUpTempoBefore, callback)
+			this.sendPause(servoUpTempoBefore)
 		}
 		let message = 'Set pen up: ' + SettingsManager.servoUpAngle()
-		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", message, callback);
+		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", message);
 		// this.queue(commands.CMD_PENUP + "END", callback);
 		if(servoUpTempoAfter > 0) {
 			this.sendPause(servoUpTempoAfter, callback)
@@ -213,10 +213,10 @@ export class Polargraph extends Interpreter {
 
 	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		if(servoDownTempoBefore > 0) {
-			this.sendPause(servoDownTempoBefore, callback)
+			this.sendPause(servoDownTempoBefore)
 		}
 		let message = 'Set pen down: ' + SettingsManager.servoDownAngle()
-		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", message, callback);
+		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", message);
 		// this.queue(commands.CMD_PENDOWN + "END", callback);
 		if(servoDownTempoAfter > 0) {
 			this.sendPause(servoDownTempoAfter, callback)

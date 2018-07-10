@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		dat.GUI.DEFAULT_WIDTH = 325
 		gui = new GUI({ autoPlace: false })
 
-		// let console = new Console()
+		let console = new Console()
 
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())

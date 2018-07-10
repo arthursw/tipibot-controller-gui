@@ -13,6 +13,7 @@ let homeY = 388
 export let Settings = {
 	autoConnect: true,
 	firmware: 'Tipibot',
+	forceLinearMoves: true,
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
@@ -57,7 +58,7 @@ export let Settings = {
 		subdivide: false,
 		maxSegmentLength: 10,
 		fullSpeed: true,
-		forceLinearMoves: true
+		maxCurvatureFullspeed: 45,
 	},
 	feedback: {
 		enable: true,
@@ -178,6 +179,8 @@ export class SettingsManager {
 		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
 		feedbackFolder.add(Settings.feedback, 'rate', 1, 100).name('Feedback rate (info/sec.)')
 
+		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
+
 		let controllers = this.getControllers()
 
 		for(let controller of controllers) {
@@ -231,10 +234,11 @@ export class SettingsManager {
 	settingChanged(parentNames: string[], name: string, value: any=null, changeFinished=false) {
 
 		// update sliders and transmit change to concerned object
-		if(parentNames[0] == 'Tipibot dimensions') {
+		if(parentNames[0] == 'Machine dimensions') {
 			if(name == 'width') {
 				this.tipibotPositionFolder.getController('x').max(value, false)
 				this.drawAreaDimensionsFolder.getController('width').max(value, changeFinished)
+				document.dispatchEvent(new CustomEvent('MachineWidthChanged'))
 			} else if(name == 'height') {
 				this.tipibotPositionFolder.getController('y').max(value, false)
 				this.drawAreaDimensionsFolder.getController('height').max(value, changeFinished)
@@ -276,6 +280,12 @@ export class SettingsManager {
 				this.tipibot.sendInvertXY()
 			} else if(name == 'progressiveMicrosteps' && changeFinished) {
 				this.tipibot.sendProgressiveMicrosteps()
+			}
+			if(name == 'mmPerRev' || 'stepsPerRev' || 'microstepResolution') {
+				let maxSpeedMm = Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()
+				let maxSpeedMmController = this.motorsFolder.getController('maxSpeedMm')
+				maxSpeedMmController.max(MAX_SPEED * SettingsManager.mmPerSteps())
+				maxSpeedMmController.setValueNoCallback(maxSpeedMm)
 			}
 		} else if(parentNames[0] == 'Position') {
 			if(name == 'x') {

@@ -7,7 +7,7 @@ import { PenPlotter } from "./PenPlotter"
 
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
-
+/*
 export const SERIAL_COMMUNICATION_SPEED = 57600
 
 declare var io: any
@@ -211,3 +211,4 @@ export class Communication {
 }
 
 export let communication: Communication = null
+*/

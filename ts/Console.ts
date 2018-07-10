@@ -6,6 +6,8 @@ export class Console {
 	table: ()=> void
 
 	constructor() {
+		document.addEventListener('AddedCommand', (event: CustomEvent)=> this.scrollToBottom(), false)
+
 		this.log = console.log.bind(console)
 		this.error = console.error.bind(console)
 		this.info = console.info.bind(console)
@@ -17,7 +19,7 @@ export class Console {
 				logger.apply(console, args);
 			}
 
-			let div = $('<div>')
+			let div = $('<li>')
 
 			for(let arg of args) {
 				let p = null
@@ -35,7 +37,9 @@ export class Console {
 				div.append(p)
 			}
 			
-			$('#console').append(div);
+			let consoleJ = $('#console ul')
+			consoleJ.append(div)
+			this.scrollToBottom(consoleJ)
 		}
 
 		console.log = (...args: any[])=> {
@@ -44,6 +48,10 @@ export class Console {
 		console.error = (...args: any[])=> log(args, this.error, 'error')
 		console.info = (...args: any[])=> log(args, this.info, 'info')
 		console.table = (...args: any[])=> log(args, this.table, 'table')
+	}
+
+	scrollToBottom(consoleJ: JQuery = $('#console ul')) {
+		consoleJ.scrollTop(consoleJ.get(0).scrollHeight)
 	}
 
 	printTable(objArr: any, keys: string[]) {

@@ -21,13 +21,13 @@ export class PenPlotter extends Interpreter {
 		this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
-	sendMoveLinear(point: paper.Point, callback: () => any = null) {
-		super.sendMoveLinear(point, callback)
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
+		super.sendMoveLinear(point, minSpeed, callback)
 		let lengths = this.tipibot.cartesianToLengths(point)
 		let lengthsSteps = SettingsManager.mmToSteps(lengths)
-		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
+		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', min speed: ' + minSpeed.toFixed(2)
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
-		this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
+		this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed) {
@@ -107,9 +107,13 @@ export class PenPlotter extends Interpreter {
 	sendPenState(servoValue: number, delayBefore: number = 0, delayAfter: number = 0, callback: ()=> void = null) {
 		servoValue = this.convertServoValue(servoValue)
 		let message = 'Move servo: ' + servoValue
-		this.sendPause(delayBefore)
+		if(delayBefore > 0) {
+			this.sendPause(delayBefore)
+		}
 		this.queue('M340 P3 S' + servoValue + '\n', message)
-		this.sendPause(delayAfter, callback)
+		if(delayAfter > 0) {
+			this.sendPause(delayAfter, callback)
+		}
 		// this.queue('G4 P' + delayAfter + '\n', callback)
 	}
 
@@ -123,7 +127,7 @@ export class PenPlotter extends Interpreter {
 
 	sendStop(force = true) {
 		if(force) {
-			this.socket.emit('data', 'M0\n')
+			this.communication.send('data', 'M0\n')
 			return
 		}
 		let message = 'Stop'

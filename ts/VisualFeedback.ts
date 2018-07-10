@@ -40,6 +40,7 @@ export class VisualFeedback {
 		this.lines.strokeScaling = false
 
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
+		document.addEventListener('MachineWidthChanged', (event: CustomEvent)=> this.onMachineWidthChanged(event.detail), false)
 	}
 
 	clear() {
@@ -110,4 +111,7 @@ export class VisualFeedback {
 		}
 	}
 
+	onMachineWidthChanged(event: CustomEvent) {
+		this.lines.segments[2].point.x = Settings.tipibot.width
+	}
 }

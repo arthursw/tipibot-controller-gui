@@ -1,6 +1,6 @@
 import { PlotInterface } from "./PlotInterface"
 import { Tipibot, tipibot } from "./Tipibot"
-import { Settings } from "./Settings"
+import { Settings, settingsManager, SettingsManager } from "./Settings"
 import { InteractiveItem } from "./InteractiveItem"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
@@ -14,6 +14,7 @@ export class Plot extends PlotInterface {
 	static gui: GUI = null
 	static showPoints = false
 	static transformFolder: GUI = null
+	readonly pseudoCurvatureDistance = 10 		// in mm
 
 	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
 		return (value: any)=> { 
@@ -73,8 +74,8 @@ export class Plot extends PlotInterface {
 	}
 
 	updatePositonGUI(drawAreaTopLeft = tipibot.drawArea.getBounds().topLeft()) {
-		Plot.transformFolder.getController('X').setValue(this.item.bounds.left - drawAreaTopLeft.x, false)
-		Plot.transformFolder.getController('Y').setValue(this.item.bounds.top - drawAreaTopLeft.y, false)
+		Plot.transformFolder.getController('X').setValueNoCallback(this.item.bounds.left - drawAreaTopLeft.x)
+		Plot.transformFolder.getController('Y').setValueNoCallback(this.item.bounds.top - drawAreaTopLeft.y)
 	}
 
 	updateItemPositionAndGUI() {
@@ -150,9 +151,20 @@ export class Plot extends PlotInterface {
 		} else {
 			this.item.selected = false
 			this.item.visible = true
+			// Remove any invisible child from item: 
+			// an invisible shape could be smaller bounds than a path strokeBounds, resulting in item bounds too small
+			// item bounds could be equal to shape bounds instead of path stroke bounds
+			// this is a paper.js bug
+			if(this.item.children != null) {
+				for(let child of this.item.children) {
+					if(!child.visible || child.fillColor == null && child.strokeColor == null) {
+						child.remove()
+					}
+				}
+			}
 			let raster = this.item.rasterize(paper.project.view.resolution)
 			raster.sendToBack()
-			this.shape = this.renderer.createShape(raster);
+			this.shape = this.renderer.createShape(raster)
 			this.item.selected = Plot.showPoints
 			this.item.visible = Plot.showPoints
 		}
@@ -230,10 +242,12 @@ export class Plot extends PlotInterface {
 
 	plot(callback: ()=> void = null) {
 		this.plotting = true
-		let itemVisible = this.item.visible
-		this.item.visible = true
-		this.plotItem(this.item)			// to be overloaded. The draw button calls plot()
-		this.item.visible = itemVisible
+		// Clone item to apply matrix without loosing points, matrix & visibility information
+		let clone = this.item.clone()
+		clone.applyMatrix = true
+		clone.visible = true
+		this.plotItem(clone)			// to be overloaded. The draw button calls plot()
+		clone.remove()
 		tipibot.goHome(()=> this.plotFinished(callback))
 	}
 
@@ -266,10 +280,11 @@ export class Plot extends PlotInterface {
 	scale(value: number) {
 
 		this.item.applyMatrix = false
-		this.item.scaling = new paper.Point(value, value)
+		this.item.scaling = new paper.Point(Math.sign(this.item.scaling.x) * value, Math.sign(this.item.scaling.y) * value)
 
 		this.updateShape()
-		this.updateItemPositionAndGUI()
+		this.updatePositonGUI()
+		// this.updateItemPositionAndGUI()
 	}
 
 	center() {
@@ -387,8 +402,8 @@ export class SVGPlot extends Plot {
 		SVGPlot.gui = gui.addFolder('Plot')
 		SVGPlot.gui.open()
 
-		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed')
-		SVGPlot.gui.add(Settings.plot, 'forceLinearMoves').name('Force linear moves')
+		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
+		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
 		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
@@ -432,53 +447,181 @@ export class SVGPlot extends Plot {
 		// Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
 	}
 
-	mustMoveFullSpeed(segment: paper.Segment) {
-		if(segment.previous == null || segment.point == null || segment.next == null) {
-			return false
-		}
-		// no need to transform points to compute angle
+	getAngle(segment: paper.Segment) {
 		let pointToPrevious = segment.previous.point.subtract(segment.point)
 		let pointToNext = segment.next.point.subtract(segment.point)
-		let  angle = pointToPrevious.getDirectedAngle(pointToNext)
-		return Math.abs(angle) > 135
+		let angle = pointToPrevious.getDirectedAngle(pointToNext)
+		return 180 - Math.abs(angle)
+	}
+
+	getPseudoCurvature(segment: paper.Segment) {
+		if(segment.previous == null || segment.point == null || segment.next == null) {
+			return 180
+		}
+		// no need to transform points to compute angle
+		
+		let angle = this.getAngle(segment)
+		let currentSegment = segment.previous
+		let distance = currentSegment.curve.length
+		while(currentSegment != null && distance < this.pseudoCurvatureDistance / 2) {
+			angle += this.getAngle(currentSegment)
+			currentSegment = currentSegment.previous
+			distance += currentSegment.curve.length
+		}
+		distance = segment.curve.length
+		currentSegment = segment.next
+		while(currentSegment.next != null && distance < this.pseudoCurvatureDistance / 2) {
+			angle += this.getAngle(currentSegment)
+			currentSegment = currentSegment.next
+			distance += currentSegment.curve.length
+		}
+
+		return angle
+	}
+
+	// mustMoveFullSpeed(segment: paper.Segment) {
+	// 	return this.getPseudoCurvature(segment) < Settings.plot.maxCurvatureFullspeed
+	// }
+
+	// computeFullSpeed(path: paper.Path, fullSpeedPoints: Set<paper.Point>) {
+	// 	let maxBrakingDistanceSteps = Settings.tipibot.maxSpeed * Settings.tipibot.maxSpeed / (2.0 * Settings.tipibot.acceleration)
+	// 	let maxBrakingDistanceMm = maxBrakingDistanceSteps * SettingsManager.mmPerSteps()
+	// 	let currentSegment = path.lastSegment.previous
+	// 	let distanceToBrake = maxBrakingDistanceMm
+	// 	let distance = 0
+		
+	// 	// go from last segment to first segment
+	// 	// compute the distance to brake after which all points will be full speed
+	// 	// if the current segment is before distance to brake: just compute distance to brake
+	// 	// if the current segment is after distance to brake: 
+	// 	//    if the distance fall on the current curve: divide it
+	// 	//    in any case: set point to full speed
+		
+	// 	// to recompute distance to brake:
+	// 	// maxBrakingDistanceMm = maxSpeed * maxSpeed / (2 * acceleration)
+	// 	// the new distance to brake is the maximum between the current distance to break and the distance to break for the current point
+		
+	// 	// the distance to break for the current point is maxBrakingDistanceMm * ratio
+	// 	// where ratio is 1 when the pseudo curvature is Settings.plot.maxCurvatureFullspeed and 0 when it is 0
+	// 	// => the more pseudo curvature, the longer the distance is
+
+	// 	while(currentSegment != null) {
+	// 		let curveLength = currentSegment.curve.length
+	// 		distance += curveLength
+	// 		if(distance > distanceToBrake) {
+	// 			if(distance - distanceToBrake < curveLength) {
+	// 				let curveLocation =  1 - (curveLength / (distance - distanceToBrake))
+	// 				currentSegment.curve.divideAt(curveLocation)
+	// 				let circle = paper.Path.Circle(currentSegment.curve.point2, 2)
+	// 				circle.fillColor = 'blue'
+	// 				fullSpeedPoints.add(currentSegment.curve.point2)
+	// 			}
+	// 			// let circle = paper.Path.Circle(currentSegment.point, 2)
+	// 			// circle.fillColor = 'blue'
+	// 		}
+	// 		let pseudoCurvature = this.getPseudoCurvature(currentSegment)
+	// 		let ratio = Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+	// 		console.log(distance, distanceToBrake, maxBrakingDistanceMm, ratio)
+	// 		distanceToBrake = Math.max(distanceToBrake, distance + ratio * maxBrakingDistanceMm)
+	// 		currentSegment = currentSegment.previous
+	// 	}
+	// }
+
+	computeSpeeds(path: paper.Path) {
+		let maxSpeed = Settings.tipibot.maxSpeed
+		let acceleration = Settings.tipibot.acceleration
+		let mmPerSteps = SettingsManager.mmPerSteps()
+
+		let brakingDistanceSteps = maxSpeed * maxSpeed / (2.0 * acceleration)
+		let brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+
+		let reversedSpeeds: number[] = []
+		let currentSegment = path.lastSegment
+		let previousMinSpeed = null
+		let distanceToLastMinSpeed = 0
+
+		while(currentSegment != null) {
+
+			let pseudoCurvature = this.getPseudoCurvature(currentSegment)
+			let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+			let minSpeed = speedRatio * Settings.tipibot.maxSpeed
+			
+			let recomputeBrakingDistance = true
+
+			if(distanceToLastMinSpeed < brakingDistanceMm && previousMinSpeed != null) {
+				let ratio = distanceToLastMinSpeed / brakingDistanceMm
+				let resultingSpeed = previousMinSpeed + (maxSpeed - previousMinSpeed) * ratio
+				if(resultingSpeed < minSpeed) {
+					minSpeed = resultingSpeed
+					recomputeBrakingDistance = false
+				}
+			}
+
+			reversedSpeeds.push(minSpeed)
+
+			if(recomputeBrakingDistance) {
+
+				previousMinSpeed = minSpeed
+				distanceToLastMinSpeed = 0
+				brakingDistanceSteps = ( (maxSpeed - minSpeed) / acceleration ) * ( (minSpeed + maxSpeed) / 2 )
+				brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+			}
+
+			currentSegment = currentSegment.previous
+			distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0
+		}
+
+		let speeds = []
+		for(let i=reversedSpeeds.length-1 ; i>=0 ; i--) {
+			speeds.push(reversedSpeeds[i])
+		}
+		return speeds
+	}
+
+	moveTipibotLinear(segment: paper.Segment, speeds: number[]) {
+		let point = segment.point
+		let minSpeed = 0
+		if(Settings.plot.fullSpeed) {
+			minSpeed = speeds[segment.index]
+			// let speedRatio = minSpeed / Settings.tipibot.maxSpeed
+			// let circle = paper.Path.Circle(point, 4)
+			// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
+		}
+		tipibot.moveLinear(point, minSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
 	}
 
 	plotItem(item: paper.Item) {
 		if(!item.visible) {
 			return
 		}
-		let matrix = item.globalMatrix
+		// let matrix = item.globalMatrix
 		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
 			let path: paper.Path = <paper.Path>item
 			if(path.segments != null) {
 
+				let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
+
 				for(let segment of path.segments) {
-					let point = segment.point.transform(matrix)
+					// let point = segment.point.transform(matrix)
+					let point = segment.point
+
 					if(segment == path.firstSegment) {
 						if(!tipibot.getPosition().equals(point)) {
 							tipibot.penUp()
-							if(Settings.plot.forceLinearMoves) {
-								tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+							if(Settings.forceLinearMoves) {
+								tipibot.moveLinear(point, 0, ()=> tipibot.pen.setPosition(point, true, false), false)
 							} else {
 								tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
 							}
 						}
 						tipibot.penDown()
 					} else {
-						if(Settings.plot.fullSpeed && this.mustMoveFullSpeed(segment)) {
-							tipibot.moveLinearFullSpeed(point, ()=> tipibot.pen.setPosition(point, true, false), false)
-						} else {
-							tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
-						}
+						this.moveTipibotLinear(segment, speeds)
 					}
 				}
 				if(path.closed) {
-					let point = path.firstSegment.point.transform(matrix)
-					if(Settings.plot.fullSpeed && this.mustMoveFullSpeed(path.firstSegment)) {
-						tipibot.moveLinearFullSpeed(point, ()=> tipibot.pen.setPosition(point, true, false), false)
-					} else {
-						tipibot.moveLinear(point, ()=> tipibot.pen.setPosition(point, true, false), false)
-					}
+					// let point = path.firstSegment.point.transform(matrix)
+					this.moveTipibotLinear(path.firstSegment, speeds)
 				}
 			}
 		}

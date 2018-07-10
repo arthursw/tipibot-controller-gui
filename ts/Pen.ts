@@ -6,9 +6,7 @@ import { Renderer } from "./RendererInterface"
 
 export enum MoveType {
     Direct,
-    DirectFullSpeed,
     Linear,
-    LinearFullSpeed,
 }
 
 export class Pen extends InteractiveItem {
@@ -17,9 +15,7 @@ export class Pen extends InteractiveItem {
 	isPenUp: boolean 						// TODO: this variable is both used to tell feedback and to store gui controller state: this must be improved!
 
 	static moveTypeFromMouseEvent(event: MouseEvent) {
-		return 	event.metaKey && event.altKey || event.ctrlKey && event.altKey ? MoveType.LinearFullSpeed : 
-				event.ctrlKey || event.shiftKey || event.metaKey ? MoveType.Linear : 
-				event.altKey ? MoveType.DirectFullSpeed : MoveType.Direct
+		return 	Settings.forceLinearMoves || event.altKey ? MoveType.Linear : MoveType.Direct
 	}
 
 	constructor(renderer: Renderer) {
@@ -44,10 +40,8 @@ export class Pen extends InteractiveItem {
 		if(move) {
 			if(moveType == MoveType.Direct) {
 				tipibot.moveDirect(point, callback)
-			} else if(moveType == MoveType.DirectFullSpeed) {
-				tipibot.moveDirectFullSpeed(point, callback)
 			} else {
-				tipibot.moveLinear(point, callback)
+				tipibot.moveLinear(point, 0, callback)
 			}
 		}
 	}

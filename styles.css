@@ -8,8 +8,8 @@ body {
 	left: 0;
 	right: 0;
 	display: grid;
-	grid-template-columns: auto 325px;
-	/*grid-template-columns: auto 245px 300px;*/
+	/*grid-template-columns: auto 325px;*/
+	grid-template-columns: auto 325px 325px;
 	grid-template-rows: 100%;
 /*	display: flex;
 	flex-direction: row;
@@ -24,30 +24,6 @@ body {
         -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome and Opera */
-}
-
-#command-list {
-	max-height: 500px;
-	overflow-y: auto;
-}
-
-#command-list li {
-    padding-right: 38px;
-    position: relative;
-    height: inherit;
-}
-
-#command-list li button {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    margin: 0;
-
-    cursor: pointer;
-    border-radius: 0;
-    border: none;
-    width: 22px;
 }
 
 .dg .close-button {
@@ -92,28 +68,79 @@ canvas {
 
 }
 
-#console {
-	background-color: white;
-	padding: 20px;
+#info {
+	background-color: #1a1a1a;
 	display: flex;
     flex-direction: column;
-    overflow: auto;
-    font-family: monospace;
-    color: #242424;
+    font-family: "Lucida Grande", sans-serif;
+    color: white;
     font-size: 12px;
 }
 
-#console div {
-	background-color: rgba(0,0,0,.05);
-    border-bottom: 1px #eeeeee solid;
+#info h3 {
+	font-weight: normal;
+    font-size: 11px;
+    background-color: black;
+    padding: 10px 5px 10px 6px;
+    margin: 0;
 }
 
-#console div:nth-child(odd) {
+#info ul {
+	padding: 10px;
+}
+
+#info ul > li {
+	background-color: rgba(0,0,0,.05);
+    /*border-bottom: 1px #eeeeee solid;*/
+    border-bottom: 1px solid rgba(44, 44, 44, 1);
+    list-style: none;
+    padding: 5px;
+}
+
+#command-list {
+	max-height: 500px;
+	overflow-y: auto;
+}
+
+#info ul.commands > li {
+    padding-right: 38px;
+    position: relative;
+    height: inherit;
+}
+
+#command-list li button {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+
+    cursor: pointer;
+    border-radius: 0;
+    border: none;
+    width: 22px;
+}
+
+#console {
+	display: flex;
+    flex-direction: column;
+}
+
+#console-list {
+	overflow: auto;
+}
+
+#console-list, #command-list {
+	padding: 0;
+	/*font-family*/: monospace;
+}
+
+#console-list li:nth-child(odd), #command-list li:nth-child(odd) {
 	background-color: rgba(0,0,0,0);
 }
 
-#console div p, #console div table {
-	padding: 5px;
+#console li p, #console div table {
+	padding: 0;
 	margin: 0;
 }
 

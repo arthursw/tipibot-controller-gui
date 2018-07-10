@@ -10,10 +10,12 @@ export declare type Command = {
 	id: number
 }
 
+export declare type Communication = { send: (type: string, data?: any)=> void }
+
 export class Interpreter {
 	
 	serialPort: string
-	socket: any
+	communication: Communication
 	commandID = 0
 	commandQueue: Array<Command>
 	tipibot: TipibotInterface
@@ -23,26 +25,23 @@ export class Interpreter {
 	readonly continueMessage = 'READY'
 	serialCommunicationSpeed = 115200
 
-	constructor() {
+	constructor(communication: Communication) {
 		this.commandQueue = []
 		this.pause = false
 		this.serialInput = ''
 		this.tempoNextCommand = false
+		this.communication = communication
 	}
 
 	setSerialPort(serialPort: string) {
 		this.serialPort = serialPort;
 	}
 
-	setSocket(socket: any) {
-		this.socket = socket;
-	}
-
 	setTipibot(tipibot: TipibotInterface) {
 		this.tipibot = tipibot;
 	}
 
-	connectionOpened() {
+	serialPortConnectionOpened() {
 		this.initialize()
 	}
 
@@ -64,9 +63,8 @@ export class Interpreter {
 			return
 		}
 		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
-		// this.socket.emit('command', 'send ' + this.serialPort + ' ' + command.data)
 		console.log('send: ' + command.message + ' - ' + command.data)
-		this.socket.emit('data', command.data)
+		this.communication.send('data', command.data)
 	}
 
 	messageReceived(message: string) {
@@ -75,7 +73,7 @@ export class Interpreter {
 		}
 
 		this.serialInput += message
-		
+
 		let messages = this.serialInput.split('\n')
 		
 		// process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
@@ -138,9 +136,6 @@ export class Interpreter {
 	}
 
 	queue(data: string, message: string, callback: () => any = null) {
-		if(this.socket == null) {
-			return
-		}
 
 		let command = { id: this.commandID++, data: data, callback: callback, message: message }
 		document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }))
@@ -170,13 +165,7 @@ export class Interpreter {
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 	}
 
-	sendMoveDirectFullSpeed(point: paper.Point, callback: () => any = null) {
-	}
-
-	sendMoveLinearFullSpeed(point: paper.Point, callback: () => any = null) {
-	}
-
-	sendMoveLinear(point: paper.Point, callback: () => any = null) {
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
