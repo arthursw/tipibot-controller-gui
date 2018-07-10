@@ -386,6 +386,9 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
+	keyUp(event:KeyboardEvent) {
+	}
+
 	windowResize() {
 		this.motorRight.update(Settings.tipibot.width, 0, 50)
 		this.tipibotArea.updateRectangle(this.computeTipibotArea())

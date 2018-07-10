@@ -41,11 +41,19 @@ export class VisualFeedback {
 
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
 		document.addEventListener('MachineWidthChanged', (event: CustomEvent)=> this.onMachineWidthChanged(event.detail), false)
+		document.addEventListener('FeedbackChanged', (event: CustomEvent)=> this.onFeedbackChanged(event.detail), false)
 	}
 
 	clear() {
 		this.paths.removeChildren()
 		this.subTargets.removeChildren()
+	}
+
+	setVisible(visible: boolean) {
+		this.paths.visible = visible
+		this.subTargets.visible = visible
+		this.circle.visible = visible
+		this.lines.visible = visible
 	}
 
 	setPosition(point: paper.Point) {
@@ -113,5 +121,9 @@ export class VisualFeedback {
 
 	onMachineWidthChanged(event: CustomEvent) {
 		this.lines.segments[2].point.x = Settings.tipibot.width
+	}
+
+	onFeedbackChanged(event: CustomEvent) {
+		this.setVisible(Settings.feedback.enable)
 	}
 }

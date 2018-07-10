@@ -173,17 +173,18 @@ class SettingsManager {
         loadSaveFolder.addFileSelectorButton('Load', 'application/json', (event) => this.handleFileSelect(event));
         loadSaveFolder.add(this, 'save').name('Save');
         this.tipibotPositionFolder = settingsFolder.addFolder('Position');
-        this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition());
         this.tipibotPositionFolder.addButton('Set position to home', () => this.tipibot.setPositionToHome());
+        this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition());
         let position = new paper.Point(exports.Settings.tipibot.homeX, exports.Settings.tipibot.homeY);
         this.tipibotPositionFolder.add(position, 'x', 0, exports.Settings.tipibot.width).name('X');
         this.tipibotPositionFolder.add(position, 'y', 0, exports.Settings.tipibot.height).name('Y');
+        this.tipibotPositionFolder.open();
         this.homeFolder = settingsFolder.addFolder('Home');
-        this.homeFolder.addButton('Set home', () => this.tipibot.setHome());
+        // this.homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
         this.homeFolder.add({ 'Position': 'Bottom' }, 'Position', ['Custom', 'Top', 'Center', 'Bottom', 'Left', 'Right', 'TopLeft', 'BottomLeft', 'TopRight', 'BottomRight']);
         this.homeFolder.add(exports.Settings.tipibot, 'homeX', 0, exports.Settings.tipibot.width).name('Home X');
         this.homeFolder.add(exports.Settings.tipibot, 'homeY', 0, exports.Settings.tipibot.height).name('Home Y');
-        this.homeFolder.open();
+        // this.homeFolder.open()
         let tipibotDimensionsFolder = settingsFolder.addFolder('Machine dimensions');
         tipibotDimensionsFolder.add(exports.Settings.tipibot, 'width', 100, 10000, 1).name('Width');
         tipibotDimensionsFolder.add(exports.Settings.tipibot, 'height', 100, 10000, 1).name('Height');
@@ -217,7 +218,7 @@ class SettingsManager {
         this.motorsFolder.add(exports.Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps');
         let feedbackFolder = settingsFolder.addFolder('Feedback');
         feedbackFolder.add(exports.Settings.feedback, 'enable').name('Enable feedback');
-        feedbackFolder.add(exports.Settings.feedback, 'rate', 1, 100).name('Feedback rate (info/sec.)');
+        feedbackFolder.add(exports.Settings.feedback, 'rate', 1, 100, 1).name('Feedback rate (info/sec.)');
         settingsFolder.add(exports.Settings, 'forceLinearMoves').name('Force linear moves');
         let controllers = this.getControllers();
         for (let controller of controllers) {
@@ -368,6 +369,7 @@ class SettingsManager {
             this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true);
         }
         else if (parentNames[0] == 'Feedback') {
+            document.dispatchEvent(new CustomEvent('FeedbackChanged'));
             this.tipibot.feedbackChanged(changeFinished);
         }
         this.save(false);
@@ -975,6 +977,8 @@ class Tipibot {
             default:
                 break;
         }
+    }
+    keyUp(event) {
     }
     windowResize() {
         this.motorRight.update(Settings_1.Settings.tipibot.width, 0, 50);
@@ -1999,7 +2003,7 @@ class PaperRenderer extends RendererInterface_1.Renderer {
         this.previousPosition = this.getMousePosition(event);
     }
     mouseMove(event) {
-        if (event.buttons == 4 || event.shiftKey && this.dragging) {
+        if (event.buttons == 4 || this.spacePressed && this.dragging) {
             let position = this.getMousePosition(event);
             paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom));
             paper.view.draw();
@@ -2017,7 +2021,24 @@ class PaperRenderer extends RendererInterface_1.Renderer {
         if (event.target != this.getDomElement()) {
             return;
         }
+        let cursorPosition = this.getWorldPosition(event);
         paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500));
+        let newCursorPosition = this.getWorldPosition(event);
+        paper.view.translate(newCursorPosition.subtract(cursorPosition));
+    }
+    keyDown(event) {
+        switch (event.keyCode) {
+            case 32:
+                this.spacePressed = true;
+                $('#canvas').addClass('grab');
+        }
+    }
+    keyUp(event) {
+        switch (event.keyCode) {
+            case 32:
+                this.spacePressed = false;
+                $('#canvas').removeClass('grab');
+        }
     }
     render() {
     }
@@ -2176,6 +2197,7 @@ class VisualFeedback {
         this.lines.strokeScaling = false;
         document.addEventListener('MessageReceived', (event) => this.onMessageReceived(event.detail), false);
         document.addEventListener('MachineWidthChanged', (event) => this.onMachineWidthChanged(event.detail), false);
+        document.addEventListener('FeedbackChanged', (event) => this.onFeedbackChanged(event.detail), false);
     }
     static initialize() {
         exports.visualFeedback = new VisualFeedback();
@@ -2183,6 +2205,12 @@ class VisualFeedback {
     clear() {
         this.paths.removeChildren();
         this.subTargets.removeChildren();
+    }
+    setVisible(visible) {
+        this.paths.visible = visible;
+        this.subTargets.visible = visible;
+        this.circle.visible = visible;
+        this.lines.visible = visible;
     }
     setPosition(point) {
         this.circle.position = point;
@@ -2242,6 +2270,9 @@ class VisualFeedback {
     }
     onMachineWidthChanged(event) {
         this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
+    }
+    onFeedbackChanged(event) {
+        this.setVisible(Settings_1.Settings.feedback.enable);
     }
 }
 exports.VisualFeedback = VisualFeedback;
@@ -2461,18 +2492,18 @@ class PenPlotter extends Interpreter_1.Interpreter {
     }
     sendMaxSpeed(speed = Settings_1.Settings.tipibot.maxSpeed) {
         // console.log('set speed: ' + speed)
-        let message = 'Set max speed: ' + speed;
+        let message = 'Set max speed: ' + speed.toFixed(2);
         this.queue('G0 F' + speed.toFixed(2) + '\n', message);
     }
     sendAcceleration(acceleration = Settings_1.Settings.tipibot.acceleration) {
         console.log('set acceleration: ' + acceleration);
-        let message = 'Set acceleration: ' + acceleration;
+        let message = 'Set acceleration: ' + acceleration.toFixed(2);
         this.queue('G0 S' + acceleration.toFixed(2) + '\n', message);
     }
     sendMaxSpeedAndAcceleration(speed = Settings_1.Settings.tipibot.maxSpeed, acceleration = Settings_1.Settings.tipibot.acceleration) {
         console.log('set speed: ' + speed);
         console.log('set acceleration: ' + acceleration);
-        let message = 'Set speed: ' + acceleration + ', set acceleration: ' + acceleration;
+        let message = 'Set speed: ' + acceleration.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2);
         this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n', message);
     }
     sendInvertXY(invertMotorLeft = Settings_1.Settings.tipibot.invertMotorLeft, invertMotorRight = Settings_1.Settings.tipibot.invertMotorRight) {
@@ -2595,7 +2626,11 @@ class CommandDisplay {
         }
     }
     createCommandItem(command) {
-        let liJ = $('<li id="' + command.id + '"">' + command.message + '<br>' + command.data + '</li>');
+        let liJ = $('<li id="' + command.id + '"">');
+        let messageJ = $('<div>').append(command.message).addClass('message');
+        let dataJ = $('<div>').append(command.data).addClass('data');
+        liJ.append(messageJ);
+        liJ.append(dataJ);
         let closeButtonJ = $('<button>x</button>');
         closeButtonJ.click((event) => this.removeCommand(command.id));
         liJ.append(closeButtonJ);
@@ -3514,8 +3549,8 @@ class TipibotInterpreter extends PenPlotter_1.PenPlotter {
         if (!enable) {
             rate = 0;
         }
-        let message = 'Set feedback: ' + enable + ', rate: ' + rate;
-        this.queue('M15 F' + rate + '\n', message);
+        let message = 'Set feedback: ' + enable + ', rate: ' + rate.toFixed(2);
+        this.queue('M15 F' + rate.toFixed(2) + '\n', message);
     }
     convertServoValue(servoValue) {
         return servoValue;
@@ -3678,6 +3713,11 @@ document.addEventListener("DOMContentLoaded", function (event) {
     }
     function keyDown(event) {
         Tipibot_1.tipibot.keyDown(event);
+        renderer.keyDown(event);
+    }
+    function keyUp(event) {
+        Tipibot_1.tipibot.keyUp(event);
+        renderer.keyUp(event);
     }
     window.addEventListener('resize', windowResize, false);
     document.body.addEventListener('mousedown', mouseDown);
@@ -3685,6 +3725,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
     document.body.addEventListener('mouseup', mouseUp);
     document.body.addEventListener('mouseleave', mouseLeave);
     document.body.addEventListener('keydown', keyDown);
+    document.body.addEventListener('keyup', keyUp);
     addWheelListener(document.body, mouseWheel);
 });
 
@@ -3741,6 +3782,10 @@ class Renderer {
     mouseLeave(event) {
     }
     mouseWheel(event) {
+    }
+    keyDown(event) {
+    }
+    keyUp(event) {
     }
     render() {
     }

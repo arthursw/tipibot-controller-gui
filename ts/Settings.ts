@@ -121,19 +121,20 @@ export class SettingsManager {
 		loadSaveFolder.add(this, 'save').name('Save')
 
 		this.tipibotPositionFolder = settingsFolder.addFolder('Position')
-		this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition() )
 		this.tipibotPositionFolder.addButton('Set position to home', () => this.tipibot.setPositionToHome() )
+		this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition() )
 		
 		let position = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		this.tipibotPositionFolder.add(position, 'x', 0, Settings.tipibot.width).name('X')
 		this.tipibotPositionFolder.add(position, 'y', 0, Settings.tipibot.height).name('Y')
+		this.tipibotPositionFolder.open()
 
 		this.homeFolder = settingsFolder.addFolder('Home')
-		this.homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
+		// this.homeFolder.addButton('Set home', ()=> this.tipibot.setHome())
 		this.homeFolder.add( {'Position': 'Bottom'}, 'Position', ['Custom', 'Top', 'Center', 'Bottom', 'Left', 'Right', 'TopLeft', 'BottomLeft', 'TopRight', 'BottomRight'])
 		this.homeFolder.add(Settings.tipibot, 'homeX', 0, Settings.tipibot.width).name('Home X')
 		this.homeFolder.add(Settings.tipibot, 'homeY', 0, Settings.tipibot.height).name('Home Y')
-		this.homeFolder.open()
+		// this.homeFolder.open()
 
 		let tipibotDimensionsFolder = settingsFolder.addFolder('Machine dimensions')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
@@ -177,7 +178,7 @@ export class SettingsManager {
 
 		let feedbackFolder = settingsFolder.addFolder('Feedback')
 		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
-		feedbackFolder.add(Settings.feedback, 'rate', 1, 100).name('Feedback rate (info/sec.)')
+		feedbackFolder.add(Settings.feedback, 'rate', 1, 100, 1).name('Feedback rate (info/sec.)')
 
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 
@@ -309,6 +310,7 @@ export class SettingsManager {
 			this.tipibot.drawAreaChanged(changeFinished)
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		} else if(parentNames[0] == 'Feedback') {
+			document.dispatchEvent(new CustomEvent('FeedbackChanged'))
 			this.tipibot.feedbackChanged(changeFinished)
 		}
 		this.save(false)

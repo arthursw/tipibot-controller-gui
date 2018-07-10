@@ -183,6 +183,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function keyDown(event: KeyboardEvent) {
 		tipibot.keyDown(event)
+		renderer.keyDown(event)
+	}
+
+	function keyUp(event: KeyboardEvent) {
+		tipibot.keyUp(event)
+		renderer.keyUp(event)
 	}
 
 	window.addEventListener( 'resize', windowResize, false )
@@ -191,5 +197,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	document.body.addEventListener('mouseup', mouseUp)
 	document.body.addEventListener('mouseleave', mouseLeave)
 	document.body.addEventListener('keydown', keyDown)
+	document.body.addEventListener('keyup', keyUp)
 	addWheelListener(document.body, mouseWheel)
 });

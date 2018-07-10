@@ -10,6 +10,7 @@ export class PaperRenderer extends Renderer {
 	previousPosition: paper.Point
 	tipibotLayer: paper.Layer
 	drawingLayer: paper.Layer
+	spacePressed: boolean
 
 	constructor() {
 		super()
@@ -89,7 +90,7 @@ export class PaperRenderer extends Renderer {
 	}
 
 	mouseMove(event: MouseEvent) {
-		if(event.buttons == 4 || event.shiftKey && this.dragging) { 											// wheel button
+		if(event.buttons == 4 || this.spacePressed && this.dragging) { 											// wheel button
 			let position = this.getMousePosition(event)
 			paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom))
 			paper.view.draw()
@@ -110,7 +111,26 @@ export class PaperRenderer extends Renderer {
 		if(event.target != this.getDomElement()) {
 			return
 		}
+		let cursorPosition = this.getWorldPosition(event)
 		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500))
+		let newCursorPosition = this.getWorldPosition(event)
+		paper.view.translate(newCursorPosition.subtract(cursorPosition))
+	}
+
+	keyDown(event: KeyboardEvent) {
+		switch (event.keyCode) {
+			case 32: 			// space
+				this.spacePressed = true
+				$('#canvas').addClass('grab')
+		}
+	}
+
+	keyUp(event: KeyboardEvent) {
+		switch (event.keyCode) {
+			case 32: 			// space
+				this.spacePressed = false
+				$('#canvas').removeClass('grab')
+		}
 	}
 
 	render() {

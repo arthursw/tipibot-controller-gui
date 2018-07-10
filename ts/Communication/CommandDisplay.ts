@@ -37,7 +37,11 @@ export class CommandDisplay {
 	}
 
 	createCommandItem(command: Command): any {
-		let liJ = $('<li id="' + command.id + '"">' + command.message + '<br>' + command.data + '</li>')
+		let liJ = $('<li id="' + command.id + '"">')
+		let messageJ = $('<div>').append(command.message).addClass('message')
+		let dataJ = $('<div>').append(command.data).addClass('data')
+		liJ.append(messageJ)
+		liJ.append(dataJ)
 		let closeButtonJ = $('<button>x</button>')
 		closeButtonJ.click((event)=> this.removeCommand(command.id))
 		liJ.append(closeButtonJ)

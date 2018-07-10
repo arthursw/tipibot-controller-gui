@@ -28,8 +28,8 @@ export class TipibotInterpreter extends PenPlotter {
 		if(!enable) {
 			rate = 0
 		}
-		let message = 'Set feedback: ' + enable + ', rate: ' + rate
-		this.queue('M15 F' + rate + '\n', message)
+		let message = 'Set feedback: ' + enable + ', rate: ' + rate.toFixed(2)
+		this.queue('M15 F' + rate.toFixed(2) + '\n', message)
 	}
 
 	convertServoValue(servoValue: number) {

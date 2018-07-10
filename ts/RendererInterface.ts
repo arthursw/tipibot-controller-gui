@@ -66,6 +66,13 @@ export class Renderer {
 	mouseWheel(event: WheelEvent) {
 	}
 
+	keyDown(event: KeyboardEvent) {
+	}
+
+	keyUp(event: KeyboardEvent) {
+	}
+
+
 	render() {
 	}
 }

@@ -32,20 +32,20 @@ export class PenPlotter extends Interpreter {
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed) {
 		// console.log('set speed: ' + speed)
-		let message = 'Set max speed: ' + speed
+		let message = 'Set max speed: ' + speed.toFixed(2)
 		this.queue('G0 F' + speed.toFixed(2) + '\n', message)
 	}
 
 	sendAcceleration(acceleration: number=Settings.tipibot.acceleration) {
 		console.log('set acceleration: ' + acceleration)
-		let message = 'Set acceleration: ' + acceleration
+		let message = 'Set acceleration: ' + acceleration.toFixed(2)
 		this.queue('G0 S' + acceleration.toFixed(2) + '\n', message)
 	}
 
 	sendMaxSpeedAndAcceleration(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
 		console.log('set speed: ' + speed)
 		console.log('set acceleration: ' + acceleration)
-		let message = 'Set speed: ' + acceleration + ', set acceleration: ' + acceleration
+		let message = 'Set speed: ' + acceleration.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2)
 		this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n', message)
 	}
 

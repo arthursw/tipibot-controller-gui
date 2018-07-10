@@ -59,6 +59,11 @@ body {
 	overflow: hidden;
 }
 
+#canvas.grab {
+	cursor: -webkit-grab; 
+	cursor: grab;
+}
+
 canvas {
 	background-color: white;
 }
@@ -87,6 +92,22 @@ canvas {
 
 #info ul {
 	padding: 10px;
+	overflow-y: auto;
+	margin-right: 4px;
+}
+
+/** Scrollbar from dat.gui css */
+#info ul::-webkit-scrollbar {
+  width: 5px;
+  background: #1a1a1a;
+}
+#info ul::-webkit-scrollbar-corner {
+  height: 0;
+  display: none;
+}
+#info ul::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #676767;
 }
 
 #info ul > li {
@@ -99,7 +120,6 @@ canvas {
 
 #command-list {
 	max-height: 500px;
-	overflow-y: auto;
 }
 
 #info ul.commands > li {
@@ -121,13 +141,19 @@ canvas {
     width: 22px;
 }
 
+
+#command-list li button:hover {
+	background-color: #ff6060;
+}
+
+#command-list li .data {
+	font-style: italic;
+	margin-top: 4px;
+}
+
 #console {
 	display: flex;
     flex-direction: column;
-}
-
-#console-list {
-	overflow: auto;
 }
 
 #console-list, #command-list {
@@ -136,7 +162,8 @@ canvas {
 }
 
 #console-list li:nth-child(odd), #command-list li:nth-child(odd) {
-	background-color: rgba(0,0,0,0);
+	/*background-color: rgba(0,0,0,0);*/
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 #console li p, #console div table {
@@ -147,3 +174,4 @@ canvas {
 table {
 	border-collapse: collapse;
 }
+
