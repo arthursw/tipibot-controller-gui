@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 17);
+/******/ 	return __webpack_require__(__webpack_require__.s = 18);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -470,9 +470,9 @@ exports.settingsManager = new SettingsManager();
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
-const Polargraph_1 = __webpack_require__(15);
+const Polargraph_1 = __webpack_require__(16);
 const PenPlotter_1 = __webpack_require__(9);
-const TipibotInterpreter_1 = __webpack_require__(16);
+const TipibotInterpreter_1 = __webpack_require__(17);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 // export const 57600 = 57600
@@ -1938,9 +1938,9 @@ exports.SVGPlot = SVGPlot;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Shapes_1 = __webpack_require__(19);
+const Shapes_1 = __webpack_require__(20);
 const Pen_1 = __webpack_require__(3);
-const RendererInterface_1 = __webpack_require__(18);
+const RendererInterface_1 = __webpack_require__(19);
 class PaperRenderer extends RendererInterface_1.Renderer {
     constructor() {
         super();
@@ -2669,6 +2669,99 @@ exports.CommandDisplay = CommandDisplay;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+class Console {
+    constructor() {
+        document.addEventListener('AddedCommand', (event) => this.scrollToBottom(), false);
+        this.log = console.log.bind(console);
+        this.error = console.error.bind(console);
+        this.info = console.info.bind(console);
+        this.table = console.table.bind(console);
+        let log = (args, logger, type) => {
+            if (typeof logger === 'function') {
+                logger.apply(console, args);
+            }
+            let div = $('<li>');
+            for (let arg of args) {
+                let p = null;
+                if (typeof arg == 'object') {
+                    p = this.logTable(arg);
+                }
+                else if (arg instanceof Array) {
+                    let result = JSON.stringify(arg);
+                    if (result.length > 100) {
+                        result = result.substr(0, 20) + '...' + result.substr(result.length - 20);
+                    }
+                    p = $('<p>').append(result).addClass(type);
+                }
+                else {
+                    p = $('<p>').append(arg).addClass(type);
+                }
+                div.append(p);
+            }
+            let consoleJ = $('#console ul');
+            consoleJ.append(div);
+            this.scrollToBottom(consoleJ);
+        };
+        console.log = (...args) => {
+            log(args, this.log, 'log');
+        };
+        console.error = (...args) => log(args, this.error, 'error');
+        console.info = (...args) => log(args, this.info, 'info');
+        console.table = (...args) => log(args, this.table, 'table');
+    }
+    scrollToBottom(consoleJ = $('#console ul')) {
+        consoleJ.scrollTop(consoleJ.get(0).scrollHeight);
+    }
+    printTable(objArr, keys) {
+        var numCols = keys.length;
+        var len = objArr.length;
+        var $table = document.createElement('table');
+        $table.style.width = '100%';
+        $table.setAttribute('border', '1');
+        var $head = document.createElement('thead');
+        var $tdata = document.createElement('td');
+        $tdata.innerHTML = 'Index';
+        $head.appendChild($tdata);
+        for (var k = 0; k < numCols; k++) {
+            $tdata = document.createElement('td');
+            $tdata.innerHTML = keys[k];
+            $head.appendChild($tdata);
+        }
+        $table.appendChild($head);
+        for (var i = 0; i < len; i++) {
+            var $line = document.createElement('tr');
+            let $tdata = document.createElement('td');
+            $tdata.innerHTML = i;
+            $line.appendChild($tdata);
+            for (var j = 0; j < numCols; j++) {
+                $tdata = document.createElement('td');
+                $tdata.innerHTML = objArr[i][keys[j]];
+                $line.appendChild($tdata);
+            }
+            $table.appendChild($line);
+        }
+        return $table;
+    }
+    logTable(...args) {
+        var objArr = args[0];
+        var keys;
+        if (typeof objArr[0] !== 'undefined') {
+            keys = Object.keys(objArr[0]);
+        }
+        return this.printTable(objArr, keys);
+    }
+    ;
+}
+exports.Console = Console;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 class Controller {
     constructor(controller, gui) {
         this.controller = controller;
@@ -2841,7 +2934,7 @@ exports.GUI = GUI;
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3117,7 +3210,7 @@ exports.CommeUnDessein = CommeUnDessein;
 
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3306,7 +3399,7 @@ exports.Telescreen = Telescreen;
 
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3518,7 +3611,7 @@ exports.Polargraph = Polargraph;
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3570,7 +3663,7 @@ exports.TipibotInterpreter = TipibotInterpreter;
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3580,10 +3673,6 @@ exports.TipibotInterpreter = TipibotInterpreter;
 /// <reference path="../node_modules/@types/paper/index.d.ts"/>
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 Object.defineProperty(exports, "__esModule", { value: true });
-// Todo:
-// - make a visual difference between penUp / penDown (on the pen: fill / no fill)
-// - up/down/left/right keys to move pen position
-// - reorganize GUI folders (settings)
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
@@ -3595,11 +3684,11 @@ const Plot_1 = __webpack_require__(5);
 const Communication_1 = __webpack_require__(1);
 const CommandDisplay_1 = __webpack_require__(11);
 const InteractiveItem_1 = __webpack_require__(4);
-const GUI_1 = __webpack_require__(12);
-const Console_1 = __webpack_require__(20);
+const GUI_1 = __webpack_require__(13);
+const Console_1 = __webpack_require__(12);
 const VisualFeedback_1 = __webpack_require__(7);
-const CommeUnDessein_1 = __webpack_require__(13);
-const Telescreen_1 = __webpack_require__(14);
+const CommeUnDessein_1 = __webpack_require__(14);
+const Telescreen_1 = __webpack_require__(15);
 let communication = null;
 let container = null;
 let renderer = null;
@@ -3731,7 +3820,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3794,7 +3883,7 @@ exports.Renderer = Renderer;
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4439,99 +4528,6 @@ class ThreeShape extends Shape {
     }
 }
 exports.ThreeShape = ThreeShape;
-
-
-/***/ }),
-/* 20 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class Console {
-    constructor() {
-        document.addEventListener('AddedCommand', (event) => this.scrollToBottom(), false);
-        this.log = console.log.bind(console);
-        this.error = console.error.bind(console);
-        this.info = console.info.bind(console);
-        this.table = console.table.bind(console);
-        let log = (args, logger, type) => {
-            if (typeof logger === 'function') {
-                logger.apply(console, args);
-            }
-            let div = $('<li>');
-            for (let arg of args) {
-                let p = null;
-                if (typeof arg == 'object') {
-                    p = this.logTable(arg);
-                }
-                else if (arg instanceof Array) {
-                    let result = JSON.stringify(arg);
-                    if (result.length > 100) {
-                        result = result.substr(0, 20) + '...' + result.substr(result.length - 20);
-                    }
-                    p = $('<p>').append(result).addClass(type);
-                }
-                else {
-                    p = $('<p>').append(arg).addClass(type);
-                }
-                div.append(p);
-            }
-            let consoleJ = $('#console ul');
-            consoleJ.append(div);
-            this.scrollToBottom(consoleJ);
-        };
-        console.log = (...args) => {
-            log(args, this.log, 'log');
-        };
-        console.error = (...args) => log(args, this.error, 'error');
-        console.info = (...args) => log(args, this.info, 'info');
-        console.table = (...args) => log(args, this.table, 'table');
-    }
-    scrollToBottom(consoleJ = $('#console ul')) {
-        consoleJ.scrollTop(consoleJ.get(0).scrollHeight);
-    }
-    printTable(objArr, keys) {
-        var numCols = keys.length;
-        var len = objArr.length;
-        var $table = document.createElement('table');
-        $table.style.width = '100%';
-        $table.setAttribute('border', '1');
-        var $head = document.createElement('thead');
-        var $tdata = document.createElement('td');
-        $tdata.innerHTML = 'Index';
-        $head.appendChild($tdata);
-        for (var k = 0; k < numCols; k++) {
-            $tdata = document.createElement('td');
-            $tdata.innerHTML = keys[k];
-            $head.appendChild($tdata);
-        }
-        $table.appendChild($head);
-        for (var i = 0; i < len; i++) {
-            var $line = document.createElement('tr');
-            let $tdata = document.createElement('td');
-            $tdata.innerHTML = i;
-            $line.appendChild($tdata);
-            for (var j = 0; j < numCols; j++) {
-                $tdata = document.createElement('td');
-                $tdata.innerHTML = objArr[i][keys[j]];
-                $line.appendChild($tdata);
-            }
-            $table.appendChild($line);
-        }
-        return $table;
-    }
-    logTable(...args) {
-        var objArr = args[0];
-        var keys;
-        if (typeof objArr[0] !== 'undefined') {
-            keys = Object.keys(objArr[0]);
-        }
-        return this.printTable(objArr, keys);
-    }
-    ;
-}
-exports.Console = Console;
 
 
 /***/ })

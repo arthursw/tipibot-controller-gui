@@ -3,11 +3,6 @@
 /// <reference path="../node_modules/@types/paper/index.d.ts"/>
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
-// Todo:
-// - make a visual difference between penUp / penDown (on the pen: fill / no fill)
-// - up/down/left/right keys to move pen position
-// - reorganize GUI folders (settings)
-
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
