@@ -1,9 +1,8 @@
-import { Rectangle, Circle} from "./Shapes"
 import { GUI, Controller } from "./GUI"
 
 export interface TipibotInterface {
-	tipibotArea: Rectangle
-	drawArea: Rectangle
+	tipibotArea: paper.Path
+	drawArea: paper.Path
 	initializedCommunication: boolean
 	pauseButton: Controller
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isPenUp: boolean }
@@ -13,7 +12,6 @@ export interface TipibotInterface {
 	setX(x: number, sendChange?: boolean): void
 	setY(y: number, sendChange?: boolean): void
 	toggleSetPosition(setPosition?: boolean): void
-	setPositionToHome(sendChange?: boolean): void
 	setHome(setPosition?: boolean):  void
 
 	sizeChanged(sendChange: boolean): void

@@ -1,98 +1,170 @@
-import { PlotInterface } from "./PlotInterface"
 import { Tipibot, tipibot } from "./Tipibot"
 import { Settings, settingsManager, SettingsManager } from "./Settings"
-import { InteractiveItem } from "./InteractiveItem"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
-import { Renderer } from "./RendererInterface"
-import { ThreeRenderer, PaperRenderer } from "./Renderers"
 import { Pen } from './Pen'
 
+export class SVGPlot {
 
-export class Plot extends PlotInterface {
-
+	static svgPlot: SVGPlot = null
 	static gui: GUI = null
-	static showPoints = false
 	static transformFolder: GUI = null
 	readonly pseudoCurvatureDistance = 10 		// in mm
 
-	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
-		return (value: any)=> { 
-			if(PlotInterface.currentPlot != null) { 
-				if(addValue) {
-					parameters.unshift(value)
-				}
-				f.apply(PlotInterface.currentPlot, parameters)
-			} 
+	public static onImageLoad(event: any) {
+		let svg = paper.project.importSVG(event.target.result)
+
+		let svgPlot = new SVGPlot(svg)
+		svgPlot.center()
+
+		SVGPlot.gui.getController('Draw').show()
+	}
+
+	public static handleFileSelect(event: any) {
+		SVGPlot.gui.getController('Load SVG').hide()
+		SVGPlot.gui.getController('Clear SVG').show()
+
+		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
+
+		for (let i = 0; i < files.length; i++) {
+			let file = files.item(i)
+			
+			let imageType = /^image\//
+
+			if (!imageType.test(file.type)) {
+				continue
+			}
+
+			let reader = new FileReader()
+			reader.onload = (event)=> SVGPlot.onImageLoad(event)
+			reader.readAsText(file)
+		}
+	}
+
+	public static clearClicked(event: any) {
+		communication.interpreter.clearQueue()
+		SVGPlot.gui.getController('Load SVG').show()
+		SVGPlot.gui.getController('Clear SVG').hide()
+		SVGPlot.svgPlot.clear()
+		SVGPlot.svgPlot = null
+		SVGPlot.gui.getController('Draw').name('Draw')
+		SVGPlot.gui.getController('Draw').hide()
+	}
+
+	public static drawClicked(event: any) {
+		if(SVGPlot.svgPlot != null) {
+			if(!SVGPlot.svgPlot.plotting) {
+				SVGPlot.gui.getController('Draw').name('Stop & Clear commands')
+				SVGPlot.svgPlot.plot()
+			} else {
+				SVGPlot.gui.getController('Draw').name('Draw')
+				communication.interpreter.stop()
+				communication.interpreter.clearQueue()
+			}
 		}
 	}
 
 	public static createGUI(gui: GUI) {
-		Plot.gui = gui
+		SVGPlot.gui = gui.addFolder('Plot')
+		SVGPlot.gui.open()
+
+		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
+		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
+
+		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
+		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
+		clearSVGButton.hide()
+		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
+		drawButton.hide()
+
 		let filterFolder = gui.addFolder('Filter')
-		filterFolder.add(Plot, 'showPoints').name('Show points').onChange(Plot.createCallback(Plot.prototype.showPoints, true))
-		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(Plot.createCallback(Plot.prototype.filter))
-		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(Plot.createCallback(Plot.prototype.filter))
-		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(Plot.createCallback(Plot.prototype.filter))
-		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(Plot.createCallback(Plot.prototype.filter))
+		filterFolder.add(Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true))
+		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
+		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
+		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
+		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
 
 		let transformFolder = gui.addFolder('Transform')
-		Plot.transformFolder = transformFolder
-		transformFolder.addButton('Center', Plot.createCallback(Plot.prototype.center))
-		transformFolder.addSlider('X', 0, 0, Settings.drawArea.width).onChange(Plot.createCallback(Plot.prototype.setX, true))
-		transformFolder.addSlider('Y', 0, 0, Settings.drawArea.height).onChange(Plot.createCallback(Plot.prototype.setY, true))
+		SVGPlot.transformFolder = transformFolder
+		transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center))
+		transformFolder.addSlider('X', 0, 0, Settings.drawArea.width).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
+		transformFolder.addSlider('Y', 0, 0, Settings.drawArea.height).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
 		
-		transformFolder.addButton('Flip X', Plot.createCallback(Plot.prototype.flipX))
-		transformFolder.addButton('Flip Y', Plot.createCallback(Plot.prototype.flipY))
+		transformFolder.addButton('Flip X', SVGPlot.createCallback(SVGPlot.prototype.flipX))
+		transformFolder.addButton('Flip Y', SVGPlot.createCallback(SVGPlot.prototype.flipY))
 
-		transformFolder.addButton('Rotate', Plot.createCallback(Plot.prototype.rotate))
+		transformFolder.addButton('Rotate', SVGPlot.createCallback(SVGPlot.prototype.rotate))
 
-		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(Plot.createCallback(Plot.prototype.scale, true))
-
+		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(SVGPlot.createCallback(SVGPlot.prototype.scale, true))
 	}
 
-	originalItem: paper.Item 			// Not flattened
+	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
+		return (value: any)=> { 
+			if(SVGPlot.svgPlot != null) { 
+				if(addValue) {
+					parameters.unshift(value)
+				}
+				f.apply(SVGPlot.svgPlot, parameters)
+			} 
+		}
+	}
+
+	group: paper.Group
 	item: paper.Item
+	raster: paper.Raster
+	originalItem: paper.Item 			// Not flattened
+	
 	plotting = false
 
-	constructor(renderer: Renderer, item: paper.Item=null) {
-		super(renderer, null, true)
+	constructor(item: paper.Item=null) {
+
+		if(SVGPlot.svgPlot != null) {
+			SVGPlot.svgPlot.clear()
+			SVGPlot.svgPlot = null
+		}
+
+		SVGPlot.svgPlot = this
+
+		this.group = new paper.Group()
+		this.group.sendToBack()
+
 		this.item = item
+		this.item.strokeScaling = true
+
+		// Note in paper.js:
+		// When adding a child to a group, the group's position is updated 
+		// to the average position of its children
+		// and the bounds to fit all children's bounds
+		// The children positions are still in global coordinates
+		// http://sketch.paperjs.org/#S/hVOxboMwEP2VE0tAQkAGOkTqlKFrpVbKUDo42AErrg/Zph2q/nvPhpBA0lTIkrn37t27O/iONPsQ0SZ6OQpXt1Ea1cj9e57DrhUaGOdSN8CgbqXi4JCujcG+S8G1YriuLHRopZOoQVroO86c4FBpEqEEz2OfwrBGnHl4AOnsoGqEDlymeSDvsdfc+tSDdMCUmmhUaQAD/5W4J2RStsCMAOskpUkNjcI9IwFEQ42QL0qtdLANj6DFFzz5e5z4cMdcO0af6eqDPpTREOIQRKldXKRQJH9C6zNmncGj2KJCQ6pV1PWmU6KKZvBO8lC0HKPThEYfQXddFCmdZPJ+m1YWwVula5oDKpEpbOI5PzkJkPGtn13sq/6Xkud3qo418/yuhH9qaWolLiacbUPkYoJlCmVCJ3QRwOxAqzwNcYWG6UasJvCmo4fTHK6aHbL+a/caHL66BbSwsEBn25w+rzv7LZebmyvQv7k3gh07n2Gjzdv7zy8=
+
+		this.group.addChild(this.item)
+
 		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.filter()
+
+		this.group.onMouseDrag = (event)=> this.onMouseDrag(event)
+
+		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
 
-	mouseDown(event:MouseEvent): boolean {
-		let result = super.mouseDown(event)
-		this.item.selected = this.dragging
-		return result
+	onSettingChanged(event: CustomEvent) {
+		if(event.detail.all || event.detail.parentNames[0] == 'Pen') {
+			if(event.detail.name == 'penWidth') {
+				this.updateShape()
+			}
+		}
 	}
 
-	updateItemPosition() {
-		this.item.position = this.shape.getBounds().getCenter()
+	onMouseDrag(event:any) {
+		this.group.position = this.group.position.add(event.delta)
+		this.updatePositionGUI()
 	}
 
-	updatePositonGUI(drawAreaTopLeft = tipibot.drawArea.getBounds().topLeft()) {
-		Plot.transformFolder.getController('X').setValueNoCallback(this.item.bounds.left - drawAreaTopLeft.x)
-		Plot.transformFolder.getController('Y').setValueNoCallback(this.item.bounds.top - drawAreaTopLeft.y)
-	}
-
-	updateItemPositionAndGUI() {
-		this.updateItemPosition()
-		this.updatePositonGUI()
-	}
-
-	drag(delta: paper.Point) {
-		let result = super.drag(delta);
-		this.updateItemPositionAndGUI()
-		return result;
-	}
-
-	mouseUp(event:MouseEvent): boolean {
-		let result = super.mouseUp(event);
-		this.updateItemPositionAndGUI()
-		return result;
+	updatePositionGUI() {
+		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
+		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
 	}
 
 	itemMustBeDrawn(item: paper.Path | paper.Shape) {
@@ -108,66 +180,38 @@ export class Plot extends PlotInterface {
 		this.originalItem.applyMatrix = false
 		this.originalItem.scaling = this.item.scaling
 		this.item.remove()
-		this.item = this.originalItem.clone(false)		// If we clone an item which is not on the project, it won't be inserted in the project
-		paper.project.activeLayer.addChild(this.item)	// <- insert here
+		this.item = this.originalItem.clone(false)
+		this.group.addChild(this.item)
 	}
 
 	updateShape() {
-		if(this.shape != null) {
-			this.shape.remove()
+		if(this.raster != null) {
+			this.raster.remove()
 		}
 
-		this.item.strokeWidth = Settings.tipibot.penWidth
+		this.item.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
 
-		// HACK !!!
-		// Todo: create two SvgPlot classes : one for ThreeRenderers and one for PaperRenderers
-		if(this.renderer instanceof ThreeRenderer) {
+		this.item.selected = false
+		this.item.visible = true
 
-			// this.shape = this.renderer.createShape(this.item, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 10, linecap: 'round', linejoin:  'round' }))
-			// this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
-
-			// paper.project.clear()
-			paper.view.viewSize = new paper.Size(Math.min(this.item.bounds.width, 2000), Math.min(this.item.bounds.height, 2000))
-			paper.project.activeLayer.addChild(this.item)
-			paper.project.deselectAll()
-			this.item.selected = false
-			paper.view.setCenter(this.item.bounds.center)
-
-			let margin = 100
-			let ratio = Math.max((this.item.bounds.width + margin) / paper.view.viewSize.width, (this.item.bounds.height + margin) / paper.view.viewSize.height)
-			paper.view.zoom = 1 / ratio
-
-			// var image = new Image()
-			// image.src = paper.view.element.toDataURL()
-
-			// let w = window.open("")
-			// w.document.write(image.outerHTML)
-
-			this.shape = this.renderer.createSprite(paper.view.element)
-			// paper.project.clear()
-			
-			this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
-
-		} else {
-			this.item.selected = false
-			this.item.visible = true
-			// Remove any invisible child from item: 
-			// an invisible shape could be smaller bounds than a path strokeBounds, resulting in item bounds too small
-			// item bounds could be equal to shape bounds instead of path stroke bounds
-			// this is a paper.js bug
-			if(this.item.children != null) {
-				for(let child of this.item.children) {
-					if(!child.visible || child.fillColor == null && child.strokeColor == null) {
-						child.remove()
-					}
+		// Remove any invisible child from item: 
+		// an invisible shape could be smaller bounds than a path strokeBounds, resulting in item bounds too small
+		// item bounds could be equal to shape bounds instead of path stroke bounds
+		// this is a paper.js bug
+		if(this.item.children != null) {
+			for(let child of this.item.children) {
+				if(!child.visible || child.fillColor == null && child.strokeColor == null) {
+					child.remove()
 				}
 			}
-			let raster = this.item.rasterize(paper.project.view.resolution)
-			raster.sendToBack()
-			this.shape = this.renderer.createShape(raster)
-			this.item.selected = Plot.showPoints
-			this.item.visible = Plot.showPoints
 		}
+
+		this.item.strokeColor = 'black'
+		this.raster = this.item.rasterize(paper.project.view.resolution)
+		this.group.addChild(this.raster)
+		this.raster.sendToBack()
+		this.item.selected = Settings.plot.showPoints
+		this.item.visible = Settings.plot.showPoints
 	}
 
 	filter() {
@@ -251,17 +295,6 @@ export class Plot extends PlotInterface {
 		tipibot.goHome(()=> this.plotFinished(callback))
 	}
 
-	plotItem(item: paper.Item) {
-
-	}
-
-	plotFinished(callback: ()=> void = null) {
-		this.plotting = false
-		if(callback != null) {
-			callback()
-		}
-	}
-
 	stop() {
 		communication.interpreter.sendStop()
 	}
@@ -272,179 +305,41 @@ export class Plot extends PlotInterface {
 	}
 
 	rotate() {
-		this.item.rotate(90)
+		this.group.rotate(90)
 		this.updateShape()
-		this.updateItemPositionAndGUI()
+		this.updatePositionGUI()
 	}
 
 	scale(value: number) {
 
-		this.item.applyMatrix = false
-		this.item.scaling = new paper.Point(Math.sign(this.item.scaling.x) * value, Math.sign(this.item.scaling.y) * value)
+		this.group.applyMatrix = false
+		this.group.scaling = new paper.Point(Math.sign(this.group.scaling.x) * value, Math.sign(this.group.scaling.y) * value)
 
 		this.updateShape()
-		this.updatePositonGUI()
-		// this.updateItemPositionAndGUI()
+		this.updatePositionGUI()
 	}
 
 	center() {
-		this.shape.setPosition(tipibot.drawArea.getBounds().getCenter())
-		this.updateItemPositionAndGUI()
+		this.group.position = tipibot.drawArea.bounds.center
+		this.updatePositionGUI()
 	}
 
 	flipX() {
-		this.item.scale(-1, 1)
+		this.group.scale(-1, 1)
 		this.updateShape()
 	}
 	
 	flipY() {
-		this.item.scale(1, -1)
+		this.group.scale(1, -1)
 		this.updateShape()
 	}
 	
 	setX(x: number) {
-		let drawArea = tipibot.drawArea.getBounds()
-		this.shape.setX(drawArea.topLeft().x + x + this.shape.getWidth() / 2)
-		this.updateItemPosition()
+		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
 	}
 	
 	setY(y: number) {
-		let drawArea = tipibot.drawArea.getBounds()
-		this.shape.setY(drawArea.topLeft().y + y + this.shape.getHeight() / 2)
-		this.updateItemPosition()
-	}
-
-	clear() {
-		super.delete()
-		if(this.shape != null) {
-			this.shape.remove()
-		}
-		this.shape = null
-		if(this.item != null) {
-			this.item.remove()
-		}
-		this.item = null
-		if(this.originalItem != null) {
-			this.originalItem.remove()
-		}
-		this.originalItem = null
-		if(PlotInterface.currentPlot == this) {
-			PlotInterface.currentPlot = null
-		}
-	}
-}
-
-export class SVGPlot extends Plot {
-	static svgPlot: SVGPlot = null
-	static renderer: Renderer
-	static gui: GUI
-
-	public static onImageLoad(event: any) {
-		let svg = paper.project.importSVG(event.target.result)
-
-		let svgPlot = new SVGPlot(svg)
-		svgPlot.center()
-
-		// Hack: Find a better way to handle ThreeRenderer and PaperRenderer
-		if(this.renderer instanceof ThreeRenderer) {
-			svg.remove()
-			paper.project.clear()
-		}
-
-		SVGPlot.gui.getController('Draw').show()
-	}
-
-	public static handleFileSelect(event: any) {
-		SVGPlot.gui.getController('Load SVG').hide()
-		SVGPlot.gui.getController('Clear SVG').show()
-
-		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
-
-		for (let i = 0; i < files.length; i++) {
-			let file = files.item(i)
-			
-			let imageType = /^image\//
-
-			if (!imageType.test(file.type)) {
-				continue
-			}
-
-			let reader = new FileReader()
-			reader.onload = (event)=> SVGPlot.onImageLoad(event)
-			reader.readAsText(file)
-		}
-	}
-
-	public static clearClicked(event: any) {
-		communication.interpreter.clearQueue()
-		SVGPlot.gui.getController('Load SVG').show()
-		SVGPlot.gui.getController('Clear SVG').hide()
-		SVGPlot.svgPlot.clear()
-		SVGPlot.svgPlot = null
-		SVGPlot.gui.getController('Draw').name('Draw')
-		SVGPlot.gui.getController('Draw').hide()
-	}
-
-	public static drawClicked(event: any) {
-		if(PlotInterface.currentPlot != null) {
-			if(!PlotInterface.currentPlot.plotting) {
-				SVGPlot.gui.getController('Draw').name('Stop & Clear commands')
-				PlotInterface.currentPlot.plot()
-			} else {
-				SVGPlot.gui.getController('Draw').name('Draw')
-				communication.interpreter.stop()
-				communication.interpreter.clearQueue()
-			}
-		}
-	}
-
-	public static createGUI(gui: GUI) {
-		SVGPlot.gui = gui.addFolder('Plot')
-		SVGPlot.gui.open()
-
-		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
-		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
-
-		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', (event)=> SVGPlot.handleFileSelect(event))
-		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
-		clearSVGButton.hide()
-		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
-		drawButton.hide()
-
-
-	}
-
-	currentItem: paper.Item
-	currentSegment: paper.Segment
-
-	constructor(svg: paper.Item, renderer: Renderer=SVGPlot.renderer) {
-		super(renderer, svg)
-		PlotInterface.currentPlot = this
-		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.clear()
-			SVGPlot.svgPlot = null
-		}
-		SVGPlot.svgPlot = this
-		paper.project.layers[0].addChild(svg)
-		svg.sendToBack()
-	}
-
-
-	mouseDown(event: MouseEvent): boolean {
-		// let hitResult = paper.project.hitTest(this.getWorldPosition(event))
-		// if(hitResult != null && hitResult.item == tipibot.pen.item) {
-		// 	return
-		// }
-		if(tipibot.pen.getPosition().getDistance(this.getWorldPosition(event)) < Pen.RADIUS) {
-			return false
-		}
-		super.mouseDown(event)
-	}
-
-	drag(delta: paper.Point) {
-		super.drag(delta)
-		// Plot.gui.getFolder('Transform').getController('X').setValueNoCallback(this.item.position.x)
-		// Plot.gui.getFolder('Transform').getController('Y').setValueNoCallback(this.item.position.y)
+		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
 	}
 
 	getAngle(segment: paper.Segment) {
@@ -692,7 +587,11 @@ export class SVGPlot extends Plot {
 	
 	plotFinished(callback: ()=> void = null) {
 		SVGPlot.gui.getController('Draw').name('Draw')
-		super.plotFinished(callback)
+
+		this.plotting = false
+		if(callback != null) {
+			callback()
+		}
 	}
 
 	clearData(item: paper.Item) {
@@ -703,10 +602,26 @@ export class SVGPlot extends Plot {
 			}
 		}
 	}
+
 	clear() {
 		if(SVGPlot.svgPlot == this) {
 			SVGPlot.svgPlot = null
 		}
-		super.clear()
+		if(this.raster != null) {
+			this.raster.remove()
+		}
+		this.raster = null
+		if(this.item != null) {
+			this.item.remove()
+		}
+		this.item = null
+		if(this.originalItem != null) {
+			this.originalItem.remove()
+		}
+		this.originalItem = null
+		if(this.group != null) {
+			this.group.remove()
+		}
+		this.group = null
 	}
 }

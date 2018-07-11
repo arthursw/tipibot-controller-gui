@@ -9,16 +9,13 @@
 
 import { Settings, settingsManager } from "./Settings"
 import { Tipibot, tipibot } from "./Tipibot"
-import { Renderer } from "./RendererInterface"
-import { ThreeRenderer, PaperRenderer } from "./Renderers"
+import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
-import { Plot, SVGPlot } from "./Plot"
+import { SVGPlot } from "./Plot"
 import { Communication } from "./Communication/Communication"
 import { CommandDisplay } from "./Communication/CommandDisplay"
-import { InteractiveItem } from "./InteractiveItem"
 import { GUI } from "./GUI"
 import { Console } from "./Console"
-import { Circle } from "./Shapes"
 import { VisualFeedback, visualFeedback } from "./VisualFeedback"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
@@ -33,7 +30,7 @@ let container = null
 let renderer: Renderer = null
 
 let gui: GUI
-let positionPreview: Circle = null
+let positionPreview: paper.Path = null
 
 let drawing = {
 	scale: 1,
@@ -83,16 +80,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		settingsManager.createGUI(gui)
 		
 		SVGPlot.createGUI(gui)
-		Plot.createGUI(SVGPlot.gui)
 		
-		renderer = new PaperRenderer()
-		SVGPlot.renderer = renderer
+		renderer = new Renderer()
 		
 		communication.setTipibot(tipibot)
-		tipibot.initialize(renderer, commandFolder)
+		tipibot.initialize(commandFolder)
 
 		renderer.centerOnTipibot(Settings.tipibot)
-		renderer.createDrawingLayer()
 
 		let commandDisplay = new CommandDisplay()
 		commandDisplay.createGUI(gui)
@@ -132,30 +126,23 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseDown(event: MouseEvent) {
-		if(!eventWasOnGUI(event)) {
-			InteractiveItem.mouseDown(event)
-		}
 		renderer.mouseDown(event)
 	}
 
 	function mouseMove(event: MouseEvent) {
-		InteractiveItem.mouseMove(event)
 		renderer.mouseMove(event)
 
 		if(tipibot.settingPosition) {
 			let position = renderer.getWorldPosition(event)
 			if(positionPreview == null) {
-				positionPreview = renderer.createCircle(position.x, position.y, Pen.HOME_RADIUS)
+				positionPreview = paper.Path.Circle(position, Pen.HOME_RADIUS)
 			}
-			positionPreview.setPosition(position)
+			positionPreview.position = position
 			tipibot.setPositionSliders(position)
 		}
 	}
 
 	function mouseUp(event: MouseEvent) {
-		if(!eventWasOnGUI(event)) {
-			InteractiveItem.mouseUp(event)
-		}
 		renderer.mouseUp(event)
 		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(<HTMLElement>event.target) ) {
 			if(positionPreview != null) {
@@ -168,7 +155,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseLeave(event: MouseEvent) {
-		InteractiveItem.mouseLeave(event)
 		renderer.mouseLeave(event)
 	}
 

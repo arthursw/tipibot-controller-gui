@@ -53,6 +53,7 @@ export let Settings = {
 		height: paperHeight
 	},
 	plot: {
+		showPoints: false,
 		flatten: true,
 		flattenPrecision: 0.25,
 		subdivide: false,
@@ -121,7 +122,7 @@ export class SettingsManager {
 		loadSaveFolder.add(this, 'save').name('Save')
 
 		this.tipibotPositionFolder = settingsFolder.addFolder('Position')
-		this.tipibotPositionFolder.addButton('Set position to home', () => this.tipibot.setPositionToHome() )
+		this.tipibotPositionFolder.addButton('Set position to home', () => this.tipibot.setHome() )
 		this.tipibotPositionFolder.addButton('Set position with mouse', () => this.tipibot.toggleSetPosition() )
 		
 		let position = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
@@ -239,7 +240,6 @@ export class SettingsManager {
 			if(name == 'width') {
 				this.tipibotPositionFolder.getController('x').max(value, false)
 				this.drawAreaDimensionsFolder.getController('width').max(value, changeFinished)
-				document.dispatchEvent(new CustomEvent('MachineWidthChanged'))
 			} else if(name == 'height') {
 				this.tipibotPositionFolder.getController('y').max(value, false)
 				this.drawAreaDimensionsFolder.getController('height').max(value, changeFinished)
@@ -310,9 +310,9 @@ export class SettingsManager {
 			this.tipibot.drawAreaChanged(changeFinished)
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		} else if(parentNames[0] == 'Feedback') {
-			document.dispatchEvent(new CustomEvent('FeedbackChanged'))
 			this.tipibot.feedbackChanged(changeFinished)
 		}
+		document.dispatchEvent(new CustomEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
 		this.save(false)
 	}
 
@@ -345,6 +345,8 @@ export class SettingsManager {
 		// this.tipibot.setX(Settings.tipibot.homeX, false)
 		// this.tipibot.setY(Settings.tipibot.homeY, true)
 		this.tipibot.setHome(false)
+
+		document.dispatchEvent(new CustomEvent('SettingChanged', { detail: { all: true } }))
 
 		// save to local storage
 		this.save(false)

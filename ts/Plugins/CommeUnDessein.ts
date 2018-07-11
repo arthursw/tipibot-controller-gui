@@ -13,10 +13,10 @@ let scale = 1000
 let CommeUnDesseinSize = new paper.Size(4000, 3000)
 
 let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
-	let drawArea = tipibot.drawArea.getBounds()
+	let drawArea = tipibot.drawArea.bounds
 	let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
 	const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
-	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size()).add(drawArea.topLeft())
+	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size).add(drawArea.topLeft)
 }
 
 let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point): paper.Point {
@@ -103,8 +103,8 @@ export class CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		
-		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.getBounds().width
-		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.getBounds().height
+		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.bounds.width
+		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.bounds.height
 
 		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
 			window.localStorage.setItem('commeUnDesseinWidth', value)
