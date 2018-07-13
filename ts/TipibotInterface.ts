@@ -4,7 +4,6 @@ export interface TipibotInterface {
 	tipibotArea: paper.Path
 	drawArea: paper.Path
 	initializedCommunication: boolean
-	pauseButton: Controller
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isPenUp: boolean }
 
 	createGUI(gui:GUI): void

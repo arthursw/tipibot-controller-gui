@@ -120,16 +120,8 @@ export class Interpreter {
 
 	}
 
-	stop() {
-		if(!this.pause) {
-			this.setPause(true)
-		}
-		this.sendStop(true)
-	}
-
 	setPause(pause: boolean) {
 		this.pause = pause;
-		this.tipibot.pauseButton.setValueNoCallback(this.pause)
 		if(!this.pause && this.commandQueue.length > 0) {
 			this.send(this.commandQueue[0])
 		}

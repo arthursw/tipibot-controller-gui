@@ -30,6 +30,7 @@ let container = null
 let renderer: Renderer = null
 
 let gui: GUI
+
 let positionPreview: paper.Path = null
 
 let drawing = {
@@ -37,26 +38,6 @@ let drawing = {
 }
 
 let w = <any>window
-
-w.send = function(message: string) {
-	communication.interpreter.send({ id: -1, data: message, callback: ()=> console.log('Command' + message + ' done.'), message: message })
-}
-
-w.addPlugin = function(pluginName: string, testMode: boolean) {
-	if(pluginName == 'CommeUnDessein') {
-		
-		let commeUnDessein = new CommeUnDessein(testMode)
-		commeUnDessein.createGUI(gui)
-		w.commeUnDessein = commeUnDessein
-
-	} else if(pluginName == 'Telescreen') {
-
-		let telescreen = new Telescreen()
-		telescreen.createGUI(gui)
-		w.telescreen = telescreen
-
-	}
-}
 
 document.addEventListener("DOMContentLoaded", function(event) { 
 
@@ -66,13 +47,15 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		dat.GUI.DEFAULT_WIDTH = 325
 		gui = new GUI({ autoPlace: false })
 
-		let console = new Console()
+		let controllerConsole = new Console()
+		let commandDisplay = new CommandDisplay()
+		commandDisplay.createGUI(controllerConsole.gui)
+		controllerConsole.createGUI()
 
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())
 		
-		let communicationFolder = gui.addFolder('Communication')
-		communication = new Communication(communicationFolder)
+		communication = new Communication(gui)
 
 		let commandFolder = gui.addFolder('Commands')
 		commandFolder.open()
@@ -88,13 +71,18 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 		renderer.centerOnTipibot(Settings.tipibot)
 
-		let commandDisplay = new CommandDisplay()
-		commandDisplay.createGUI(gui)
 
 		VisualFeedback.initialize()
 		
-		w.addPlugin('CommeUnDessein')
 
+		let pluginFolder = gui.addFolder('Plugins')
+
+		let commeUnDessein = new CommeUnDessein()
+		commeUnDessein.createGUI(pluginFolder)
+
+		let telescreen = new Telescreen()
+		telescreen.createGUI(pluginFolder)
+		
 		// debug
 		w.tipibot = tipibot
 		w.settingsManager = settingsManager
@@ -104,6 +92,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		w.commandDisplay = commandDisplay
 		w.visualFeedback = visualFeedback
 		w.SVGPlot = SVGPlot
+		w.commeUnDessein = commeUnDessein
+		w.telescreen = telescreen
 	}
 
 	initialize()

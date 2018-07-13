@@ -54,6 +54,7 @@ export let Settings = {
 	},
 	plot: {
 		showPoints: false,
+		optimizeTrajectories: true,
 		flatten: true,
 		flattenPrecision: 0.25,
 		subdivide: false,
@@ -173,7 +174,7 @@ export class SettingsManager {
 		this.motorsFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.')
 		this.motorsFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')
 		this.motorsFolder.add(Settings.tipibot, 'stepsPerRev', 1, 500, 1).name('Steps per rev.')
-		this.motorsFolder.add(Settings.tipibot, 'microstepResolution', 1, 64, 1).name('Step multiplier')
+		this.motorsFolder.add(Settings.tipibot, 'microstepResolution', 1, 256, 1).name('Step multiplier')
 		this.motorsFolder.add(Settings.tipibot, 'mmPerRev', 1, 250, 1).name('Mm per rev.')
 		this.motorsFolder.add(Settings.tipibot, 'progressiveMicrosteps').name('Progressive Microsteps')
 

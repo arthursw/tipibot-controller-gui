@@ -122,8 +122,9 @@ export class CommeUnDessein {
 		if(SVGPlot.svgPlot != null) {
 			SVGPlot.svgPlot.clear()
 		}
-		communication.interpreter.stop()
+		communication.interpreter.sendStop(true)
 		communication.interpreter.clearQueue()
+		tipibot.goHome()
 		this.state = State.NextDrawing
 	}
 

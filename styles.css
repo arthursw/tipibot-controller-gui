@@ -6,7 +6,7 @@ body {
 	top: 0;
 	bottom: 0;
 	left: 0;
-	right: 0;
+	right: 2px;
 	display: grid;
 	/*grid-template-columns: auto 325px;*/
 	grid-template-columns: auto 325px 325px;
@@ -73,30 +73,37 @@ canvas {
 
 }
 
+#command-list {
+	max-height: 500px;
+}
+
 #info {
-	background-color: #1a1a1a;
 	display: flex;
     flex-direction: column;
-    font-family: "Lucida Grande", sans-serif;
-    color: white;
-    font-size: 12px;
 }
 
-#info h3 {
-	font-weight: normal;
-    font-size: 11px;
-    background-color: black;
-    padding: 10px 5px 10px 6px;
-    margin: 0;
+#info ul.closed .c-list {
+     display: none;
 }
 
-#info ul {
-	padding: 10px;
+#info > .main > ul > li {
+	display: flex;
+    flex-direction: column;
+}
+
+#console-list, #command-list {
 	overflow-y: auto;
-	margin-right: 4px;
 }
 
-/** Scrollbar from dat.gui css */
+#console-list {
+    max-height: 200px;
+}
+
+#info .dg.main > ul {
+	display: flex;
+	flex-direction: column;
+}
+
 #info ul::-webkit-scrollbar {
   width: 5px;
   background: #1a1a1a;
@@ -110,19 +117,7 @@ canvas {
   background: #676767;
 }
 
-#info ul > li {
-	background-color: rgba(0,0,0,.05);
-    /*border-bottom: 1px #eeeeee solid;*/
-    border-bottom: 1px solid rgba(44, 44, 44, 1);
-    list-style: none;
-    padding: 5px;
-}
-
-#command-list {
-	max-height: 500px;
-}
-
-#info ul.commands > li {
+#info ul.c-list > li {
     padding-right: 38px;
     position: relative;
     height: inherit;
@@ -141,7 +136,6 @@ canvas {
     width: 22px;
 }
 
-
 #command-list li button:hover {
 	background-color: #ff6060;
 }
@@ -151,27 +145,30 @@ canvas {
 	margin-top: 4px;
 }
 
-#console {
-	display: flex;
-    flex-direction: column;
-}
-
-#console-list, #command-list {
-	padding: 0;
-	/*font-family*/: monospace;
-}
-
-#console-list li:nth-child(odd), #command-list li:nth-child(odd) {
-	/*background-color: rgba(0,0,0,0);*/
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-#console li p, #console div table {
+#console-list li p, #console div table {
 	padding: 0;
 	margin: 0;
+    height: inherit;
+}
+
+#console-list li p.error {
+	color: #ff3939;
 }
 
 table {
 	border-collapse: collapse;
 }
 
+icon.websocket, icon.serial {
+	float: right;
+	color: #f44336;
+    margin-right: 5px;
+}
+
+icon.connected {
+	color: #3cba00;
+}
+
+icon.simulator {
+	color: #ffeb3b;
+}

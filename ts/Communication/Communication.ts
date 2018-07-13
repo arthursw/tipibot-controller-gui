@@ -24,11 +24,12 @@ export class Communication {
 	autoConnectController: Controller
 	autoConnectIntervalID = -1
 	serialPortConnectionOpened = false
+	folderTitle: any
 
 	constructor(gui:GUI) {
 		communication = this
 		this.socket = null
-		this.gui = gui
+		this.createGUI(gui)
 		this.portController = null
 		this.initializeInterpreter(Settings.firmware)
 		this.connectToSerial()
@@ -36,6 +37,13 @@ export class Communication {
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
 		}
+	}
+
+	createGUI(gui: GUI) {
+		this.gui = gui.addFolder('Communication')
+		this.folderTitle = $(this.gui.getDomElement()).find('.title')
+		this.folderTitle.append($('<icon>').addClass('serial').append(String.fromCharCode(9679)))
+		this.folderTitle.append($('<icon>').addClass('websocket').append(String.fromCharCode(9679)))
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
@@ -64,7 +72,7 @@ export class Communication {
 		this.stopAutoConnection()
 		this.interpreter.serialPortConnectionOpened()
 
-		this.gui.setName('Communication - connected')
+		this.folderTitle.find('.serial').addClass('connected')
 	}
 
 	onSerialPortConnectionClosed() {
@@ -72,8 +80,8 @@ export class Communication {
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
 		}
-		// this.interpreter.connectionClosed()	
-		this.gui.setName('Communication - disconnectSerialPorted')
+		// this.interpreter.connectionClosed()
+		this.folderTitle.find('.serial').removeClass('connected')
 	}
 
 	initializePortController(options: string[]) {
@@ -131,7 +139,9 @@ export class Communication {
 		} else if(type == 'connected') {
 			this.setPortName(data)
 		} else if(type == 'not-connected') {
-
+			this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
+		} else if(type == 'connected-to-simulator') {
+			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
 		} else if(type == 'data') {
 			this.interpreter.messageReceived(data)
 		} else if(type == 'warning') {
@@ -171,7 +181,24 @@ export class Communication {
 		this.socket = new WebSocket('ws://localhost:' + PORT)
 
 		this.socket.addEventListener('message',  (event:any)=> this.onMessage(event))
-		this.socket.addEventListener('open',  (event:any)=> this.send('is-connected'))
+		this.socket.addEventListener('open',  (event:any)=> this.onWebSocketOpen(event))
+		this.socket.addEventListener('close',  (event:any)=> this.onWebSocketClose(event))
+		this.socket.addEventListener('error',  (event:any)=> this.onWebSocketError(event))
+	}
+
+	onWebSocketOpen(event: any) {
+		this.folderTitle.find('.websocket').addClass('connected')
+		this.send('is-connected')
+	}
+
+	onWebSocketClose(event: any) {
+		this.folderTitle.find('.websocket').removeClass('connected')
+		console.error('WebSocket disconnected')
+	}
+
+	onWebSocketError(event: any) {
+		console.error('WebSocket error')
+		// console.error(event)
 	}
 
 	disconnectSerialPort() {

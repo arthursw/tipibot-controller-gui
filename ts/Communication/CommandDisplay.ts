@@ -8,6 +8,7 @@ export class CommandDisplay {
 
 	listJ: any
 	gui: GUI
+	pauseButton: Controller
 
 	constructor() {
 
@@ -20,12 +21,21 @@ export class CommandDisplay {
 	}
 
 	createGUI(gui: GUI) {
-		// let folderName = 'Command list'
-		// this.gui = gui.addFolder(folderName)
-		// this.listJ = $('<ul id="command-list">')
-		// this.gui.open()
-		// this.listJ.insertAfter($(this.gui.gui.domElement).find('li'))
-		this.listJ = $('#command-list')
+		this.gui = gui.addFolder('Commands')
+		this.gui.open()
+
+		this.pauseButton = this.gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
+		this.gui.addButton('Emergency stop', () => {
+			this.pauseButton.setValue(true)
+			communication.interpreter.sendStop(true)
+		})
+		this.gui.addButton('Clear commands', () => communication.interpreter.clearQueue() )
+
+		let commandList = this.gui.addFolder('Command list')
+
+		this.listJ = $('<ul id="command-list" class="c-list">')
+		commandList.open()
+		this.listJ.insertAfter($(commandList.gui.domElement).find('li'))
 	}
 
 	click(event: any) {
@@ -51,6 +61,7 @@ export class CommandDisplay {
 	removeCommand(id: number) {
 		this.listJ.find('#' + id).remove()
 		this.updateName()
+		document.dispatchEvent(new CustomEvent('CommandListChanged'))
 	}
 
 	updateName() {
@@ -60,7 +71,7 @@ export class CommandDisplay {
 	queueCommand(command: Command) {
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
-		document.dispatchEvent(new CustomEvent('AddedCommand'))
+		document.dispatchEvent(new CustomEvent('CommandListChanged'))
 	}
 
 	sendCommand(command: Command) {
@@ -74,5 +85,6 @@ export class CommandDisplay {
 	clearQueue() {
 		this.listJ.children().remove()
 		this.updateName()
+		document.dispatchEvent(new CustomEvent('CommandListChanged'))
 	}
 }

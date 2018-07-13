@@ -58,8 +58,10 @@ export class SVGPlot {
 				SVGPlot.svgPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
-				communication.interpreter.stop()
+				communication.interpreter.sendStop(true)
 				communication.interpreter.clearQueue()
+				SVGPlot.svgPlot.plotting = false
+				tipibot.goHome()
 			}
 		}
 	}
@@ -79,6 +81,7 @@ export class SVGPlot {
 
 		let filterFolder = gui.addFolder('Filter')
 		filterFolder.add(Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true))
+		filterFolder.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
 		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
 		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
 		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
@@ -100,6 +103,7 @@ export class SVGPlot {
 
 	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
 		return (value: any)=> { 
+			settingsManager.save(false)
 			if(SVGPlot.svgPlot != null) { 
 				if(addValue) {
 					parameters.unshift(value)
@@ -167,7 +171,7 @@ export class SVGPlot {
 		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
 	}
 
-	itemMustBeDrawn(item: paper.Path | paper.Shape) {
+	itemMustBeDrawn(item: paper.Item) {
 		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null;
 	}
 
@@ -225,21 +229,120 @@ export class SVGPlot {
 		this.updateShape()
 	}
 
+	collapseItem(item: paper.Item, parent: paper.Item) {
+		item.applyMatrix = true
+
+		item = item.className == 'Shape' ? this.convertShapeToPath(<paper.Shape>item) : item
+
+		if(item == null || item.children == null || item.children.length == 0) {
+			return
+		}
+
+		while(item.children.length > 0) {
+			let child = item.firstChild
+			child.remove()
+			parent.addChild(child)
+
+			this.collapseItem(child, parent)
+		}
+	}
+
+	collapse(item: paper.Item) {
+		if(item.children == null || item.children.length == 0) {
+			return
+		}
+		let children = item.children.slice()
+		for(let child of children) {
+			this.collapseItem(child, item)
+		}
+	}
+
+	findClosestPath(path: paper.Path, parent: paper.Item): paper.Path {
+		let closestPath: paper.Path = null
+		let minDistance = Number.MAX_VALUE
+		let reverse = false
+		let leavePoint = path.closed ? path.firstSegment.point : path.lastSegment.point
+		for(let child of parent.children) {
+			let p = <paper.Path>child
+			if(p == path || p.segments == null) {
+				continue
+			}
+			let distance = p.firstSegment.point.getDistance(leavePoint)
+			if(distance < minDistance) {
+				minDistance = distance
+				closestPath = p
+				reverse = false
+			}
+			distance = p.lastSegment.point.getDistance(leavePoint)
+			if(distance < minDistance) {
+				minDistance = distance
+				closestPath = p
+				reverse = true
+			}
+		}
+		if(reverse) {
+			closestPath.reverse()
+		}
+		return closestPath
+	}
+
+	optimizeTrajectories(item: paper.Item) {
+		if(item.children == null || item.children.length == 0) {
+			return
+		}
+
+		this.collapse(item)
+
+		let sortedPaths = []
+		let currentChild = item.firstChild
+
+		do {
+			currentChild.remove()
+			sortedPaths.push(currentChild)
+			currentChild = this.findClosestPath(<paper.Path>currentChild, item)
+		} while(item.children.length > 0 && currentChild != null) 					// check that currentChild != null since item could 
+																					// have only empty compound paths
+																					// (this can happen after collapsing CompoundPaths)
+
+		item.addChildren(sortedPaths)
+
+		// let path = new paper.Path()
+		// path.strokeColor = 'purple'
+		// path.strokeWidth = 1
+		// path.strokeScaling = true
+		// for(let child of item.children) {
+		// 	let p = <paper.Path>child
+		// 	if(p.segments != null) {
+		// 		path.addSegments(p.segments)
+		// 		if(p.closed) {
+		// 			path.add(p.firstSegment)
+		// 		}
+		// 	}
+		// }
+		// let c1 = paper.Path.Circle(path.firstSegment.point, 3)
+		// c1.fillColor = 'orange'
+		// let c2 = paper.Path.Circle(path.lastSegment.point, 3)
+		// c2.fillColor = 'turquoise'
+		// path.sendToBack()
+	}
+
+	convertShapeToPath(shape: paper.Shape): paper.Path {
+		if(!this.itemMustBeDrawn(shape)) {
+			return null
+		}
+		let path = shape.toPath(true)
+		shape.parent.addChildren(shape.children)
+		shape.remove()
+		return path
+	}
+
 	filterItem(item: paper.Item, amount: number, filter: (item: paper.Item, amount: number) => void) {
 		if(!item.visible) {
 			return
 		}
-		if(item.className == 'Path' || item.className == 'CompoundPath') {
-			let path = <paper.Path>item
+		let path = item.className == 'Shape' ? this.convertShapeToPath(<paper.Shape>item) : item
+		if(item.className == 'Path' || item.className == 'CompoundPath') {
 			filter.call(this, path, amount)
-		} else if(item.className == 'Shape') {
-			let shape = <paper.Shape>item
-			if(this.itemMustBeDrawn(shape)) {
-				let path = shape.toPath(true)
-				filter.call(this, path, amount)
-				item.parent.addChildren(item.children)
-				item.remove()
-			}
 		}
 		if(item.children == null) {
 			return
@@ -286,6 +389,9 @@ export class SVGPlot {
 
 	plot(callback: ()=> void = null) {
 		this.plotting = true
+		if(Settings.plot.optimizeTrajectories) {
+			this.optimizeTrajectories(this.item)
+		}
 		// Clone item to apply matrix without loosing points, matrix & visibility information
 		let clone = this.item.clone()
 		clone.applyMatrix = true
@@ -293,10 +399,6 @@ export class SVGPlot {
 		this.plotItem(clone)			// to be overloaded. The draw button calls plot()
 		clone.remove()
 		tipibot.goHome(()=> this.plotFinished(callback))
-	}
-
-	stop() {
-		communication.interpreter.sendStop()
 	}
 
 	showPoints(show: boolean) {
@@ -434,8 +536,8 @@ export class SVGPlot {
 		let currentSegment = path.lastSegment
 		let previousMinSpeed = null
 		let distanceToLastMinSpeed = 0
-
-		while(currentSegment != null) {
+		let n=0
+		while(currentSegment != null && n<10000) {
 
 			let pseudoCurvature = this.getPseudoCurvature(currentSegment)
 			let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
@@ -462,8 +564,12 @@ export class SVGPlot {
 				brakingDistanceMm = brakingDistanceSteps * mmPerSteps
 			}
 
-			currentSegment = currentSegment.previous
+			currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous
 			distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0
+			n++
+		}
+		if(n >= 9000) {
+			debugger
 		}
 
 		let speeds = []
@@ -490,7 +596,7 @@ export class SVGPlot {
 			return
 		}
 		// let matrix = item.globalMatrix
-		if((item.className == 'Path' || item.className == 'CompoundPath') && item.strokeWidth > 0) {
+		if((item.className == 'Path' || item.className == 'CompoundPath') && this.itemMustBeDrawn(item)) {
 			let path: paper.Path = <paper.Path>item
 			if(path.segments != null) {
 
@@ -523,6 +629,7 @@ export class SVGPlot {
 		if(item.children == null) {
 			return
 		}
+
 		for(let child of item.children) {
 			this.plotItem(child)
 		}
