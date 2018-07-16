@@ -14,6 +14,7 @@ export let Settings = {
 	autoConnect: true,
 	firmware: 'Tipibot',
 	forceLinearMoves: true,
+	forceInitialization: true,
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
@@ -60,7 +61,7 @@ export let Settings = {
 		subdivide: false,
 		maxSegmentLength: 10,
 		fullSpeed: true,
-		maxCurvatureFullspeed: 45,
+		maxCurvatureFullspeed: 45
 	},
 	feedback: {
 		enable: true,
@@ -154,8 +155,8 @@ export class SettingsManager {
 
 		let anglesFolder = penFolder.addFolder('Angles')
 		anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
-		anglesFolder.add(Settings.servo.position, 'up', 0, 180, 1).name('Up')
-		anglesFolder.add(Settings.servo.position, 'down', 0, 180, 1).name('Down')
+		anglesFolder.add(Settings.servo.position, 'up', 0, 180).name('Up')
+		anglesFolder.add(Settings.servo.position, 'down', 0, 180).name('Down')
 
 		let delaysFolder = penFolder.addFolder('Delays')
 		let delaysUpFolder = delaysFolder.addFolder('Up')
@@ -181,8 +182,11 @@ export class SettingsManager {
 		let feedbackFolder = settingsFolder.addFolder('Feedback')
 		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
 		feedbackFolder.add(Settings.feedback, 'rate', 1, 100, 1).name('Feedback rate (info/sec.)')
+		feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(new CustomEvent('ClearFeedback')))
 
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
+		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
+		
 
 		let controllers = this.getControllers()
 

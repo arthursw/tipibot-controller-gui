@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		w.tipibot = tipibot
 		w.settingsManager = settingsManager
 		w.gui = gui
+		w.GUI = GUI
 		w.renderer = renderer
 		w.communication = communication
 		w.commandDisplay = commandDisplay

@@ -12,8 +12,10 @@ export class VisualFeedback {
 	circle: paper.Path
 	lines: paper.Path
 	drawing: boolean = false
+	isPenUp: boolean = true
 
 	readonly positionPrefix = '-p: l: '
+	readonly penPrefix = '-pen: '
 	readonly subTargetPrefix = '-st: l: '
 	
 	static initialize() {
@@ -29,7 +31,7 @@ export class VisualFeedback {
 
 		let positon = tipibot.getPosition()
 		this.circle = paper.Path.Circle(positon, Pen.HOME_RADIUS)
-		this.circle.fillColor = 'yellow'
+		this.circle.fillColor = 'rgba(255, 193, 7, 0.25)'
 		this.circle.strokeColor = 'black'
 		this.circle.strokeWidth = 1
 		this.group.addChild(this.circle)
@@ -47,6 +49,7 @@ export class VisualFeedback {
 
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
+		document.addEventListener('ClearFeedback', (event: CustomEvent)=> this.clear(), false)
 
 		this.group.sendToBack()
 	}
@@ -80,21 +83,25 @@ export class VisualFeedback {
 			this.updatePosition(data)
 		} else if(data.indexOf(this.subTargetPrefix) == 0) {
 			this.setSubTarget(data)
+		} else if(data.indexOf(this.penPrefix) == 0) {
+			this.updatePen(data)
+		} else {
+			console.log(data)
 		}
 	}
 
 	updatePosition(data: string) {
 		let point = this.computePoint(data, this.positionPrefix)
 
-		if(!tipibot.pen.isPenUp) {
-			if(!this.drawing) {
+		if(!this.isPenUp) {
+			if(!this.drawing && this.paths) {
 				let path = new paper.Path()
 				path.strokeWidth = Settings.tipibot.penWidth
 				path.strokeColor = 'black'
 				path.strokeScaling = true
 				this.paths.addChild(path)
 				this.drawing = true
-			} else {
+			} else if(this.paths.lastChild != null) {
 				let path = <paper.Path>this.paths.lastChild
 				path.add(point)
 			}
@@ -105,10 +112,20 @@ export class VisualFeedback {
 		this.setPosition(point)
 	}
 
+	updatePen(data: string) {
+		let m = data.replace(this.penPrefix, '')
+		let position = parseFloat(m)
+		this.isPenUp = Math.abs(position - Settings.servo.position.up) < 0.1 ? true : Math.abs(position - Settings.servo.position.down) < 0.1 ? false : null
+		if(Settings.servo.position.invert) {
+			this.isPenUp = !this.isPenUp
+		}
+		this.circle.fillColor = this.isPenUp ? 'rgba(255, 193, 7, 0.25)' : this.circle.fillColor = 'rgba(255, 193, 7, 0.8)'
+	}
+
 	setSubTarget(data: string) {
 		let point = this.computePoint(data, this.subTargetPrefix)
 
-		if(!tipibot.pen.isPenUp) {
+		if(!this.isPenUp) {
 			let path = new paper.Path()
 			path.strokeWidth = 0.1
 			path.strokeColor = 'red'

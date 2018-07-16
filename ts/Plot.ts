@@ -11,13 +11,22 @@ export class SVGPlot {
 	static transformFolder: GUI = null
 	readonly pseudoCurvatureDistance = 10 		// in mm
 
-	public static onImageLoad(event: any) {
+	public static loadImage(event: any) {
 		let svg = paper.project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
 		svgPlot.center()
 
 		SVGPlot.gui.getController('Draw').show()
+		console.log('SVG imported.')
+
+		GUI.stopLoadingAnimation()
+	}
+
+	public static onImageLoad(event: any) {
+		console.log('Importing SVG...')
+
+		GUI.startLoadingAnimation(()=>SVGPlot.loadImage(event))
 	}
 
 	public static handleFileSelect(event: any) {
@@ -45,7 +54,7 @@ export class SVGPlot {
 		communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
 		SVGPlot.gui.getController('Clear SVG').hide()
-		SVGPlot.svgPlot.clear()
+		SVGPlot.svgPlot.destroy()
 		SVGPlot.svgPlot = null
 		SVGPlot.gui.getController('Draw').name('Draw')
 		SVGPlot.gui.getController('Draw').hide()
@@ -54,7 +63,7 @@ export class SVGPlot {
 	public static drawClicked(event: any) {
 		if(SVGPlot.svgPlot != null) {
 			if(!SVGPlot.svgPlot.plotting) {
-				SVGPlot.gui.getController('Draw').name('Stop & Clear commands')
+				SVGPlot.gui.getController('Draw').name('Stop, clear commands & go home')
 				SVGPlot.svgPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
@@ -123,7 +132,7 @@ export class SVGPlot {
 	constructor(item: paper.Item=null) {
 
 		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.clear()
+			SVGPlot.svgPlot.destroy()
 			SVGPlot.svgPlot = null
 		}
 
@@ -155,7 +164,7 @@ export class SVGPlot {
 
 	onSettingChanged(event: CustomEvent) {
 		if(event.detail.all || event.detail.parentNames[0] == 'Pen') {
-			if(event.detail.name == 'penWidth') {
+			if(event.detail.name == 'penWidth' && this.group != null) {
 				this.updateShape()
 			}
 		}
@@ -172,7 +181,7 @@ export class SVGPlot {
 	}
 
 	itemMustBeDrawn(item: paper.Item) {
-		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null;
+		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null
 	}
 
 	saveItem() {
@@ -194,23 +203,23 @@ export class SVGPlot {
 		}
 
 		this.item.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
-
-		this.item.selected = false
-		this.item.visible = true
-
+		
 		// Remove any invisible child from item: 
 		// an invisible shape could be smaller bounds than a path strokeBounds, resulting in item bounds too small
 		// item bounds could be equal to shape bounds instead of path stroke bounds
 		// this is a paper.js bug
 		if(this.item.children != null) {
 			for(let child of this.item.children) {
-				if(!child.visible || child.fillColor == null && child.strokeColor == null) {
+				if(!child.visible || child.fillColor == null && child.strokeColor == null && child.className == 'Shape') {
 					child.remove()
 				}
 			}
 		}
 
-		this.item.strokeColor = 'black'
+		this.item.selected = false
+		this.item.visible = true
+
+		// this.item.strokeColor = 'black'
 		this.raster = this.item.rasterize(paper.project.view.resolution)
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
@@ -224,6 +233,7 @@ export class SVGPlot {
 		} else if(this.originalItem != null) {
 			this.loadItem()
 		}
+		this.autoSetStroke()
 		this.flatten()
 		this.subdivide()
 		this.updateShape()
@@ -245,6 +255,10 @@ export class SVGPlot {
 
 			this.collapseItem(child, parent)
 		}
+
+		if(item.className == 'Group' || item.className == 'CompoundPath' || item.className == 'Raster') {
+			item.remove()
+		}
 	}
 
 	collapse(item: paper.Item) {
@@ -258,6 +272,9 @@ export class SVGPlot {
 	}
 
 	findClosestPath(path: paper.Path, parent: paper.Item): paper.Path {
+		if(path.className != 'Path' || path.firstSegment == null || path.lastSegment == null) {
+			return null
+		}
 		let closestPath: paper.Path = null
 		let minDistance = Number.MAX_VALUE
 		let reverse = false
@@ -286,20 +303,23 @@ export class SVGPlot {
 		return closestPath
 	}
 
-	optimizeTrajectories(item: paper.Item) {
-		if(item.children == null || item.children.length == 0) {
-			return
-		}
-
+	optimizeTrajectoriesLoader(item: paper.Item) {
 		this.collapse(item)
 
 		let sortedPaths = []
 		let currentChild = item.firstChild
 
+		let nLogs = 0
 		do {
 			currentChild.remove()
 			sortedPaths.push(currentChild)
 			currentChild = this.findClosestPath(<paper.Path>currentChild, item)
+			
+			if(nLogs++ > 100) {
+				console.log('Items to process: ' + item.children.length)
+				nLogs = 0
+			}
+
 		} while(item.children.length > 0 && currentChild != null) 					// check that currentChild != null since item could 
 																					// have only empty compound paths
 																					// (this can happen after collapsing CompoundPaths)
@@ -324,6 +344,18 @@ export class SVGPlot {
 		// let c2 = paper.Path.Circle(path.lastSegment.point, 3)
 		// c2.fillColor = 'turquoise'
 		// path.sendToBack()
+
+		GUI.stopLoadingAnimation()
+	}
+
+	optimizeTrajectories(item: paper.Item) {
+		if(item.children == null || item.children.length == 0) {
+			return
+		}
+		
+		console.log('Optimizing trajectories...')
+
+		GUI.startLoadingAnimation(()=> this.optimizeTrajectoriesLoader(item))
 	}
 
 	convertShapeToPath(shape: paper.Shape): paper.Path {
@@ -387,18 +419,38 @@ export class SVGPlot {
 		this.filterItem(item, flattenPrecision, this.flattenPath)
 	}
 
+	autoSetStroke() {
+		this.filterItem(this.item, 0, this.autoSetStrokePath)
+	}
+
+	autoSetStrokePath(path: paper.Path) {
+		path.visible = true
+		if(path.strokeColor == null) {
+			path.strokeColor = 	path.parent != null && path.parent.strokeColor != null ? path.parent.strokeColor : 'black'
+		}
+		if(path.strokeWidth == null || Number.isNaN(path.strokeWidth) || path.strokeWidth <= 1) {
+			path.strokeWidth = 	path.parent != null && 
+								path.parent.strokeWidth != null && 
+								!Number.isNaN(path.parent.strokeWidth) && 
+								path.parent.strokeWidth >= 1 ? path.parent.strokeWidth : 1
+		}
+	}
+
 	plot(callback: ()=> void = null) {
 		this.plotting = true
 		if(Settings.plot.optimizeTrajectories) {
 			this.optimizeTrajectories(this.item)
 		}
+		console.log('Generating drawing commands...')
 		// Clone item to apply matrix without loosing points, matrix & visibility information
 		let clone = this.item.clone()
 		clone.applyMatrix = true
+		clone.transform(this.group.matrix)
 		clone.visible = true
 		this.plotItem(clone)			// to be overloaded. The draw button calls plot()
 		clone.remove()
 		tipibot.goHome(()=> this.plotFinished(callback))
+		console.log('Drawing commands generated.')
 	}
 
 	showPoints(show: boolean) {
@@ -445,6 +497,9 @@ export class SVGPlot {
 	}
 
 	getAngle(segment: paper.Segment) {
+		if(segment.previous == null || segment.point == null || segment.next == null) {
+			return 180
+		}
 		let pointToPrevious = segment.previous.point.subtract(segment.point)
 		let pointToNext = segment.next.point.subtract(segment.point)
 		let angle = pointToPrevious.getDirectedAngle(pointToNext)
@@ -455,7 +510,6 @@ export class SVGPlot {
 		if(segment.previous == null || segment.point == null || segment.next == null) {
 			return 180
 		}
-		// no need to transform points to compute angle
 		
 		let angle = this.getAngle(segment)
 		let currentSegment = segment.previous
@@ -463,14 +517,14 @@ export class SVGPlot {
 		while(currentSegment != null && distance < this.pseudoCurvatureDistance / 2) {
 			angle += this.getAngle(currentSegment)
 			currentSegment = currentSegment.previous
-			distance += currentSegment.curve.length
+			distance += currentSegment != null ? currentSegment.curve.length : 0
 		}
 		distance = segment.curve.length
 		currentSegment = segment.next
 		while(currentSegment.next != null && distance < this.pseudoCurvatureDistance / 2) {
 			angle += this.getAngle(currentSegment)
 			currentSegment = currentSegment.next
-			distance += currentSegment.curve.length
+			distance += currentSegment != null ? currentSegment.curve.length : 0
 		}
 
 		return angle
@@ -609,11 +663,7 @@ export class SVGPlot {
 					if(segment == path.firstSegment) {
 						if(!tipibot.getPosition().equals(point)) {
 							tipibot.penUp()
-							if(Settings.forceLinearMoves) {
-								tipibot.moveLinear(point, 0, ()=> tipibot.pen.setPosition(point, true, false), false)
-							} else {
-								tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
-							}
+							tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
 						}
 						tipibot.penDown()
 					} else {
@@ -726,9 +776,12 @@ export class SVGPlot {
 			this.originalItem.remove()
 		}
 		this.originalItem = null
-		if(this.group != null) {
-			this.group.remove()
-		}
+		this.group.removeChildren()
+	}
+
+	destroy() {
+		this.clear()
+		this.group.remove()
 		this.group = null
 	}
 }

@@ -138,6 +138,25 @@ export class GUI {
 	nameToController: Map<string, Controller>
 	nameToFolder: Map<string, GUI>
 
+	static loadingTimeoutID: number = null
+	
+	public static startLoadingAnimation(callback: ()=> any = null) {
+		$('#loading').removeClass('hidden')
+		clearTimeout(GUI.loadingTimeoutID)
+		GUI.loadingTimeoutID = setTimeout(()=> {
+			$('#loading').addClass('loading')
+			if(callback != null) {
+				setTimeout(()=>callback(), 400)
+			}
+		}, 100)
+	}
+
+	public static stopLoadingAnimation() {
+		$('#loading').removeClass('loading')
+		clearTimeout(GUI.loadingTimeoutID)
+		GUI.loadingTimeoutID = setTimeout(()=>$('#loading').addClass('hidden'), 1000)
+	}
+
 	constructor(options: any = null, name: string = null, parent: GUI = null) {
 		this.gui = parent != null && name != null ? parent.gui.addFolder(name) : new dat.GUI(options)
 		this.name = name

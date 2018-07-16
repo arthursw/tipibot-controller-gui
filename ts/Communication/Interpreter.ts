@@ -22,7 +22,7 @@ export class Interpreter {
 	pause: boolean
 	tempoNextCommand: boolean
 	serialInput: string
-	readonly continueMessage = 'READY'
+	continueMessage = 'READY'
 	serialCommunicationSpeed = 115200
 
 	constructor(communication: Communication) {
@@ -90,9 +90,6 @@ export class Interpreter {
 	}
 
 	processMessage(message: string) {
-		if(message.indexOf('-p: l: ') != 0) {
-			console.log(message)
-		}
 		
 		// if(message.indexOf('++')==0) {
 		// 	console.log(message)

@@ -5,6 +5,7 @@ import { Interpreter } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
 import { PenPlotter } from "./PenPlotter"
 import { TipibotInterpreter } from "./TipibotInterpreter"
+import { FredBot } from "./FredBot"
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
@@ -106,6 +107,8 @@ export class Communication {
 			this.interpreter = new Polargraph(this)
 		} else if(interpreterName == 'PenPlotter') {
 			this.interpreter = new PenPlotter(this)
+		} else if(interpreterName == 'FredBot') {
+			this.interpreter = new FredBot(this)
 		}
 		this.interpreter.setTipibot(tipibot)
 		console.log('initialize '+interpreterName)
@@ -153,7 +156,7 @@ export class Communication {
 	}
 
 	connectToSerial() {
-		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter'] ).name('Firmware')
+		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'FredBot'] ).name('Firmware')
 		firmwareController.onFinishChange((value)=> {
 			settingsManager.save(false)
 			this.initializeInterpreter(value)

@@ -4,7 +4,6 @@ import { PenPlotter } from "./PenPlotter"
 
 export class TipibotInterpreter extends PenPlotter {
 
-	readonly continueMessage = 'READY'
 	readonly initializationMessage = 'Initialize'
 
 	serialPortConnectionOpened() {

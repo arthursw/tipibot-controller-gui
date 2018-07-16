@@ -13,7 +13,7 @@ export class Pen {
 	public static UP_COLOR = 'rgba(0, 20, 210, 0.25)'
 	public static DOWN_COLOR = 'rgba(0, 20, 210, 0.75)'
 
-	isPenUp: boolean 						// TODO: this variable is both used to tell feedback and to store gui controller state: this must be improved!
+	isUp: boolean 						// TODO: this variable is used to store the gui state, not the actual robot state
 	dragging: boolean
 
 	group: paper.Group
@@ -23,11 +23,11 @@ export class Pen {
 	previousPosition: paper.Point
 
 	static moveTypeFromMouseEvent(event: MouseEvent) {
-		return 	Settings.forceLinearMoves || event.altKey ? MoveType.Linear : MoveType.Direct
+		return 	event.altKey ? MoveType.Linear : MoveType.Direct
 	}
 
 	constructor(x: number, y:number, tipibotWidth: number) {
-		this.isPenUp = true
+		this.isUp = true
 		this.dragging = false
 		this.initialize(x, y, tipibotWidth)
 	}
@@ -92,25 +92,25 @@ export class Pen {
 
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		let penUpCallback = ()=> {
-			this.isPenUp = true
+			this.isUp = true
 			if(callback != null) {
 				callback()
 			}
 		}
 		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.circle.fillColor = Pen.UP_COLOR
-		this.isPenUp = true
+		this.isUp = true
 	}
 	
 	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		let penDownCallback = ()=> {
-			this.isPenUp = false
+			this.isUp = false
 			if(callback != null) {
 				callback()
 			}
 		}
 		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.circle.fillColor = Pen.DOWN_COLOR
-		this.isPenUp = false
+		this.isUp = false
 	}
 }

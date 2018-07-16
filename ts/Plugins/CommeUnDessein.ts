@@ -1,5 +1,5 @@
 import { Settings, settingsManager } from "../Settings"
-import { GUI } from "../GUI"
+import { GUI, Controller } from "../GUI"
 import { SVGPlot } from "../Plot"
 import { communication } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
@@ -83,6 +83,9 @@ export class CommeUnDessein {
 	currentDrawing: { items: any[], pk: string }
 	state: State = State.NextDrawing
 	testMode: boolean
+	startButton: Controller
+	started: boolean = false
+	timeoutID = -1
 
 	constructor(testMode=false) {
 		this.testMode = testMode
@@ -113,19 +116,34 @@ export class CommeUnDessein {
 			window.localStorage.setItem('commeUnDesseinHeight', value)
 		})
 
-		commeUnDesseinGUI.addButton('Start', ()=> this.requestNextDrawing())
-		commeUnDesseinGUI.addButton('Stop & Clear', ()=> this.stopAndClear())
+		this.startButton = commeUnDesseinGUI.addButton('Start', ()=> this.toggleStart())
 		commeUnDesseinGUI.open()
+	}
+
+	toggleStart() {
+		if(!this.started) {
+			if(document.cookie.indexOf('csrftoken') < 0) {
+				console.error('The csrf token cookie is not present, please visit http://commeundessein.co/ before starting Comme un Dessein')
+				return
+			}
+			this.startButton.setName('Stop, clear queue & go home')
+			this.requestNextDrawing()
+		} else {
+			this.startButton.setName('Start')
+			this.stopAndClear()
+		}
+		this.started = !this.started
 	}
 
 	stopAndClear() {
 		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.clear()
+			SVGPlot.svgPlot.destroy()
 		}
 		communication.interpreter.sendStop(true)
 		communication.interpreter.clearQueue()
 		tipibot.goHome()
 		this.state = State.NextDrawing
+		clearTimeout(this.timeoutID)
 	}
 
 	requestNextDrawing() {
@@ -143,9 +161,7 @@ export class CommeUnDessein {
 		}
 		this.state = State.RequestedNextDrawing
 		
-		if(this.testMode) {
-			console.log('requestNextDrawing')
-		}
+		console.log('Request next drawing...')
 
 		// let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
 		let url = commeundesseinAjaxURL
@@ -156,7 +172,11 @@ export class CommeUnDessein {
 			}
 			if (results.message == 'no path') {
 				this.state = State.NextDrawing
-				setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+				console.log('There are no path to draw. Request next drawing in two seconds...')
+				if(this.started) {
+					clearTimeout(this.timeoutID)
+					this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+				}
 				return
 			}
 			if(this.state != State.RequestedNextDrawing) {
@@ -169,7 +189,10 @@ export class CommeUnDessein {
 			console.error('getNextValidatedDrawing request failed')
 			console.error(results)
 			this.state = State.NextDrawing
-			setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+			if(this.started) {
+				clearTimeout(this.timeoutID)
+				this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+			}
 		})
 	}
 
@@ -212,7 +235,7 @@ export class CommeUnDessein {
 			}
 			item.remove()
 			if(SVGPlot.svgPlot != null) {
-				SVGPlot.svgPlot.clear()
+				SVGPlot.svgPlot.destroy()
 			}
 			SVGPlot.svgPlot = new SVGPlot(drawing)
 			SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
@@ -259,7 +282,7 @@ export class CommeUnDessein {
 			drawing.addChild(controlPath)
 		}
 		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.clear()
+			SVGPlot.svgPlot.destroy()
 		}
 		SVGPlot.svgPlot = new SVGPlot(drawing)
 		SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
@@ -304,13 +327,17 @@ export class CommeUnDessein {
 				return
 			}
 			this.state = State.NextDrawing
-			this.requestNextDrawing()
+			if(this.started) {
+				this.requestNextDrawing()
+			}
 			return
 		}).fail((results) => {
 			console.error('setDrawingStatusDrawn request failed')
 			console.error(results)
 			this.state = State.Drawing
-			this.setDrawingStatusDrawn(pk)
+			if(this.started) {
+				this.setDrawingStatusDrawn(pk)
+			}
 		})
 	}
 }

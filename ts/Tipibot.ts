@@ -56,7 +56,7 @@ export class Tipibot implements TipibotInterface {
 		this.motorsEnableButton = gui.addButton('Disable motors', ()=> this.toggleMotors())
 		
 		// DEBUG
-		gui.addButton('Send specs', ()=> communication.interpreter.initialize(false))
+		gui.addButton('Initialize', ()=> communication.interpreter.initialize(false))
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -81,7 +81,7 @@ export class Tipibot implements TipibotInterface {
 	
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
-		if(this.pen.isPenUp) {
+		if(this.pen.isUp) {
 			this.penDown(SettingsManager.servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
 		} else {
 			this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
@@ -225,7 +225,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	checkInitialized() {
-		if(!this.initializedCommunication) {
+		if(Settings.forceInitialization && !this.initializedCommunication) {
 			communication.interpreter.initialize()
 		}
 	}
@@ -257,9 +257,9 @@ export class Tipibot implements TipibotInterface {
 			}
 		}
 
-		if(moveType == MoveType.Direct) {
+		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
 			communication.interpreter.sendMoveDirect(point, moveCallback)
-		} else if(moveType == MoveType.Linear) {
+		} else {
 			communication.interpreter.sendMoveLinear(point, minSpeed, moveCallback)
 		}
 
@@ -352,14 +352,14 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
-		if(!this.pen.isPenUp || force) {
+		if(!this.pen.isUp || force) {
 			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 			this.penStateButton.setName('Pen down')
 		}
 	}
 
 	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
-		if(this.pen.isPenUp || force) {
+		if(this.pen.isUp || force) {
 			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 			this.penStateButton.setName('Pen up')
 		}

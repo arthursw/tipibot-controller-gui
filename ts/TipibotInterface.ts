@@ -4,7 +4,7 @@ export interface TipibotInterface {
 	tipibotArea: paper.Path
 	drawArea: paper.Path
 	initializedCommunication: boolean
-	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isPenUp: boolean }
+	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isUp: boolean }
 
 	createGUI(gui:GUI): void
 	getPosition(): paper.Point

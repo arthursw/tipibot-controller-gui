@@ -19,6 +19,8 @@ export class Renderer {
 		paper.project.currentStyle.strokeWidth = 0.5
 		paper.project.currentStyle.strokeScaling = false
 
+		let mainLayer = new paper.Layer()
+
 		this.dragging = false
 		this.previousPosition = new paper.Point(0, 0)
 
