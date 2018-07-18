@@ -19,8 +19,8 @@
     "three.meshline": "^1.0.3"
   },
   "devDependencies": {
-    "@types/file-saver": "0.0.1",
     "@types/dat-gui": "^0.6.2",
+    "@types/file-saver": "0.0.1",
     "@types/jquery": "^2.0.44",
     "@types/paper": "^0.9.1",
     "@types/three": "0.0.28",

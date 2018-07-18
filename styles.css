@@ -82,7 +82,7 @@ body {
 }
 
 #command-list {
-	max-height: 500px;
+	max-height: 400px;
 }
 
 #info {
@@ -161,6 +161,10 @@ body {
 
 #console-list li p.error {
 	color: #ff3939;
+}
+
+#console-list li p.info {
+	color: orange;
 }
 
 table {

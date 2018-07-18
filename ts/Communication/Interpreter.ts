@@ -148,6 +148,18 @@ export class Interpreter {
 		document.dispatchEvent(new CustomEvent('ClearQueue', { detail: null }))
 	}
 
+	executeOnceFinished(callback: ()=> void) {
+		if(this.commandQueue.length == 0) {
+			callback()
+		}
+		let lastCommand = this.commandQueue[this.commandQueue.length - 1]
+		let currentCallback = lastCommand.callback
+		lastCommand.callback = ()=> {
+			currentCallback()
+			callback()
+		}
+	}
+
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     }
 

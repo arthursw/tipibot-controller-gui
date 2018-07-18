@@ -38,6 +38,7 @@ export class Renderer {
 			let margin = 200
 			let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
+			document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		}
 
 		paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2))
@@ -94,6 +95,7 @@ export class Renderer {
 		}
 		let cursorPosition = this.getWorldPosition(event)
 		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500))
+		document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		let newCursorPosition = this.getWorldPosition(event)
 		paper.view.translate(newCursorPosition.subtract(cursorPosition))
 	}

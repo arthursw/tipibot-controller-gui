@@ -105,8 +105,8 @@ export class PenPlotter extends Interpreter {
 	}
 
 	sendPenState(servoValue: number, delayBefore: number = 0, delayAfter: number = 0, callback: ()=> void = null) {
+		let message = 'Move pen' + (servoValue == Settings.servo.position.up ? ' up' : servoValue == Settings.servo.position.down ? ' down' : '') + ': ' + servoValue
 		servoValue = this.convertServoValue(servoValue)
-		let message = 'Move servo: ' + servoValue
 		if(delayBefore > 0) {
 			this.sendPause(delayBefore)
 		}

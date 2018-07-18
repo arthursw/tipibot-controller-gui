@@ -19,6 +19,7 @@ import { Console } from "./Console"
 import { VisualFeedback, visualFeedback } from "./VisualFeedback"
 import { CommeUnDessein } from "./Plugins/CommeUnDessein"
 import { Telescreen } from "./Plugins/Telescreen"
+import { SVGSplitter } from "./Plugins/SVGSplitter"
 
 declare var addWheelListener: any
 declare var dat: any
@@ -57,9 +58,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		
 		communication = new Communication(gui)
 
-		let commandFolder = gui.addFolder('Commands')
-		commandFolder.open()
-
 		settingsManager.createGUI(gui)
 		
 		SVGPlot.createGUI(gui)
@@ -67,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		renderer = new Renderer()
 		
 		communication.setTipibot(tipibot)
-		tipibot.initialize(commandFolder)
+		tipibot.initialize()
 
 		renderer.centerOnTipibot(Settings.tipibot)
 
@@ -82,6 +80,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 		let telescreen = new Telescreen()
 		telescreen.createGUI(pluginFolder)
+
+		let svgSplitter = new SVGSplitter()
+		svgSplitter.createGUI(pluginFolder)
 		
 		// debug
 		w.tipibot = tipibot

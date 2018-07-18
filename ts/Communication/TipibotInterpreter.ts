@@ -32,7 +32,7 @@ export class TipibotInterpreter extends PenPlotter {
 	}
 
 	convertServoValue(servoValue: number) {
-		return servoValue
+		return Math.round(servoValue)
 	}
 
 	sendMotorOn() {

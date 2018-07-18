@@ -6,7 +6,6 @@ export interface TipibotInterface {
 	initializedCommunication: boolean
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isUp: boolean }
 
-	createGUI(gui:GUI): void
 	getPosition(): paper.Point
 	setX(x: number, sendChange?: boolean): void
 	setY(y: number, sendChange?: boolean): void

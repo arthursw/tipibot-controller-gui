@@ -9,21 +9,9 @@ export class SVGPlot {
 	static svgPlot: SVGPlot = null
 	static gui: GUI = null
 	static transformFolder: GUI = null
-	
-	static files: File[] = null
-	static multipleFiles = false
-	static fileIndex = 0
-	static currentMatrix: paper.Matrix = null
-
 	readonly pseudoCurvatureDistance = 10 		// in mm
-	
-	public static readonly nSegmentsPerBatch = 100
-	public static readonly nSegmentsMax = SVGPlot.nSegmentsPerBatch * 3
 
-	nSegments = 0
-	currentPath: paper.Path = null
-
-	public static loadImage(event: any, callback: ()=>void = null) {
+	public static loadImage(event: any) {
 		let svg = paper.project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
@@ -33,28 +21,22 @@ export class SVGPlot {
 		console.log('SVG imported.')
 
 		GUI.stopLoadingAnimation()
-
-		if(callback != null) {
-			callback()
-		}
 	}
 
-	public static onImageLoad(event: any, callback: ()=>void = null) {
+	public static onImageLoad(event: any) {
 		console.log('Importing SVG...')
 
-		GUI.startLoadingAnimation(()=>SVGPlot.loadImage(event, callback))
+		GUI.startLoadingAnimation(()=>SVGPlot.loadImage(event))
 	}
 
 	public static handleFileSelect(event: any) {
-		this.gui.getController('Load SVG').hide()
-		this.gui.getController('Clear SVG').show()
+		SVGPlot.gui.getController('Load SVG').hide()
+		SVGPlot.gui.getController('Clear SVG').show()
 
 		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
 
-		this.files = []
-
 		for (let i = 0; i < files.length; i++) {
-			let file = files[i] != null ? files[i] : files.item(i)
+			let file = files.item(i)
 			
 			let imageType = /^image\//
 
@@ -62,50 +44,13 @@ export class SVGPlot {
 				continue
 			}
 
-			this.files.push(file)
+			let reader = new FileReader()
+			reader.onload = (event)=> SVGPlot.onImageLoad(event)
+			reader.readAsText(file)
 		}
-
-		this.multipleFiles = this.files.length > 1
-		this.fileIndex = 0
-
-		if(this.files.length < files.length) {
-			console.info('Warning: some of the selected files are not SVG images, there will not be imported.')
-		}
-
-		if(this.multipleFiles) {
-			console.info('Only the first file will be imported for now, the other files will be imported one by one while drawing.')
-		}
-
-		this.loadNextFile()
-	}
-
-	public static loadNextFile(callback: ()=>void = null) {
-		if(this.fileIndex >= this.files.length) {
-			return
-		}
-		let file = this.files[this.fileIndex]
-		let reader = new FileReader()
-		reader.onload = (event)=> this.onImageLoad(event, callback)
-		reader.readAsText(file)
-	}
-
-	public static plotFinished() {
-		if(this.multipleFiles) {
-			this.fileIndex++
-			if(this.fileIndex < this.files.length) {
-				this.loadNextFile(()=> this.plotAndLoadLoop())
-			} else {
-				tipibot.goHome()
-			}
-		}
-	}
-
-	public static plotAndLoadLoop() {
-		this.svgPlot.plot(()=> SVGPlot.plotFinished(), !this.multipleFiles)
 	}
 
 	public static clearClicked(event: any) {
-		this.fileIndex = 0
 		communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
 		SVGPlot.gui.getController('Clear SVG').hide()
@@ -119,7 +64,7 @@ export class SVGPlot {
 		if(SVGPlot.svgPlot != null) {
 			if(!SVGPlot.svgPlot.plotting) {
 				SVGPlot.gui.getController('Draw').name('Stop, clear commands & go home')
-				SVGPlot.plotAndLoadLoop()
+				SVGPlot.svgPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
 				communication.interpreter.sendStop(true)
@@ -135,7 +80,6 @@ export class SVGPlot {
 		SVGPlot.gui.open()
 
 		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
-		SVGPlot.gui.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
 		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', true, (event)=> SVGPlot.handleFileSelect(event))
@@ -146,6 +90,7 @@ export class SVGPlot {
 
 		let filterFolder = gui.addFolder('Filter')
 		filterFolder.add(Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true))
+		filterFolder.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
 		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
 		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
 		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
@@ -177,149 +122,7 @@ export class SVGPlot {
 		}
 	}
 
-	public static itemMustBeDrawn(item: paper.Item) {
-		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null
-	}
-
-	public static convertShapeToPath(shape: paper.Shape): paper.Path {
-		if(shape.className != 'Shape' || !this.itemMustBeDrawn(shape)) {
-			return <any>shape
-		}
-		let path = shape.toPath(true)
-		shape.parent.addChildren(shape.children)
-		shape.remove()
-		return path
-	}
-
-	// public static collapseItem(item: paper.Item, parent: paper.Item) {
-	// 	item.applyMatrix = true
-
-	// 	item = this.convertShapeToPath(<paper.Shape>item)
-
-	// 	if(item.children != null) {
-	// 		while(item.children.length > 0) {
-	// 			let child = item.firstChild
-
-	// 			child.applyMatrix = true
-
-	// 			if(!this.itemMustBeDrawn(child)) {
-	// 				child.strokeWidth = item.strokeWidth
-	// 				child.strokeColor = item.strokeColor
-	// 				child.fillColor = item.fillColor
-	// 			}
-	// 			if(child.strokeWidth > 0 && child.strokeColor == null) {
-	// 				child.strokeColor == 'black'
-	// 			}
-
-	// 			child.remove()
-
-	// 			if(this.itemMustBeDrawn(child)) {
-	// 				parent.addChild(child)
-	// 				this.collapseItem(child, parent)
-	// 			}
-	// 		}
-	// 	}
-
-	// 	if(item.className != 'Path') {
-	// 		item.remove()
-	// 	}
-	// }
-
-	public static checkBackground(item: paper.Path, parent: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
-		let isPathOrShape = item.className == 'Shape' || item.className == 'Path'
-		let hasChildren = item.children != null && item.children.length > 0
-		let isAsBigAsParent = item.strokeBounds.contains(parentStrokeBounds)
-		let hasFourSegments = item.segments != null && item.segments.length == 4
-		if( isPathOrShape && hasFourSegments && item.closed && isAsBigAsParent && !hasChildren ) {
-			// We found the background: add it as a sibling of parent, it will be used to correctly position the svg
-			item.remove()
-			group.addChild(item)
-			item.sendToBack()
-			item.name = 'background'
-			item.strokeColor = null
-			item.strokeWidth = 0
-			return true
-		}
-		return false
-	}
-
-	public static collapseItem(item: paper.Item, parent: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
-		item.applyMatrix = true
-
-		if(group != null && this.checkBackground(<paper.Path>item, parent, group, parentStrokeBounds)) {
-			return
-		}
-
-		item = this.convertShapeToPath(<paper.Shape>item)
-
-		if(item.strokeWidth == null || item.strokeWidth <= 0 || Number.isNaN(item.strokeWidth)) {
-			item.strokeWidth = Number.isNaN(parent.strokeWidth) ? 1 : parent.strokeWidth
-		}
-		if(item.strokeColor == null) {
-			item.strokeColor = parent.strokeColor != null ? parent.strokeColor : 'black'
-		}
-		if((item.strokeWidth == null || item.strokeWidth <= 0 || item.strokeColor == null) && item.fillColor == null) {
-			item.fillColor = parent.fillColor
-		}
-
-		item.remove()
-
-		if(item.className == 'Path' && this.itemMustBeDrawn(item)) {
-			parent.addChild(item)
-		}
-
-		while(item.children != null && item.children.length > 0) {
-			this.collapseItem(item.firstChild, parent, group, parentStrokeBounds)
-		}
-	}
-
-	public static collapse(item: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
-		if(item.children == null || item.children.length == 0) {
-			return
-		}
-		let children = item.children.slice() // since we will remove and / or add children in collapse item
-		for(let child of children) {
-			this.collapseItem(child, item, group, parentStrokeBounds)
-		}
-	}
-
-	public static subdividePath(path: paper.Path, maxSegmentLength: number) {
-		if(path.segments != null) {
-			for(let segment of path.segments) {
-				let curve = segment.curve
-				do{
-					curve = curve.divideAt(maxSegmentLength)
-				}while(curve != null);
-			}
-		}
-	}
-
-	public static filter(item: paper.Item) {
-		for(let child of item.children) {
-			if(child.className != 'Path') { 	// can be Shape if it is the background
-				continue
-			}
-			let path = <paper.Path>child
-			if(Settings.plot.flatten) {
-				path.flatten(Settings.plot.flattenPrecision)
-			}
-			if(Settings.plot.subdivide) {
-				this.subdividePath(path, Settings.plot.maxSegmentLength)
-			}
-		}
-	}
-
-	public static splitLongPaths(item: paper.Item) {
-		for(let child of item.children) {	// recheck the newly created path since they still be too long
-			let path = <paper.Path>child
-			if(path.segments.length > SVGPlot.nSegmentsPerBatch) {
-				path.split(path.segments[SVGPlot.nSegmentsPerBatch-1].location.offset)
-			}
-		}
-	}
-
 	group: paper.Group
-	background: paper.Item
 	item: paper.Item
 	raster: paper.Raster
 	originalItem: paper.Item 			// Not flattened
@@ -338,11 +141,6 @@ export class SVGPlot {
 		this.group = new paper.Group()
 		this.group.sendToBack()
 
-		if(SVGPlot.currentMatrix != null) {
-			this.group.applyMatrix = false
-			this.group.matrix = SVGPlot.currentMatrix
-		}
-
 		this.item = item
 		this.item.strokeScaling = true
 
@@ -357,46 +155,11 @@ export class SVGPlot {
 
 		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
-
-
-		console.log("Collapsing SVG...")
-		SVGPlot.collapse(this.item, this.group, this.item.strokeBounds)
-		this.setBackground()
-		console.log("SVG collapsed.")
-
 		this.filter()
 
 		this.group.onMouseDrag = (event)=> this.onMouseDrag(event)
 
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
-	}
-
-	setBackground() {
-		if(this.group.firstChild.name == 'background') {
-			this.background = this.group.firstChild
-		}
-	}
-	
-	countSegments() {
-		let nSegments = 0
-		for(let child of this.item.children) {
-			let p = <paper.Path>child
-			nSegments += p.segments.length
-		}
-		return nSegments
-	}
-
-	warnIfTooManyCommands() {
-
-		let nSegments = this.countSegments()
-		
-		if(nSegments > SVGPlot.nSegmentsPerBatch) {
-			let message = `Warning: there are ${nSegments} segments to draw. 
-Optimizing trajectories and computing speeds (in full speed mode) will take some time to compute 
-(but it will optimize drawing time), make sure to check your settings before starting drawing.`
-			console.info(message)
-		}
-
 	}
 
 	onSettingChanged(event: CustomEvent) {
@@ -408,9 +171,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	onMouseDrag(event:any) {
-		if(tipibot.pen.dragging) {
-			return
-		}
 		this.group.position = this.group.position.add(event.delta)
 		this.updatePositionGUI()
 	}
@@ -418,6 +178,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	updatePositionGUI() {
 		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
 		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
+	}
+
+	itemMustBeDrawn(item: paper.Item) {
+		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null
 	}
 
 	saveItem() {
@@ -440,8 +204,16 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 		this.item.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
 		
-		for(let child of this.item.children) {
-			child.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
+		// Remove any invisible child from item: 
+		// an invisible shape could be smaller bounds than a path strokeBounds, resulting in item bounds too small
+		// item bounds could be equal to shape bounds instead of path stroke bounds
+		// this is a paper.js bug
+		if(this.item.children != null) {
+			for(let child of this.item.children) {
+				if(!child.visible || child.fillColor == null && child.strokeColor == null && child.className == 'Shape') {
+					child.remove()
+				}
+			}
 		}
 
 		this.item.selected = false
@@ -451,7 +223,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.raster = this.item.rasterize(paper.project.view.resolution)
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
-		this.background.sendToBack()
 		this.item.selected = Settings.plot.showPoints
 		this.item.visible = Settings.plot.showPoints
 	}
@@ -462,17 +233,46 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		} else if(this.originalItem != null) {
 			this.loadItem()
 		}
-		
-		console.log("Flattening and subdividing paths...")
-		SVGPlot.filter(this.item)
-		console.log("Paths flattenned and subdivided.")
-		console.log("Splitting long paths...")
-		SVGPlot.splitLongPaths(this.item)
-		console.log("Paths split.")
-		console.log("There are " + this.item.children.length + " paths in this SVG.")
-
-		this.warnIfTooManyCommands()
+		this.autoSetStroke()
+		this.flatten()
+		this.subdivide()
 		this.updateShape()
+	}
+
+	collapseItem(item: paper.Item, parent: paper.Item) {
+		item.applyMatrix = true
+		
+		if( (item.strokeColor == null || item.strokeWidth == null || item.strokeWidth <= 0) && item.fillColor == null) {
+			item.style = item.parent.style
+		}
+
+		item = item.className == 'Shape' ? this.convertShapeToPath(<paper.Shape>item) : item
+
+		if(item == null || item.children == null || item.children.length == 0) {
+			return
+		}
+
+		while(item.children.length > 0) {
+			let child = item.firstChild
+			child.remove()
+			parent.addChild(child)
+
+			this.collapseItem(child, parent)
+		}
+
+		if(item.className == 'Group' || item.className == 'CompoundPath' || item.className == 'Raster') {
+			item.remove()
+		}
+	}
+
+	collapse(item: paper.Item) {
+		if(item.children == null || item.children.length == 0) {
+			return
+		}
+		let children = item.children.slice()
+		for(let child of children) {
+			this.collapseItem(child, item)
+		}
 	}
 
 	findClosestPath(path: paper.Path, parent: paper.Item): paper.Path {
@@ -507,7 +307,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		return closestPath
 	}
 
-	optimizeTrajectoriesLoaded(item: paper.Item) {
+	optimizeTrajectoriesLoader(item: paper.Item) {
+		this.collapse(item)
 
 		let sortedPaths = []
 		let currentChild = item.firstChild
@@ -559,13 +360,84 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		
 		console.log('Optimizing trajectories...')
 
-		GUI.startLoadingAnimation(()=> this.optimizeTrajectoriesLoaded(item))
+		GUI.startLoadingAnimation(()=> this.optimizeTrajectoriesLoader(item))
 	}
 
-	plot(callback: ()=> void = null, goHomeOnceFinished = true) {
+	convertShapeToPath(shape: paper.Shape): paper.Path {
+		if(!this.itemMustBeDrawn(shape)) {
+			return null
+		}
+		let path = shape.toPath(true)
+		shape.parent.addChildren(shape.children)
+		shape.remove()
+		return path
+	}
+
+	filterItem(item: paper.Item, amount: number, filter: (item: paper.Item, amount: number) => void) {
+		if(!item.visible) {
+			return
+		}
+		let path = item.className == 'Shape' ? this.convertShapeToPath(<paper.Shape>item) : item
+		if(item.className == 'Path' || item.className == 'CompoundPath') {
+			filter.call(this, path, amount)
+		}
+		if(item.children == null) {
+			return
+		}
+		for(let child of item.children) {
+			this.filterItem(child, amount, filter)
+		}
+	}
+
+	subdivide() {
+		if(Settings.plot.subdivide) {
+			this.subdivideItem(this.item, Settings.plot.maxSegmentLength)
+		}
+	}
+	
+	subdividePath(path: paper.Path, maxSegmentLength: number) {
+		if(path.segments != null) {
+			for(let segment of path.segments) {
+				let curve = segment.curve
+				do{
+					curve = curve.divideAt(maxSegmentLength)
+				}while(curve != null);
+			}
+		}
+	}
+
+	subdivideItem(item: paper.Item, maxSegmentLength: number) {
+		this.filterItem(item, maxSegmentLength, this.subdividePath)
+	}
+
+	flatten() {
+		if(Settings.plot.flatten) {
+			this.flattenItem(this.item, Settings.plot.flattenPrecision)
+		}
+	}
+
+	flattenPath(path: paper.Path, flattenPrecision: number) {
+		path.flatten(flattenPrecision)
+	}
+
+	flattenItem(item: paper.Item, flattenPrecision: number) {
+		this.filterItem(item, flattenPrecision, this.flattenPath)
+	}
+
+	autoSetStroke() {
+		this.filterItem(this.item, 0, this.autoSetStrokePath)
+	}
+
+	autoSetStrokePath(path: paper.Path) {
+		path.visible = true
+		if( (path.strokeColor == null || path.strokeWidth == null || path.strokeWidth <= 0) && path.fillColor == null) {
+			path.style = path.parent.style
+		}
+	}
+
+	plot(callback: ()=> void = null) {
 		this.plotting = true
 		console.log('Generating drawing commands...')
-		
 		// Clone item to apply matrix without loosing points, matrix & visibility information
 		let clone = this.item.clone()
 		clone.applyMatrix = true
@@ -574,18 +446,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(Settings.plot.optimizeTrajectories) {
 			this.optimizeTrajectories(clone)
 		}
-
-		this.currentPath = <paper.Path>clone.firstChild
-		
-		this.plotNext(()=> {
-			if(goHomeOnceFinished) {
-				tipibot.goHome(()=> this.plotFinished(callback))
-			} else {
-				this.plotFinished(callback)
-			}
-		})
-
+		this.plotItem(clone)
 		clone.remove()
+		tipibot.goHome(()=> this.plotFinished(callback))
+		console.log('Drawing commands generated.')
 	}
 
 	showPoints(show: boolean) {
@@ -593,88 +457,42 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.item.visible = show
 	}
 
-	storeMatrix() {
-		SVGPlot.currentMatrix = this.group.matrix
-	}
-
-	checkPlotting() {
-		if(this.plotting) {
-			console.error('You cannot apply any transformation while the machine is plotting.')
-			return true
-		}
-		return false
-	}
-
 	rotate() {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.rotate(90)
 		this.updateShape()
 		this.updatePositionGUI()
-		this.storeMatrix()
 	}
 
 	scale(value: number) {
-		if(this.checkPlotting()) {
-			return
-		}
 
 		this.group.applyMatrix = false
 		this.group.scaling = new paper.Point(Math.sign(this.group.scaling.x) * value, Math.sign(this.group.scaling.y) * value)
 
 		this.updateShape()
 		this.updatePositionGUI()
-		this.storeMatrix()
 	}
 
 	center() {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.position = tipibot.drawArea.bounds.center
 		this.updatePositionGUI()
-		this.storeMatrix()
 	}
 
 	flipX() {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.scale(-1, 1)
 		this.updateShape()
-		this.storeMatrix()
 	}
 	
 	flipY() {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.scale(1, -1)
 		this.updateShape()
-		this.storeMatrix()
 	}
 	
 	setX(x: number) {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
-		this.storeMatrix()
 	}
 	
 	setY(y: number) {
-		if(this.checkPlotting()) {
-			return
-		}
-
 		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
-		this.storeMatrix()
 	}
 
 	getAngle(segment: paper.Segment) {
@@ -710,6 +528,54 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 		return angle
 	}
+
+	// mustMoveFullSpeed(segment: paper.Segment) {
+	// 	return this.getPseudoCurvature(segment) < Settings.plot.maxCurvatureFullspeed
+	// }
+
+	// computeFullSpeed(path: paper.Path, fullSpeedPoints: Set<paper.Point>) {
+	// 	let maxBrakingDistanceSteps = Settings.tipibot.maxSpeed * Settings.tipibot.maxSpeed / (2.0 * Settings.tipibot.acceleration)
+	// 	let maxBrakingDistanceMm = maxBrakingDistanceSteps * SettingsManager.mmPerSteps()
+	// 	let currentSegment = path.lastSegment.previous
+	// 	let distanceToBrake = maxBrakingDistanceMm
+	// 	let distance = 0
+		
+	// 	// go from last segment to first segment
+	// 	// compute the distance to brake after which all points will be full speed
+	// 	// if the current segment is before distance to brake: just compute distance to brake
+	// 	// if the current segment is after distance to brake: 
+	// 	//    if the distance fall on the current curve: divide it
+	// 	//    in any case: set point to full speed
+		
+	// 	// to recompute distance to brake:
+	// 	// maxBrakingDistanceMm = maxSpeed * maxSpeed / (2 * acceleration)
+	// 	// the new distance to brake is the maximum between the current distance to break and the distance to break for the current point
+		
+	// 	// the distance to break for the current point is maxBrakingDistanceMm * ratio
+	// 	// where ratio is 1 when the pseudo curvature is Settings.plot.maxCurvatureFullspeed and 0 when it is 0
+	// 	// => the more pseudo curvature, the longer the distance is
+
+	// 	while(currentSegment != null) {
+	// 		let curveLength = currentSegment.curve.length
+	// 		distance += curveLength
+	// 		if(distance > distanceToBrake) {
+	// 			if(distance - distanceToBrake < curveLength) {
+	// 				let curveLocation =  1 - (curveLength / (distance - distanceToBrake))
+	// 				currentSegment.curve.divideAt(curveLocation)
+	// 				let circle = paper.Path.Circle(currentSegment.curve.point2, 2)
+	// 				circle.fillColor = 'blue'
+	// 				fullSpeedPoints.add(currentSegment.curve.point2)
+	// 			}
+	// 			// let circle = paper.Path.Circle(currentSegment.point, 2)
+	// 			// circle.fillColor = 'blue'
+	// 		}
+	// 		let pseudoCurvature = this.getPseudoCurvature(currentSegment)
+	// 		let ratio = Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+	// 		console.log(distance, distanceToBrake, maxBrakingDistanceMm, ratio)
+	// 		distanceToBrake = Math.max(distanceToBrake, distance + ratio * maxBrakingDistanceMm)
+	// 		currentSegment = currentSegment.previous
+	// 	}
+	// }
 
 	computeSpeeds(path: paper.Path) {
 		let maxSpeed = Settings.tipibot.maxSpeed
@@ -778,59 +644,42 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		tipibot.moveLinear(point, minSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
 	}
 
-	plotPath(path: paper.Path) {
-		if(path.className != 'Path' || !SVGPlot.itemMustBeDrawn(path) || path.segments == null) {
+	plotItem(item: paper.Item) {
+		if(!item.visible) {
 			return
 		}
-		let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
 
-		for(let segment of path.segments) {
-			let point = segment.point
+		if((item.className == 'Path' || item.className == 'CompoundPath') && this.itemMustBeDrawn(item)) {
+			let path: paper.Path = <paper.Path>item
+			if(path.segments != null) {
 
-			if(segment == path.firstSegment) {
-				if(!tipibot.getPosition().equals(point)) {
-					tipibot.penUp()
-					tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+				let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
+
+				for(let segment of path.segments) {
+					let point = segment.point
+
+					if(segment == path.firstSegment) {
+						if(!tipibot.getPosition().equals(point)) {
+							tipibot.penUp()
+							tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						}
+						tipibot.penDown()
+					} else {
+						this.moveTipibotLinear(segment, speeds)
+					}
 				}
-				tipibot.penDown()
-			} else {
-				this.moveTipibotLinear(segment, speeds)
+				if(path.closed) {
+					this.moveTipibotLinear(path.firstSegment, speeds)
+				}
 			}
 		}
-		if(path.closed) {
-			this.moveTipibotLinear(path.firstSegment, speeds)
+		if(item.children == null) {
+			return
 		}
-	}
 
-	plotNextLoaded(callback: ()=> void) {
-		this.nSegments = 0
-
-		while(this.currentPath != null && this.nSegments <= SVGPlot.nSegmentsPerBatch) {
-			this.plotPath(this.currentPath)
-			this.nSegments += this.currentPath.segments.length
-			this.currentPath = <paper.Path>this.currentPath.nextSibling
+		for(let child of item.children) {
+			this.plotItem(child)
 		}
-		
-		console.log('Commands generated.')
-		GUI.stopLoadingAnimation()
-		
-		if(this.currentPath != null) {
-
-			if(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
-				console.error("The path is too long to draw, it should have been split in smaller parts...")
-				this.currentPath.split(this.currentPath.length / 2)
-			}
-
-			tipibot.executeOnceFinished(()=> this.plotNext(callback))
-		} else {
-			callback()
-		}
-	}
-
-	plotNext(callback: ()=> void) {
-		console.log('Generating commands...')
-
-		GUI.startLoadingAnimation(()=> this.plotNextLoaded(callback))
 	}
 
 	// plotItemStep(): any {
@@ -914,28 +763,22 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 		if(this.raster != null) {
 			this.raster.remove()
-			this.raster = null
 		}
+		this.raster = null
 		if(this.item != null) {
 			this.item.remove()
-			this.item = null
 		}
+		this.item = null
 		if(this.originalItem != null) {
 			this.originalItem.remove()
-			this.originalItem = null
 		}
-		if(this.background != null) {
-			this.background.remove()
-			this.background = null
-		}
+		this.originalItem = null
 		this.group.removeChildren()
 	}
 
 	destroy() {
 		this.clear()
-		if(this.group != null) {
-			this.group.remove()
-			this.group = null
-		}
+		this.group.remove()
+		this.group = null
 	}
 }

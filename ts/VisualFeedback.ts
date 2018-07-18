@@ -50,6 +50,7 @@ export class VisualFeedback {
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 		document.addEventListener('ClearFeedback', (event: CustomEvent)=> this.clear(), false)
+		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
 
 		this.group.sendToBack()
 	}
@@ -57,6 +58,11 @@ export class VisualFeedback {
 	clear() {
 		this.paths.removeChildren()
 		this.subTargets.removeChildren()
+	}
+
+	onZoomChanged() {
+		this.circle.applyMatrix = false
+		this.circle.scaling = new paper.Point(1 / paper.view.zoom, 1 / paper.view.zoom)
 	}
 
 	setVisible(visible: boolean) {
@@ -92,6 +98,10 @@ export class VisualFeedback {
 
 	updatePosition(data: string) {
 		let point = this.computePoint(data, this.positionPrefix)
+		
+		if((<any>point).isNaN()) {
+			return
+		}
 
 		if(!this.isPenUp) {
 			if(!this.drawing && this.paths) {
@@ -99,6 +109,7 @@ export class VisualFeedback {
 				path.strokeWidth = Settings.tipibot.penWidth
 				path.strokeColor = 'black'
 				path.strokeScaling = true
+				path.add(point)
 				this.paths.addChild(path)
 				this.drawing = true
 			} else if(this.paths.lastChild != null) {
@@ -114,12 +125,12 @@ export class VisualFeedback {
 
 	updatePen(data: string) {
 		let m = data.replace(this.penPrefix, '')
-		let position = parseFloat(m)
-		this.isPenUp = Math.abs(position - Settings.servo.position.up) < 0.1 ? true : Math.abs(position - Settings.servo.position.down) < 0.1 ? false : null
+		let position = Math.round(parseFloat(m))
+		this.isPenUp = Math.abs(position - Math.round(Settings.servo.position.up)) < 0.1 ? true : Math.abs(position - Math.round(Settings.servo.position.down)) < 0.1 ? false : null
 		if(Settings.servo.position.invert) {
 			this.isPenUp = !this.isPenUp
 		}
-		this.circle.fillColor = this.isPenUp ? 'rgba(255, 193, 7, 0.25)' : this.circle.fillColor = 'rgba(255, 193, 7, 0.8)'
+		this.circle.fillColor = this.isPenUp ? 'rgba(255, 193, 7, 0.25)' : this.circle.fillColor = 'rgba(255, 193, 7, 0.9)'
 	}
 
 	setSubTarget(data: string) {

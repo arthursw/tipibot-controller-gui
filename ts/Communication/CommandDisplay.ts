@@ -2,6 +2,7 @@ import { Settings, settingsManager } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
 import { Command } from "../Communication/Interpreter"
+import { Pen, MoveType } from "../Pen"
 import { tipibot } from "../Tipibot"
 
 export class CommandDisplay {
@@ -23,6 +24,19 @@ export class CommandDisplay {
 	createGUI(gui: GUI) {
 		this.gui = gui.addFolder('Commands')
 		this.gui.open()
+
+		tipibot.gui = this.gui
+		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
+		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(value, tipibot.getPosition().y)))
+		this.gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(tipibot.getPosition().x, value)))
+
+		let goHomeButton = this.gui.addButton('Go home', ()=> tipibot.goHome(()=> console.log('I am home :-)')))
+
+
+		tipibot.penStateButton = this.gui.addButton('Pen down', () => tipibot.togglePenState() )
+		tipibot.motorsEnableButton = this.gui.addButton('Disable motors', ()=> tipibot.toggleMotors())
+		
+		this.gui.addButton('Initialize', ()=> communication.interpreter.initialize(false))
 
 		this.pauseButton = this.gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
 		this.gui.addButton('Emergency stop', () => {

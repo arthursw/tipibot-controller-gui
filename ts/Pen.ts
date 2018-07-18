@@ -8,10 +8,10 @@ export enum MoveType {
 }
 
 export class Pen {
-	public static HOME_RADIUS = 10
-	public static RADIUS = 20
+	public static HOME_RADIUS = 6
+	public static RADIUS = 6
 	public static UP_COLOR = 'rgba(0, 20, 210, 0.25)'
-	public static DOWN_COLOR = 'rgba(0, 20, 210, 0.75)'
+	public static DOWN_COLOR = 'rgba(0, 20, 210, 0.8)'
 
 	isUp: boolean 						// TODO: this variable is used to store the gui state, not the actual robot state
 	dragging: boolean

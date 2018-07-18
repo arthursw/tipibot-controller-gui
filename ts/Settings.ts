@@ -120,7 +120,7 @@ export class SettingsManager {
 		settingsFolder.open()
 
 		let loadSaveFolder = settingsFolder.addFolder('Load & Save')
-		loadSaveFolder.addFileSelectorButton('Load', 'application/json', (event:any) => this.handleFileSelect(event) )
+		loadSaveFolder.addFileSelectorButton('Load', 'application/json', false, (event:any) => this.handleFileSelect(event) )
 		loadSaveFolder.add(this, 'save').name('Save')
 
 		this.tipibotPositionFolder = settingsFolder.addFolder('Position')

@@ -146,7 +146,17 @@ export class GUI {
 		GUI.loadingTimeoutID = setTimeout(()=> {
 			$('#loading').addClass('loading')
 			if(callback != null) {
-				setTimeout(()=>callback(), 400)
+				setTimeout(()=>{
+					// TODO: catch error if any to remove loading animation (comment next line and uncomment following lines)
+					callback()
+					// try {
+					// 	callback()
+					// } catch(e) {
+					// 	this.stopLoadingAnimation()
+					// 	console.error(e.message)
+					// 	throw e
+					// }
+				}, 400)
 			}
 		}, 100)
 	}
@@ -185,9 +195,9 @@ export class GUI {
 		$(this.getDomElement()).find('li.title').text(name)
 	}
 
-	addFileSelectorButton(name: string, fileType: string, callback: (event: any)=>any): Controller {	
+	addFileSelectorButton(name: string, fileType: string, multiple=true, callback: (event: any)=>any): Controller {	
 
-		let divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "'/>")
+		let divJ = $("<input data-name='file-selector' type='file' class='form-control' name='file[]'  accept='" + fileType + "' " + (multiple ? "multiple": "") + "/>")
 
 		let button = this.addButton(name, (event)=> divJ.click())
 		// $(button.getDomElement()).append(divJ)

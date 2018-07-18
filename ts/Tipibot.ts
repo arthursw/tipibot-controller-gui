@@ -6,8 +6,6 @@ import { TipibotInterface } from "./TipibotInterface"
 
 export class Tipibot implements TipibotInterface {
 
-	gui:GUI = null
-
 	tipibotArea: paper.Path
 	drawArea: paper.Path
 	moveToButtons: paper.Path[]
@@ -16,6 +14,7 @@ export class Tipibot implements TipibotInterface {
 	home: paper.Group
 	pen: Pen
 
+	gui: GUI
 	penStateButton: Controller = null
 	motorsEnableButton: Controller = null
 	settingPosition: boolean = false
@@ -27,6 +26,7 @@ export class Tipibot implements TipibotInterface {
 
 	constructor() {
 		this.moveToButtons = []
+		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
 	}
 
 	cartesianToLengths(point: paper.Point): paper.Point {
@@ -42,21 +42,6 @@ export class Tipibot implements TipibotInterface {
 		let x = ( r1 * r1 - r2 * r2 + w * w ) / (2 * w)
 		let y = Math.sqrt( r1 * r1 - x * x )
 		return new paper.Point(x, y)
-	}
-	
-	createGUI(gui: GUI) {
-		this.gui = gui
-		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
-		gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> this.setX(value))
-		gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> this.setY(value))
-
-		let goHomeButton = gui.addButton('Go home', ()=> this.goHome(()=> console.log('I am home :-)')))
-
-		this.penStateButton = gui.addButton('Pen down', () => this.togglePenState() )
-		this.motorsEnableButton = gui.addButton('Disable motors', ()=> this.toggleMotors())
-		
-		// DEBUG
-		gui.addButton('Initialize', ()=> communication.interpreter.initialize(false))
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -118,7 +103,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	createMoveToButton(position: paper.Point): paper.Path {
-		let size = 25
+		let size = 6
 		let rectangle = paper.Path.Rectangle(position.subtract(size), position.add(size))
 		rectangle.fillColor = 'rgba(0, 0, 0, 0.05)'
 		rectangle.onMouseUp = (event)=> this.moveToButtonClicked(event, rectangle.position)
@@ -126,7 +111,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 
-	initialize(gui: GUI) {
+	initialize() {
 		this.tipibotArea = paper.Path.Rectangle(this.computeTipibotArea())
 		this.drawArea = paper.Path.Rectangle(this.computeDrawArea())
 		this.motorLeft = paper.Path.Circle(new paper.Point(0, 0), 50)
@@ -147,7 +132,6 @@ export class Tipibot implements TipibotInterface {
 		this.pen.group.bringToFront()
 
 		settingsManager.setTipibot(this)
-		this.createGUI(gui)
 	}
 
 	moveToButtonClicked(event: MouseEvent, point: paper.Point) {
@@ -157,6 +141,18 @@ export class Tipibot implements TipibotInterface {
 		} else {
 			this.moveLinear(point)
 		}
+	}
+
+	onZoomChanged() {
+		let scaling = new paper.Point(1 / paper.view.zoom, 1 / paper.view.zoom)
+		for(let moveToButtons of this.moveToButtons) {
+			moveToButtons.applyMatrix = false
+			moveToButtons.scaling = scaling
+		}
+		this.pen.circle.applyMatrix = false
+		this.pen.circle.scaling = scaling
+		this.home.applyMatrix = false
+		this.home.scaling = scaling
 	}
 
 	updateMoveToButtons() {
@@ -230,8 +226,8 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	setPosition(point: paper.Point, sendChange=true) {
-		this.pen.setPosition(point, false, false)
+	setPosition(point: paper.Point, sendChange=true, updateSliders=false) {
+		this.pen.setPosition(point, updateSliders, false)
 		if(sendChange) {
 			this.checkInitialized()
 			communication.interpreter.sendSetPosition(point)
@@ -351,6 +347,10 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
+	executeOnceFinished(callback: ()=> void) {
+		communication.interpreter.executeOnceFinished(callback)
+	}
+
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
 		if(!this.pen.isUp || force) {
 			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
@@ -365,13 +365,12 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	setHome(setPosition=true) {
+	setHome(setPosition=true, updateSliders=true) {
 		let homePosition = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		this.home.position = homePosition
 		if(setPosition) {
-			this.setPosition(homePosition)
+			this.setPosition(homePosition, updateSliders)
 		}
-		this.updateMoveToButtons()
 	}
 
 	goHome(callback: ()=> any = null) {
