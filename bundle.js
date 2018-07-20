@@ -1519,13 +1519,13 @@ class SVGPlot {
         clearSVGButton.hide();
         let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked);
         drawButton.hide();
-        let filterFolder = gui.addFolder('Filter');
+        let filterFolder = SVGPlot.gui.addFolder('Filter');
         filterFolder.add(Settings_1.Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true));
         filterFolder.add(Settings_1.Settings.plot, 'flatten').name('Flatten').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter));
         filterFolder.add(Settings_1.Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter));
         filterFolder.add(Settings_1.Settings.plot, 'subdivide').name('Subdivide').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter));
         filterFolder.add(Settings_1.Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter));
-        let transformFolder = gui.addFolder('Transform');
+        let transformFolder = SVGPlot.gui.addFolder('Transform');
         SVGPlot.transformFolder = transformFolder;
         transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center));
         transformFolder.addSlider('X', 0, 0, Settings_1.Settings.drawArea.width).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true));
