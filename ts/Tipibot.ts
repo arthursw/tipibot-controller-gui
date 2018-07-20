@@ -22,11 +22,14 @@ export class Tipibot implements TipibotInterface {
 	initialPosition: paper.Point = null
 	initializedCommunication = false
 
+	lastSentPosition: paper.Point				// The last command created, used in plotPath() to know if we must penUp and moveDirect for the next path
+
 	motorsEnabled = true
 
 	constructor() {
 		this.moveToButtons = []
 		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
+		this.lastSentPosition = new paper.Point(0, 0)
 	}
 
 	cartesianToLengths(point: paper.Point): paper.Point {
@@ -116,7 +119,7 @@ export class Tipibot implements TipibotInterface {
 		this.drawArea = paper.Path.Rectangle(this.computeDrawArea())
 		this.motorLeft = paper.Path.Circle(new paper.Point(0, 0), 50)
 		this.motorRight = paper.Path.Circle(new paper.Point(Settings.tipibot.width, 0), 50)
-		this.pen = new Pen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.width)
+		this.pen = new Pen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.penOffset, Settings.tipibot.width)
 
 		this.home = this.createTarget(Settings.tipibot.homeX, Settings.tipibot.homeY, Pen.HOME_RADIUS)
 		
@@ -205,6 +208,12 @@ export class Tipibot implements TipibotInterface {
 	getPosition() {
 		return this.pen.getPosition()
 	}
+	
+	getGondolaPosition() {
+		let position = this.getPosition()
+		position.y -= Settings.tipibot.penOffset
+		return position
+	}
 
 	getLengths() {
 		return this.cartesianToLengths(this.getPosition())
@@ -226,17 +235,22 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
+	sendGondolaPosition() {
+		communication.interpreter.sendSetPosition(this.getGondolaPosition())
+	}
+
 	setPosition(point: paper.Point, sendChange=true, updateSliders=false) {
 		this.pen.setPosition(point, updateSliders, false)
 		if(sendChange) {
+			this.lastSentPosition = point
 			this.checkInitialized()
-			communication.interpreter.sendSetPosition(point)
+			this.sendGondolaPosition()
 		}
 	}
 
 	sendInvertXY() {
 		communication.interpreter.sendInvertXY()
-		communication.interpreter.sendSetPosition(this.getPosition())
+		this.sendGondolaPosition()
 	}
 
 	sendProgressiveMicrosteps() {
@@ -253,10 +267,13 @@ export class Tipibot implements TipibotInterface {
 			}
 		}
 
+		this.lastSentPosition = point
+
+		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
-			communication.interpreter.sendMoveDirect(point, moveCallback)
+			communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
-			communication.interpreter.sendMoveLinear(point, minSpeed, moveCallback)
+			communication.interpreter.sendMoveLinear(target, minSpeed, moveCallback)
 		}
 
 		this.enableMotors(false)
@@ -307,11 +324,20 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	servoChanged(sendChange: boolean) {
+	servoChanged(sendChange: boolean, up: boolean, specs: boolean) {
 		if(sendChange) {
-			communication.interpreter.sendPenLiftRange()
-			communication.interpreter.sendPenDelays()
-			communication.interpreter.sendServoSpeed()
+			if(specs) {
+				communication.interpreter.sendPenLiftRange()
+				communication.interpreter.sendPenDelays()
+				communication.interpreter.sendServoSpeed()
+			}
+			if(up != null) {
+				if(up) {
+					communication.interpreter.sendPenUp()
+				} else {
+					communication.interpreter.sendPenDown()
+				}
+			}
 		}
 	}
 

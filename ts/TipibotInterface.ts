@@ -7,10 +7,12 @@ export interface TipibotInterface {
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isUp: boolean }
 
 	getPosition(): paper.Point
+	getGondolaPosition(): paper.Point
 	setX(x: number, sendChange?: boolean): void
 	setY(y: number, sendChange?: boolean): void
 	toggleSetPosition(setPosition?: boolean): void
 	setHome(setPosition?: boolean):  void
+	setPosition(point: paper.Point, sendChange?: boolean, updateSliders?: boolean): void
 
 	sizeChanged(sendChange: boolean): void
 	drawAreaChanged(sendChange: boolean): void
@@ -29,7 +31,7 @@ export interface TipibotInterface {
 	mmPerRevChanged(sendChange?: boolean): void
 	microstepResolutionChanged(sendChange?: boolean): void
 	penWidthChanged(sendChange?: boolean): void
-	servoChanged(sendChange: boolean): void
+	servoChanged(sendChange: boolean, up: boolean, specs: boolean): void
 
 	windowResize(): void
 	feedbackChanged(sendChange: boolean): void

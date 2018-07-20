@@ -97,7 +97,8 @@ exports.Settings = {
         microstepResolution: 32,
         mmPerRev: 96,
         progressiveMicrosteps: false,
-        penWidth: 2
+        penWidth: 2,
+        penOffset: 0
     },
     servo: {
         speed: 100,
@@ -197,6 +198,7 @@ class SettingsManager {
         this.drawAreaDimensionsFolder.add(exports.Settings.drawArea, 'height', 0, exports.Settings.tipibot.height, 1).name('Height');
         let penFolder = settingsFolder.addFolder('Pen');
         penFolder.add(exports.Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width');
+        penFolder.add(exports.Settings.tipibot, 'penOffset', -200, 200, 1).name('Pen offset');
         penFolder.add(exports.Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.');
         let anglesFolder = penFolder.addFolder('Angles');
         anglesFolder.add(exports.Settings.servo.position, 'invert').name('Invert');
@@ -329,9 +331,6 @@ class SettingsManager {
             else if (name == 'microstepResolution') {
                 this.tipibot.microstepResolutionChanged(changeFinished);
             }
-            else if (name == 'penWidth') {
-                this.tipibot.penWidthChanged(changeFinished);
-            }
             else if (name == 'invertMotorLeft' || name == 'invertMotorRight' && changeFinished) {
                 this.tipibot.sendInvertXY();
             }
@@ -355,7 +354,7 @@ class SettingsManager {
         }
         else if (parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down')) {
             if (changeFinished) {
-                this.tipibot.servoChanged(changeFinished);
+                this.tipibot.servoChanged(changeFinished, name == 'up' ? true : name == 'down' ? false : null, false);
             }
         }
         else if (parentNames[0] == 'Pen') {
@@ -365,7 +364,10 @@ class SettingsManager {
                 }
             }
             else if (name == 'speed') {
-                this.tipibot.servoChanged(changeFinished);
+                this.tipibot.servoChanged(changeFinished, null, true);
+            }
+            else if (name == 'penOffset') {
+                this.tipibot.setPosition(this.tipibot.getPosition(), changeFinished, false);
             }
         }
         else if (parentNames[0] == 'Draw area dimensions') {
@@ -398,7 +400,7 @@ class SettingsManager {
         this.tipibot.stepsPerRevChanged(true);
         this.tipibot.microstepResolutionChanged(true);
         this.tipibot.penWidthChanged(true);
-        this.tipibot.servoChanged(true);
+        this.tipibot.servoChanged(true, null, true);
         this.tipibot.sizeChanged(true);
         this.tipibot.drawAreaChanged(true);
         // this.tipibot.setX(Settings.tipibot.homeX, false)
@@ -487,6 +489,7 @@ class Tipibot {
         this.motorsEnabled = true;
         this.moveToButtons = [];
         document.addEventListener('ZoomChanged', (event) => this.onZoomChanged(), false);
+        this.lastSentPosition = new paper.Point(0, 0);
     }
     cartesianToLengths(point) {
         let lx2 = Settings_1.Settings.tipibot.width - point.x;
@@ -563,7 +566,7 @@ class Tipibot {
         this.drawArea = paper.Path.Rectangle(this.computeDrawArea());
         this.motorLeft = paper.Path.Circle(new paper.Point(0, 0), 50);
         this.motorRight = paper.Path.Circle(new paper.Point(Settings_1.Settings.tipibot.width, 0), 50);
-        this.pen = new Pen_1.Pen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.width);
+        this.pen = new Pen_1.Pen(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Settings_1.Settings.tipibot.penOffset, Settings_1.Settings.tipibot.width);
         this.home = this.createTarget(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY, Pen_1.Pen.HOME_RADIUS);
         let homePoint = new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY);
         let moveToButtonClicked = this.moveToButtonClicked.bind(this);
@@ -638,6 +641,11 @@ class Tipibot {
     getPosition() {
         return this.pen.getPosition();
     }
+    getGondolaPosition() {
+        let position = this.getPosition();
+        position.y -= Settings_1.Settings.tipibot.penOffset;
+        return position;
+    }
     getLengths() {
         return this.cartesianToLengths(this.getPosition());
     }
@@ -654,16 +662,20 @@ class Tipibot {
             Communication_1.communication.interpreter.initialize();
         }
     }
+    sendGondolaPosition() {
+        Communication_1.communication.interpreter.sendSetPosition(this.getGondolaPosition());
+    }
     setPosition(point, sendChange = true, updateSliders = false) {
         this.pen.setPosition(point, updateSliders, false);
         if (sendChange) {
+            this.lastSentPosition = point;
             this.checkInitialized();
-            Communication_1.communication.interpreter.sendSetPosition(point);
+            this.sendGondolaPosition();
         }
     }
     sendInvertXY() {
         Communication_1.communication.interpreter.sendInvertXY();
-        Communication_1.communication.interpreter.sendSetPosition(this.getPosition());
+        this.sendGondolaPosition();
     }
     sendProgressiveMicrosteps() {
         Communication_1.communication.interpreter.sendProgressiveMicrosteps();
@@ -676,11 +688,13 @@ class Tipibot {
                 callback();
             }
         };
+        this.lastSentPosition = point;
+        let target = new paper.Point(point.x, point.y - Settings_1.Settings.tipibot.penOffset);
         if (moveType == Pen_1.MoveType.Direct && !Settings_1.Settings.forceLinearMoves) {
-            Communication_1.communication.interpreter.sendMoveDirect(point, moveCallback);
+            Communication_1.communication.interpreter.sendMoveDirect(target, moveCallback);
         }
         else {
-            Communication_1.communication.interpreter.sendMoveLinear(point, minSpeed, moveCallback);
+            Communication_1.communication.interpreter.sendMoveLinear(target, minSpeed, moveCallback);
         }
         this.enableMotors(false);
         if (movePen) {
@@ -721,11 +735,21 @@ class Tipibot {
             Communication_1.communication.interpreter.sendPenWidth(Settings_1.Settings.tipibot.penWidth);
         }
     }
-    servoChanged(sendChange) {
+    servoChanged(sendChange, up, specs) {
         if (sendChange) {
-            Communication_1.communication.interpreter.sendPenLiftRange();
-            Communication_1.communication.interpreter.sendPenDelays();
-            Communication_1.communication.interpreter.sendServoSpeed();
+            if (specs) {
+                Communication_1.communication.interpreter.sendPenLiftRange();
+                Communication_1.communication.interpreter.sendPenDelays();
+                Communication_1.communication.interpreter.sendServoSpeed();
+            }
+            if (up != null) {
+                if (up) {
+                    Communication_1.communication.interpreter.sendPenUp();
+                }
+                else {
+                    Communication_1.communication.interpreter.sendPenDown();
+                }
+            }
         }
     }
     sendSpecs() {
@@ -848,9 +872,6 @@ class Communication {
         this.portController = null;
         this.initializeInterpreter(Settings_1.Settings.firmware);
         this.connectToSerial();
-        if (Settings_1.Settings.autoConnect) {
-            this.startAutoConnection();
-        }
     }
     createGUI(gui) {
         this.gui = gui.addFolder('Communication');
@@ -946,6 +967,9 @@ class Communication {
         }
         else if (type == 'not-connected') {
             this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator');
+            if (Settings_1.Settings.autoConnect) {
+                this.startAutoConnection();
+            }
         }
         else if (type == 'connected-to-simulator') {
             this.folderTitle.find('.serial').removeClass('connected').addClass('simulator');
@@ -1256,24 +1280,30 @@ var MoveType;
     MoveType[MoveType["Linear"] = 1] = "Linear";
 })(MoveType = exports.MoveType || (exports.MoveType = {}));
 class Pen {
-    constructor(x, y, tipibotWidth) {
+    constructor(x, y, offset, tipibotWidth) {
         this.isUp = true;
         this.dragging = false;
-        this.initialize(x, y, tipibotWidth);
+        this.initialize(x, y, offset, tipibotWidth);
     }
     static moveTypeFromMouseEvent(event) {
         return event.altKey ? MoveType.Linear : MoveType.Direct;
     }
-    initialize(x, y, tipibotWidth) {
+    initialize(x, y, offset, tipibotWidth) {
         this.group = new paper.Group();
-        this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS);
+        let penPosition = new paper.Point(x, y);
+        let gondolaPosition = new paper.Point(x, y - offset);
+        this.circle = paper.Path.Circle(penPosition, Pen.RADIUS);
         this.circle.fillColor = Pen.UP_COLOR;
         this.group.addChild(this.circle);
         this.lines = new paper.Path();
         this.lines.add(new paper.Point(0, 0));
-        this.lines.add(new paper.Point(x, y));
+        this.lines.add(gondolaPosition);
         this.lines.add(new paper.Point(tipibotWidth, 0));
         this.group.addChild(this.lines);
+        this.offsetLine = new paper.Path();
+        this.offsetLine.add(gondolaPosition);
+        this.offsetLine.add(penPosition);
+        this.group.addChild(this.offsetLine);
         this.previousPosition = new paper.Point(0, 0);
         this.group.onMouseDrag = (event) => this.onMouseDrag(event);
         this.group.onMouseUp = (event) => this.onMouseUp(event);
@@ -1289,7 +1319,7 @@ class Pen {
         this.dragging = false;
     }
     getPosition() {
-        return this.circle.position;
+        return this.circle.position.clone();
     }
     setPosition(point, updateSliders = true, move = true, moveType = MoveType.Direct, callback = null) {
         if (point == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
@@ -1306,8 +1336,11 @@ class Pen {
                 Tipibot_1.tipibot.moveLinear(point, 0, callback);
             }
         }
+        let center = new paper.Point(point.x, point.y - Settings_1.Settings.tipibot.penOffset);
         this.circle.position = point;
-        this.lines.segments[1].point = point;
+        this.lines.segments[1].point = center;
+        this.offsetLine.segments[0].point = center;
+        this.offsetLine.segments[1].point = point;
     }
     tipibotWidthChanged() {
         this.lines.segments[2].point.x = Settings_1.Settings.tipibot.width;
@@ -1628,12 +1661,15 @@ class SVGPlot {
         for (let child of item.children) {
             let path = child;
             if (path.segments.length > SVGPlot.nSegmentsPerBatch) {
-                path.split(path.segments[SVGPlot.nSegmentsPerBatch - 1].location.offset);
+                path.splitAt(path.segments[SVGPlot.nSegmentsPerBatch - 1].location);
             }
         }
     }
     setBackground() {
         if (this.group.firstChild.name == 'background') {
+            if (this.background != null) {
+                this.background.remove();
+            }
             this.background = this.group.firstChild;
         }
     }
@@ -1662,7 +1698,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         }
     }
     onMouseDrag(event) {
-        if (Tipibot_1.tipibot.pen.dragging) {
+        if (Tipibot_1.tipibot.pen.dragging || this.checkPlotting()) {
             return;
         }
         this.group.position = this.group.position.add(event.delta);
@@ -1673,6 +1709,14 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot_1.tipibot.drawArea.bounds.top);
     }
     saveItem() {
+        // Fix paper.js bug: Maximum call stack size exceeded when cloning a path with many segments: https://github.com/paperjs/paper.js/issues/1493
+        let nSegmentsMax = 100000;
+        for (let child of this.item.children) {
+            let p = child;
+            if (p.segments != null && p.segments.length > nSegmentsMax) {
+                p.splitAt(p.segments[nSegmentsMax - 1].location);
+            }
+        }
         this.originalItem = this.item.clone(false);
     }
     loadItem() {
@@ -1697,11 +1741,16 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.raster = this.item.rasterize(paper.project.view.resolution);
         this.group.addChild(this.raster);
         this.raster.sendToBack();
-        this.background.sendToBack();
+        if (this.background != null) {
+            this.background.sendToBack();
+        }
         this.item.selected = Settings_1.Settings.plot.showPoints;
         this.item.visible = Settings_1.Settings.plot.showPoints;
     }
     filter() {
+        if (this.checkPlotting()) {
+            return;
+        }
         if (this.originalItem == null && (Settings_1.Settings.plot.subdivide || Settings_1.Settings.plot.flatten)) {
             this.saveItem();
         }
@@ -1824,7 +1873,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
     }
     checkPlotting() {
         if (this.plotting) {
-            console.error('You cannot apply any transformation while the machine is plotting.');
+            console.error('You cannot apply any filter or transformation while the machine is plotting.');
             return true;
         }
         return false;
@@ -1914,9 +1963,12 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             currentSegment = currentSegment.next;
             distance += currentSegment != null ? currentSegment.curve.length : 0;
         }
-        return angle;
+        return Math.max(angle, 180);
     }
     computeSpeeds(path) {
+        if (Settings_1.Settings.plot.maxCurvatureFullspeed >= 180) {
+            return new Array(path.segments.length).fill(Settings_1.Settings.tipibot.maxSpeed);
+        }
         let maxSpeed = Settings_1.Settings.tipibot.maxSpeed;
         let acceleration = Settings_1.Settings.tipibot.acceleration;
         let mmPerSteps = Settings_1.SettingsManager.mmPerSteps();
@@ -1926,8 +1978,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         let currentSegment = path.lastSegment;
         let previousMinSpeed = null;
         let distanceToLastMinSpeed = 0;
-        let n = 0;
-        while (currentSegment != null && n < 10000) {
+        while (currentSegment != null) {
             let pseudoCurvature = this.getPseudoCurvature(currentSegment);
             let speedRatio = 1 - Math.min(pseudoCurvature / Settings_1.Settings.plot.maxCurvatureFullspeed, 1);
             let minSpeed = speedRatio * Settings_1.Settings.tipibot.maxSpeed;
@@ -1949,10 +2000,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             }
             currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous;
             distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0;
-            n++;
-        }
-        if (n >= 9000) {
-            debugger;
         }
         let speeds = [];
         for (let i = reversedSpeeds.length - 1; i >= 0; i--) {
@@ -1979,7 +2026,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         for (let segment of path.segments) {
             let point = segment.point;
             if (segment == path.firstSegment) {
-                if (!Tipibot_1.tipibot.getPosition().equals(point)) {
+                if (!Tipibot_1.tipibot.lastSentPosition.equals(point)) {
                     Tipibot_1.tipibot.penUp();
                     Tipibot_1.tipibot.moveDirect(point, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
                 }
@@ -2003,9 +2050,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         console.log('Commands generated.');
         GUI_1.GUI.stopLoadingAnimation();
         if (this.currentPath != null) {
-            if (this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
-                console.error("The path is too long to draw, it should have been split in smaller parts...");
-                this.currentPath.split(this.currentPath.length / 2);
+            while (this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
+                this.currentPath.splitAt(this.currentPath.segments[SVGPlot.nSegmentsPerBatch - 1].location);
             }
             Tipibot_1.tipibot.executeOnceFinished(() => this.plotNext(callback));
         }
@@ -2118,7 +2164,7 @@ SVGPlot.files = null;
 SVGPlot.multipleFiles = false;
 SVGPlot.fileIndex = 0;
 SVGPlot.currentMatrix = null;
-SVGPlot.nSegmentsPerBatch = 100;
+SVGPlot.nSegmentsPerBatch = 1000;
 SVGPlot.nSegmentsMax = SVGPlot.nSegmentsPerBatch * 3;
 exports.SVGPlot = SVGPlot;
 
@@ -2272,6 +2318,7 @@ class VisualFeedback {
         this.group.addChild(this.paths);
         this.group.addChild(this.subTargets);
         let positon = Tipibot_1.tipibot.getPosition();
+        let gondolaPosition = Tipibot_1.tipibot.getGondolaPosition();
         this.circle = paper.Path.Circle(positon, Pen_1.Pen.HOME_RADIUS);
         this.circle.fillColor = 'rgba(255, 193, 7, 0.25)';
         this.circle.strokeColor = 'black';
@@ -2279,13 +2326,18 @@ class VisualFeedback {
         this.group.addChild(this.circle);
         this.lines = new paper.Path();
         this.lines.add(new paper.Point(0, 0));
-        this.lines.add(positon);
+        this.lines.add(gondolaPosition);
         this.lines.add(new paper.Point(Settings_1.Settings.tipibot.width, 0));
         this.lines.strokeWidth = 0.5;
         this.lines.strokeColor = 'rgba(0, 0, 0, 0.5)';
         this.lines.dashArray = [2, 2];
         this.lines.strokeScaling = false;
         this.group.addChild(this.lines);
+        this.offsetLine = new paper.Path();
+        this.offsetLine.add(gondolaPosition);
+        this.offsetLine.add(positon);
+        this.offsetLine.dashArray = [2, 2];
+        this.group.addChild(this.offsetLine);
         document.addEventListener('MessageReceived', (event) => this.onMessageReceived(event.detail), false);
         document.addEventListener('SettingChanged', (event) => this.onSettingChanged(event), false);
         document.addEventListener('ClearFeedback', (event) => this.clear(), false);
@@ -2308,7 +2360,10 @@ class VisualFeedback {
     }
     setPosition(point) {
         this.circle.position = point;
-        this.lines.segments[1].point = point;
+        this.offsetLine.segments[1].point = point;
+        let center = new paper.Point(point.x, point.y - Settings_1.Settings.tipibot.penOffset);
+        this.lines.segments[1].point = center;
+        this.offsetLine.segments[0].point = center;
     }
     computePoint(data, prefix) {
         let m = data.replace(prefix, '');
@@ -2392,6 +2447,9 @@ class VisualFeedback {
         if (event.detail.all || event.detail.parentNames[0] == 'Feedback') {
             this.setVisible(Settings_1.Settings.feedback.enable);
         }
+        if (event.detail.all || event.detail.parentNames[0] == 'Pen' && event.detail.name == 'penOffset') {
+            this.setPosition(this.circle.position);
+        }
     }
 }
 exports.VisualFeedback = VisualFeedback;
@@ -2432,7 +2490,7 @@ class Interpreter {
         this.sendInvertXY();
         // Initialize at home position by default; it is always possible to set position afterward
         // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
-        this.sendSetPosition(initializeAtHome ? new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY) : this.tipibot.getPosition());
+        this.sendSetPosition(initializeAtHome ? new paper.Point(Settings_1.Settings.tipibot.homeX, Settings_1.Settings.tipibot.homeY - Settings_1.Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition());
         this.sendMaxSpeedAndAcceleration();
         this.sendServoSpeed();
         this.sendFeedback();

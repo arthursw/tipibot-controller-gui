@@ -18,6 +18,7 @@ export class Pen {
 
 	group: paper.Group
 	circle: paper.Path
+	offsetLine: paper.Path
 	lines: paper.Path
 
 	previousPosition: paper.Point
@@ -26,25 +27,32 @@ export class Pen {
 		return 	event.altKey ? MoveType.Linear : MoveType.Direct
 	}
 
-	constructor(x: number, y:number, tipibotWidth: number) {
+	constructor(x: number, y:number, offset: number, tipibotWidth: number) {
 		this.isUp = true
 		this.dragging = false
-		this.initialize(x, y, tipibotWidth)
+		this.initialize(x, y, offset, tipibotWidth)
 	}
 
-	initialize(x: number, y:number, tipibotWidth: number) {
+	initialize(x: number, y:number, offset: number, tipibotWidth: number) {
 		this.group = new paper.Group()
 
-		this.circle = paper.Path.Circle(new paper.Point(x, y), Pen.RADIUS)
+		let penPosition = new paper.Point(x, y)
+		let gondolaPosition = new paper.Point(x, y - offset)
+
+		this.circle = paper.Path.Circle(penPosition, Pen.RADIUS)
 		this.circle.fillColor = Pen.UP_COLOR
 		this.group.addChild(this.circle)
 
 		this.lines = new paper.Path()
 		this.lines.add(new paper.Point(0, 0))
-		this.lines.add(new paper.Point(x, y))
+		this.lines.add(gondolaPosition)
 		this.lines.add(new paper.Point(tipibotWidth, 0))
-
 		this.group.addChild(this.lines)
+
+		this.offsetLine = new paper.Path()
+		this.offsetLine.add(gondolaPosition)
+		this.offsetLine.add(penPosition)
+		this.group.addChild(this.offsetLine)
 
 		this.previousPosition = new paper.Point(0, 0)
 
@@ -65,7 +73,7 @@ export class Pen {
 	}
 
 	getPosition(): paper.Point {
-		return this.circle.position
+		return this.circle.position.clone()
 	}
 
 	setPosition(point: paper.Point, updateSliders: boolean=true, move: boolean=true, moveType: MoveType=MoveType.Direct, callback: ()=> any = null) {
@@ -82,8 +90,11 @@ export class Pen {
 				tipibot.moveLinear(point, 0, callback)
 			}
 		}
+		let center = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		this.circle.position = point
-		this.lines.segments[1].point = point
+		this.lines.segments[1].point = center
+		this.offsetLine.segments[0].point = center
+		this.offsetLine.segments[1].point = point
 	}
 
 	tipibotWidthChanged() {

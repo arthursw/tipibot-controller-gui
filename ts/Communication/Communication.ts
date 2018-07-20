@@ -34,10 +34,6 @@ export class Communication {
 		this.portController = null
 		this.initializeInterpreter(Settings.firmware)
 		this.connectToSerial()
-
-		if(Settings.autoConnect) {
-			this.startAutoConnection()
-		}
 	}
 
 	createGUI(gui: GUI) {
@@ -143,6 +139,9 @@ export class Communication {
 			this.setPortName(data)
 		} else if(type == 'not-connected') {
 			this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
+			if(Settings.autoConnect) {
+				this.startAutoConnection()
+			}
 		} else if(type == 'connected-to-simulator') {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
 		} else if(type == 'data') {

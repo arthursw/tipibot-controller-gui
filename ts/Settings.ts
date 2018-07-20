@@ -28,7 +28,8 @@ export let Settings = {
 		microstepResolution: 32,
 		mmPerRev: 96,
 		progressiveMicrosteps: false,
-		penWidth: 2
+		penWidth: 2,
+		penOffset: 0
 	},
 	servo: {
 		speed: 100,
@@ -151,6 +152,7 @@ export class SettingsManager {
 		let penFolder = settingsFolder.addFolder('Pen')
 
 		penFolder.add(Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width')
+		penFolder.add(Settings.tipibot, 'penOffset', -200, 200, 1).name('Pen offset')
 		penFolder.add(Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.')
 
 		let anglesFolder = penFolder.addFolder('Angles')
@@ -280,8 +282,6 @@ export class SettingsManager {
 				this.tipibot.stepsPerRevChanged(changeFinished)
 			} else if(name == 'microstepResolution') {
 				this.tipibot.microstepResolutionChanged(changeFinished)
-			} else if(name == 'penWidth') {
-				this.tipibot.penWidthChanged(changeFinished)
 			} else if(name == 'invertMotorLeft' || name == 'invertMotorRight' && changeFinished) {
 				this.tipibot.sendInvertXY()
 			} else if(name == 'progressiveMicrosteps' && changeFinished) {
@@ -301,7 +301,7 @@ export class SettingsManager {
 			}
 		} else if(parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down') ) {
 			if(changeFinished) {
-				this.tipibot.servoChanged(changeFinished)
+				this.tipibot.servoChanged(changeFinished, name == 'up' ? true : name == 'down' ? false : null, false)
 			}
 		} else if(parentNames[0] == 'Pen') {
 			if(name == 'penWidth') {
@@ -309,7 +309,9 @@ export class SettingsManager {
 					this.tipibot.penWidthChanged(true)
 				}
 			} else if(name == 'speed') {
-				this.tipibot.servoChanged(changeFinished)
+				this.tipibot.servoChanged(changeFinished, null, true)
+			} else if(name == 'penOffset') {
+				this.tipibot.setPosition(this.tipibot.getPosition(), changeFinished, false)
 			}
 		} else if(parentNames[0] == 'Draw area dimensions') {
 			this.tipibot.drawAreaChanged(changeFinished)
@@ -344,7 +346,7 @@ export class SettingsManager {
 		this.tipibot.stepsPerRevChanged(true)
 		this.tipibot.microstepResolutionChanged(true)
 		this.tipibot.penWidthChanged(true)
-		this.tipibot.servoChanged(true)
+		this.tipibot.servoChanged(true, null, true)
 		this.tipibot.sizeChanged(true)
 		this.tipibot.drawAreaChanged(true)
 		// this.tipibot.setX(Settings.tipibot.homeX, false)

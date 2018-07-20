@@ -11,6 +11,7 @@ export class VisualFeedback {
 	subTargets: paper.Group
 	circle: paper.Path
 	lines: paper.Path
+	offsetLine: paper.Path
 	drawing: boolean = false
 	isPenUp: boolean = true
 
@@ -30,6 +31,7 @@ export class VisualFeedback {
 		this.group.addChild(this.subTargets)
 
 		let positon = tipibot.getPosition()
+		let gondolaPosition = tipibot.getGondolaPosition()
 		this.circle = paper.Path.Circle(positon, Pen.HOME_RADIUS)
 		this.circle.fillColor = 'rgba(255, 193, 7, 0.25)'
 		this.circle.strokeColor = 'black'
@@ -38,7 +40,7 @@ export class VisualFeedback {
 
 		this.lines = new paper.Path()
 		this.lines.add(new paper.Point(0, 0))
-		this.lines.add(positon)
+		this.lines.add(gondolaPosition)
 		this.lines.add(new paper.Point(Settings.tipibot.width, 0))
 
 		this.lines.strokeWidth = 0.5
@@ -46,6 +48,12 @@ export class VisualFeedback {
 		this.lines.dashArray = [2, 2]
 		this.lines.strokeScaling = false
 		this.group.addChild(this.lines)
+
+		this.offsetLine = new paper.Path()
+		this.offsetLine.add(gondolaPosition)
+		this.offsetLine.add(positon)
+		this.offsetLine.dashArray = [2, 2]
+		this.group.addChild(this.offsetLine)
 
 		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.onMessageReceived(event.detail), false)
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
@@ -71,7 +79,10 @@ export class VisualFeedback {
 
 	setPosition(point: paper.Point) {
 		this.circle.position = point
-		this.lines.segments[1].point = point
+		this.offsetLine.segments[1].point = point
+		let center = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
+		this.lines.segments[1].point = center
+		this.offsetLine.segments[0].point = center
 	}
 
 	computePoint(data: string, prefix: string) {
@@ -162,6 +173,10 @@ export class VisualFeedback {
 		
 		if(event.detail.all || event.detail.parentNames[0] == 'Feedback') {
 			this.setVisible(Settings.feedback.enable)
+		}
+
+		if(event.detail.all || event.detail.parentNames[0] == 'Pen' && event.detail.name == 'penOffset') {
+			this.setPosition(this.circle.position)
 		}
 	}
 }

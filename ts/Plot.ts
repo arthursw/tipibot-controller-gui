@@ -17,7 +17,7 @@ export class SVGPlot {
 
 	readonly pseudoCurvatureDistance = 10 		// in mm
 	
-	public static readonly nSegmentsPerBatch = 100
+	public static readonly nSegmentsPerBatch = 1000
 	public static readonly nSegmentsMax = SVGPlot.nSegmentsPerBatch * 3
 
 	nSegments = 0
@@ -313,7 +313,7 @@ export class SVGPlot {
 		for(let child of item.children) {	// recheck the newly created path since they still be too long
 			let path = <paper.Path>child
 			if(path.segments.length > SVGPlot.nSegmentsPerBatch) {
-				path.split(path.segments[SVGPlot.nSegmentsPerBatch-1].location.offset)
+				path.splitAt(path.segments[SVGPlot.nSegmentsPerBatch-1].location)
 			}
 		}
 	}
@@ -373,6 +373,9 @@ export class SVGPlot {
 
 	setBackground() {
 		if(this.group.firstChild.name == 'background') {
+			if(this.background != null) {
+				this.background.remove()
+			}
 			this.background = this.group.firstChild
 		}
 	}
@@ -408,7 +411,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	onMouseDrag(event:any) {
-		if(tipibot.pen.dragging) {
+		if(tipibot.pen.dragging || this.checkPlotting()) {
 			return
 		}
 		this.group.position = this.group.position.add(event.delta)
@@ -421,6 +424,14 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	saveItem() {
+		// Fix paper.js bug: Maximum call stack size exceeded when cloning a path with many segments: https://github.com/paperjs/paper.js/issues/1493
+		let nSegmentsMax = 100000
+		for(let child of this.item.children) {
+			let p = <paper.Path>child
+			if(p.segments != null && p.segments.length > nSegmentsMax) {
+				p.splitAt(p.segments[nSegmentsMax-1].location)
+			}
+		}
 		this.originalItem = this.item.clone(false)
 	}
 
@@ -451,12 +462,18 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.raster = this.item.rasterize(paper.project.view.resolution)
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
-		this.background.sendToBack()
+		if(this.background != null) {
+			this.background.sendToBack()
+		}
 		this.item.selected = Settings.plot.showPoints
 		this.item.visible = Settings.plot.showPoints
 	}
 
 	filter() {
+		if(this.checkPlotting()) {
+			return
+		}
+
 		if(this.originalItem == null && (Settings.plot.subdivide || Settings.plot.flatten)) {
 			this.saveItem()
 		} else if(this.originalItem != null) {
@@ -599,7 +616,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 	checkPlotting() {
 		if(this.plotting) {
-			console.error('You cannot apply any transformation while the machine is plotting.')
+			console.error('You cannot apply any filter or transformation while the machine is plotting.')
 			return true
 		}
 		return false
@@ -708,10 +725,13 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			distance += currentSegment != null ? currentSegment.curve.length : 0
 		}
 
-		return angle
+		return Math.max(angle, 180)
 	}
 
 	computeSpeeds(path: paper.Path) {
+		if(Settings.plot.maxCurvatureFullspeed >= 180) {
+			return new Array(path.segments.length).fill(Settings.tipibot.maxSpeed)
+		}
 		let maxSpeed = Settings.tipibot.maxSpeed
 		let acceleration = Settings.tipibot.acceleration
 		let mmPerSteps = SettingsManager.mmPerSteps()
@@ -723,8 +743,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		let currentSegment = path.lastSegment
 		let previousMinSpeed = null
 		let distanceToLastMinSpeed = 0
-		let n=0
-		while(currentSegment != null && n<10000) {
+
+		while(currentSegment != null) {
 
 			let pseudoCurvature = this.getPseudoCurvature(currentSegment)
 			let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
@@ -753,10 +773,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 			currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous
 			distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0
-			n++
-		}
-		if(n >= 9000) {
-			debugger
 		}
 
 		let speeds = []
@@ -788,7 +804,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			let point = segment.point
 
 			if(segment == path.firstSegment) {
-				if(!tipibot.getPosition().equals(point)) {
+				if(!tipibot.lastSentPosition.equals(point)) {
 					tipibot.penUp()
 					tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
 				}
@@ -816,9 +832,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		
 		if(this.currentPath != null) {
 
-			if(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
-				console.error("The path is too long to draw, it should have been split in smaller parts...")
-				this.currentPath.split(this.currentPath.length / 2)
+			while(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
+				this.currentPath.splitAt(this.currentPath.segments[SVGPlot.nSegmentsPerBatch-1].location)
 			}
 
 			tipibot.executeOnceFinished(()=> this.plotNext(callback))

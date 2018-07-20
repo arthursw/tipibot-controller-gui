@@ -51,7 +51,7 @@ export class Interpreter {
 		this.sendInvertXY()
 		// Initialize at home position by default; it is always possible to set position afterward
 		// This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
-		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY) : this.tipibot.getPosition())
+		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition())
 		this.sendMaxSpeedAndAcceleration()
 		this.sendServoSpeed()
 		this.sendFeedback()
