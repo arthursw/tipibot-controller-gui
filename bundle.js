@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 18);
+/******/ 	return __webpack_require__(__webpack_require__.s = 20);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -84,6 +84,8 @@ exports.Settings = {
     firmware: 'Tipibot',
     forceLinearMoves: true,
     forceInitialization: true,
+    disableMouseInteractions: false,
+    disableCommandList: false,
     tipibot: {
         width: tipibotWidth,
         height: tipibotHeight,
@@ -144,6 +146,7 @@ class SettingsManager {
         this.gui = null;
         this.tipibotPositionFolder = null;
         this.drawAreaDimensionsFolder = null;
+        this.settingsFolder = null;
         this.motorsFolder = null;
         this.homeFolder = null;
         this.loadLocalStorage();
@@ -172,6 +175,7 @@ class SettingsManager {
     createGUI(gui) {
         this.gui = gui;
         let settingsFolder = gui.addFolder('Settings');
+        this.settingsFolder = settingsFolder;
         settingsFolder.open();
         let loadSaveFolder = settingsFolder.addFolder('Load & Save');
         loadSaveFolder.addFileSelectorButton('Load', 'application/json', false, (event) => this.handleFileSelect(event));
@@ -227,6 +231,8 @@ class SettingsManager {
         feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(new CustomEvent('ClearFeedback')));
         settingsFolder.add(exports.Settings, 'forceLinearMoves').name('Force linear moves');
         settingsFolder.add(exports.Settings, 'forceInitialization').name('Force initialization');
+        settingsFolder.add(exports.Settings, 'disableMouseInteractions').name('Disable mouse interactions');
+        settingsFolder.add(exports.Settings, 'disableCommandList').name('Disable command list');
         let controllers = this.getControllers();
         for (let controller of controllers) {
             let name = controller.getName();
@@ -476,7 +482,227 @@ exports.settingsManager = new SettingsManager();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Communication_1 = __webpack_require__(2);
+const Settings_1 = __webpack_require__(0);
+const Polargraph_1 = __webpack_require__(18);
+const PenPlotter_1 = __webpack_require__(6);
+const TipibotInterpreter_1 = __webpack_require__(19);
+const FredBot_1 = __webpack_require__(17);
+// Connect to arduino-create-agent
+// https://github.com/arduino/arduino-create-agent
+// export const 57600 = 57600
+exports.SERIAL_COMMUNICATION_SPEED = 115200;
+let PORT = window.localStorage.getItem('port') || 6842;
+class Communication {
+    constructor(gui) {
+        this.autoConnectIntervalID = -1;
+        this.serialPortConnectionOpened = false;
+        exports.communication = this;
+        this.socket = null;
+        this.createGUI(gui);
+        this.portController = null;
+        this.initializeInterpreter(Settings_1.Settings.firmware);
+        this.connectToSerial();
+    }
+    createGUI(gui) {
+        this.gui = gui.addFolder('Communication');
+        this.folderTitle = $(this.gui.getDomElement()).find('.title');
+        this.folderTitle.append($('<icon>').addClass('serial').append(String.fromCharCode(9679)));
+        this.folderTitle.append($('<icon>').addClass('websocket').append(String.fromCharCode(9679)));
+    }
+    setTipibot(tipibot) {
+        this.interpreter.setTipibot(tipibot);
+    }
+    startAutoConnection() {
+        this.autoConnectIntervalID = setInterval(() => this.tryConnectSerialPort(), 1000);
+    }
+    stopAutoConnection() {
+        clearInterval(this.autoConnectIntervalID);
+        this.autoConnectIntervalID = null;
+    }
+    setPortName(port) {
+        this.portController.object[this.portController.property] = port.path;
+        this.portController.updateDisplay();
+    }
+    onSerialPortConnectionOpened(port = null) {
+        if (port != null) {
+            this.setPortName(port);
+        }
+        this.serialPortConnectionOpened = true;
+        this.stopAutoConnection();
+        this.interpreter.serialPortConnectionOpened();
+        this.folderTitle.find('.serial').addClass('connected');
+    }
+    onSerialPortConnectionClosed() {
+        this.serialPortConnectionOpened = false;
+        if (Settings_1.Settings.autoConnect) {
+            this.startAutoConnection();
+        }
+        // this.interpreter.connectionClosed()
+        this.folderTitle.find('.serial').removeClass('connected');
+    }
+    initializePortController(options) {
+        this.portController = this.portController.options(options);
+        $(this.portController.domElement.parentElement.parentElement).mousedown((event) => {
+            this.autoConnectController.setValue(false);
+        });
+        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
+    }
+    initializeInterpreter(interpreterName) {
+        let tipibot = this.interpreter ? this.interpreter.tipibot : null;
+        if (this.serialPortConnectionOpened) {
+            this.disconnectSerialPort();
+        }
+        if (interpreterName == 'Tipibot') {
+            this.interpreter = new TipibotInterpreter_1.TipibotInterpreter(this);
+        }
+        else if (interpreterName == 'Polargraph') {
+            this.interpreter = new Polargraph_1.Polargraph(this);
+        }
+        else if (interpreterName == 'PenPlotter') {
+            this.interpreter = new PenPlotter_1.PenPlotter(this);
+        }
+        else if (interpreterName == 'FredBot') {
+            this.interpreter = new FredBot_1.FredBot(this);
+        }
+        this.interpreter.setTipibot(tipibot);
+        console.log('initialize ' + interpreterName);
+    }
+    onMessage(event) {
+        let json = JSON.parse(event.data);
+        let type = json.type;
+        let data = json.data;
+        document.dispatchEvent(new CustomEvent('ServerMessage', { detail: json }));
+        if (type == 'opened') {
+            this.onSerialPortConnectionOpened();
+        }
+        else if (type == 'closed') {
+            this.onSerialPortConnectionClosed();
+        }
+        else if (type == 'list') {
+            let options = ['Disconnected'];
+            for (let port of data) {
+                options.push(port.comName);
+            }
+            this.initializePortController(options);
+            if (Settings_1.Settings.autoConnect) {
+                for (let port of data) {
+                    if (port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
+                        this.portController.setValue(port.comName);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (type == 'connected') {
+            this.setPortName(data);
+        }
+        else if (type == 'not-connected') {
+            this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator');
+            if (Settings_1.Settings.autoConnect) {
+                this.startAutoConnection();
+            }
+        }
+        else if (type == 'connected-to-simulator') {
+            this.folderTitle.find('.serial').removeClass('connected').addClass('simulator');
+        }
+        else if (type == 'data') {
+            this.interpreter.messageReceived(data);
+        }
+        else if (type == 'info') {
+            console.info(data);
+        }
+        else if (type == 'warning') {
+            console.warn(data);
+        }
+        else if (type == 'already-opened') {
+            this.onSerialPortConnectionOpened(data);
+        }
+        else if (type == 'error') {
+            console.error(data);
+        }
+    }
+    connectToSerial() {
+        let firmwareController = this.gui.add(Settings_1.Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'FredBot']).name('Firmware');
+        firmwareController.onFinishChange((value) => {
+            Settings_1.settingsManager.save(false);
+            this.initializeInterpreter(value);
+        });
+        this.autoConnectController = this.gui.add(Settings_1.Settings, 'autoConnect').name('Auto connect').onFinishChange((value) => {
+            Settings_1.settingsManager.save(false);
+            if (value) {
+                this.startAutoConnection();
+            }
+            else {
+                this.stopAutoConnection();
+            }
+        });
+        this.portController = this.gui.add({ 'Connection': 'Disconnected' }, 'Connection');
+        this.gui.addButton('Disconnect', () => this.disconnectSerialPort());
+        this.gui.addButton('Refresh', () => {
+            this.send('list');
+        });
+        this.initializePortController(['Disconnected']);
+        this.socket = new WebSocket('ws://localhost:' + PORT);
+        this.socket.addEventListener('message', (event) => this.onMessage(event));
+        this.socket.addEventListener('open', (event) => this.onWebSocketOpen(event));
+        this.socket.addEventListener('close', (event) => this.onWebSocketClose(event));
+        this.socket.addEventListener('error', (event) => this.onWebSocketError(event));
+    }
+    onWebSocketOpen(event) {
+        this.folderTitle.find('.websocket').addClass('connected');
+        this.send('is-connected');
+    }
+    onWebSocketClose(event) {
+        this.folderTitle.find('.websocket').removeClass('connected');
+        console.error('WebSocket disconnected');
+    }
+    onWebSocketError(event) {
+        console.error('WebSocket error');
+        // console.error(event)
+    }
+    disconnectSerialPort() {
+        this.interpreter.clearQueue();
+        this.interpreter.sendStop(true);
+        this.autoConnectController.setValue(false);
+        this.onSerialPortConnectionClosed();
+        this.send('close');
+        document.dispatchEvent(new CustomEvent('Disconnect'));
+        this.portController.setValue('Disconnected');
+    }
+    serialConnectionPortChanged(portName) {
+        if (portName == 'Disconnected' && this.serialPortConnectionOpened) {
+            this.disconnectSerialPort();
+        }
+        else if (portName != 'Disconnected') {
+            this.interpreter.setSerialPort(portName);
+            document.dispatchEvent(new CustomEvent('Connect', { detail: portName }));
+            console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed);
+            this.send('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed });
+        }
+    }
+    tryConnectSerialPort() {
+        if (!Settings_1.Settings.autoConnect || this.serialPortConnectionOpened) {
+            return;
+        }
+        this.send('list');
+    }
+    send(type, data = null) {
+        let message = { type: type, data: data };
+        this.socket.send(JSON.stringify(message));
+    }
+}
+exports.Communication = Communication;
+exports.communication = null;
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Communication_1 = __webpack_require__(1);
 const Settings_1 = __webpack_require__(0);
 const Pen_1 = __webpack_require__(4);
 class Tipibot {
@@ -846,221 +1072,6 @@ exports.tipibot = new Tipibot();
 
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const Settings_1 = __webpack_require__(0);
-const Polargraph_1 = __webpack_require__(16);
-const PenPlotter_1 = __webpack_require__(6);
-const TipibotInterpreter_1 = __webpack_require__(17);
-const FredBot_1 = __webpack_require__(15);
-// Connect to arduino-create-agent
-// https://github.com/arduino/arduino-create-agent
-// export const 57600 = 57600
-exports.SERIAL_COMMUNICATION_SPEED = 115200;
-let PORT = window.localStorage.getItem('port') || 6842;
-class Communication {
-    constructor(gui) {
-        this.autoConnectIntervalID = -1;
-        this.serialPortConnectionOpened = false;
-        exports.communication = this;
-        this.socket = null;
-        this.createGUI(gui);
-        this.portController = null;
-        this.initializeInterpreter(Settings_1.Settings.firmware);
-        this.connectToSerial();
-    }
-    createGUI(gui) {
-        this.gui = gui.addFolder('Communication');
-        this.folderTitle = $(this.gui.getDomElement()).find('.title');
-        this.folderTitle.append($('<icon>').addClass('serial').append(String.fromCharCode(9679)));
-        this.folderTitle.append($('<icon>').addClass('websocket').append(String.fromCharCode(9679)));
-    }
-    setTipibot(tipibot) {
-        this.interpreter.setTipibot(tipibot);
-    }
-    startAutoConnection() {
-        this.autoConnectIntervalID = setInterval(() => this.tryConnectSerialPort(), 1000);
-    }
-    stopAutoConnection() {
-        clearInterval(this.autoConnectIntervalID);
-        this.autoConnectIntervalID = null;
-    }
-    setPortName(port) {
-        this.portController.object[this.portController.property] = port.path;
-        this.portController.updateDisplay();
-    }
-    onSerialPortConnectionOpened(port = null) {
-        if (port != null) {
-            this.setPortName(port);
-        }
-        this.serialPortConnectionOpened = true;
-        this.stopAutoConnection();
-        this.interpreter.serialPortConnectionOpened();
-        this.folderTitle.find('.serial').addClass('connected');
-    }
-    onSerialPortConnectionClosed() {
-        this.serialPortConnectionOpened = false;
-        if (Settings_1.Settings.autoConnect) {
-            this.startAutoConnection();
-        }
-        // this.interpreter.connectionClosed()
-        this.folderTitle.find('.serial').removeClass('connected');
-    }
-    initializePortController(options) {
-        this.portController = this.portController.options(options);
-        $(this.portController.domElement.parentElement.parentElement).mousedown((event) => {
-            this.autoConnectController.setValue(false);
-        });
-        this.portController.onFinishChange((value) => this.serialConnectionPortChanged(value));
-    }
-    initializeInterpreter(interpreterName) {
-        let tipibot = this.interpreter ? this.interpreter.tipibot : null;
-        if (this.serialPortConnectionOpened) {
-            this.disconnectSerialPort();
-        }
-        if (interpreterName == 'Tipibot') {
-            this.interpreter = new TipibotInterpreter_1.TipibotInterpreter(this);
-        }
-        else if (interpreterName == 'Polargraph') {
-            this.interpreter = new Polargraph_1.Polargraph(this);
-        }
-        else if (interpreterName == 'PenPlotter') {
-            this.interpreter = new PenPlotter_1.PenPlotter(this);
-        }
-        else if (interpreterName == 'FredBot') {
-            this.interpreter = new FredBot_1.FredBot(this);
-        }
-        this.interpreter.setTipibot(tipibot);
-        console.log('initialize ' + interpreterName);
-    }
-    onMessage(event) {
-        let json = JSON.parse(event.data);
-        let type = json.type;
-        let data = json.data;
-        if (type == 'opened') {
-            this.onSerialPortConnectionOpened();
-        }
-        else if (type == 'closed') {
-            this.onSerialPortConnectionClosed();
-        }
-        else if (type == 'list') {
-            let options = ['Disconnected'];
-            for (let port of data) {
-                options.push(port.comName);
-            }
-            this.initializePortController(options);
-            if (Settings_1.Settings.autoConnect) {
-                for (let port of data) {
-                    if (port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
-                        this.portController.setValue(port.comName);
-                        break;
-                    }
-                }
-            }
-        }
-        else if (type == 'connected') {
-            this.setPortName(data);
-        }
-        else if (type == 'not-connected') {
-            this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator');
-            if (Settings_1.Settings.autoConnect) {
-                this.startAutoConnection();
-            }
-        }
-        else if (type == 'connected-to-simulator') {
-            this.folderTitle.find('.serial').removeClass('connected').addClass('simulator');
-        }
-        else if (type == 'data') {
-            this.interpreter.messageReceived(data);
-        }
-        else if (type == 'warning') {
-        }
-        else if (type == 'already-opened') {
-            this.onSerialPortConnectionOpened(data);
-        }
-        else if (type == 'error') {
-            console.error(data);
-        }
-    }
-    connectToSerial() {
-        let firmwareController = this.gui.add(Settings_1.Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'FredBot']).name('Firmware');
-        firmwareController.onFinishChange((value) => {
-            Settings_1.settingsManager.save(false);
-            this.initializeInterpreter(value);
-        });
-        this.autoConnectController = this.gui.add(Settings_1.Settings, 'autoConnect').name('Auto connect').onFinishChange((value) => {
-            Settings_1.settingsManager.save(false);
-            if (value) {
-                this.startAutoConnection();
-            }
-            else {
-                this.stopAutoConnection();
-            }
-        });
-        this.portController = this.gui.add({ 'Connection': 'Disconnected' }, 'Connection');
-        this.gui.addButton('Disconnect', () => this.disconnectSerialPort());
-        this.gui.addButton('Refresh', () => {
-            this.send('list');
-        });
-        this.initializePortController(['Disconnected']);
-        this.socket = new WebSocket('ws://localhost:' + PORT);
-        this.socket.addEventListener('message', (event) => this.onMessage(event));
-        this.socket.addEventListener('open', (event) => this.onWebSocketOpen(event));
-        this.socket.addEventListener('close', (event) => this.onWebSocketClose(event));
-        this.socket.addEventListener('error', (event) => this.onWebSocketError(event));
-    }
-    onWebSocketOpen(event) {
-        this.folderTitle.find('.websocket').addClass('connected');
-        this.send('is-connected');
-    }
-    onWebSocketClose(event) {
-        this.folderTitle.find('.websocket').removeClass('connected');
-        console.error('WebSocket disconnected');
-    }
-    onWebSocketError(event) {
-        console.error('WebSocket error');
-        // console.error(event)
-    }
-    disconnectSerialPort() {
-        this.interpreter.clearQueue();
-        this.interpreter.sendStop(true);
-        this.autoConnectController.setValue(false);
-        this.onSerialPortConnectionClosed();
-        this.send('close');
-        document.dispatchEvent(new CustomEvent('Disconnect'));
-        this.portController.setValue('Disconnected');
-    }
-    serialConnectionPortChanged(portName) {
-        if (portName == 'Disconnected' && this.serialPortConnectionOpened) {
-            this.disconnectSerialPort();
-        }
-        else if (portName != 'Disconnected') {
-            this.interpreter.setSerialPort(portName);
-            document.dispatchEvent(new CustomEvent('Connect', { detail: portName }));
-            console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed);
-            this.send('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed });
-        }
-    }
-    tryConnectSerialPort() {
-        if (!Settings_1.Settings.autoConnect || this.serialPortConnectionOpened) {
-            return;
-        }
-        this.send('list');
-    }
-    send(type, data = null) {
-        let message = { type: type, data: data };
-        this.socket.send(JSON.stringify(message));
-    }
-}
-exports.Communication = Communication;
-exports.communication = null;
-
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1271,9 +1282,9 @@ exports.GUI = GUI;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Communication_1 = __webpack_require__(2);
+const Communication_1 = __webpack_require__(1);
 const Settings_1 = __webpack_require__(0);
-const Tipibot_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 var MoveType;
 (function (MoveType) {
     MoveType[MoveType["Direct"] = 0] = "Direct";
@@ -1382,9 +1393,9 @@ exports.Pen = Pen;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Tipibot_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 const Settings_1 = __webpack_require__(0);
-const Communication_1 = __webpack_require__(2);
+const Communication_1 = __webpack_require__(1);
 const GUI_1 = __webpack_require__(3);
 class SVGPlot {
     constructor(item = null) {
@@ -1469,19 +1480,25 @@ class SVGPlot {
         reader.onload = (event) => this.onImageLoad(event, callback);
         reader.readAsText(file);
     }
-    static plotFinished() {
+    static plotFinished(callback = null) {
         if (this.multipleFiles) {
             this.fileIndex++;
             if (this.fileIndex < this.files.length) {
-                this.loadNextFile(() => this.plotAndLoadLoop());
+                this.loadNextFile(() => this.plotAndLoadLoop(callback));
             }
             else {
                 Tipibot_1.tipibot.goHome();
+                if (callback != null) {
+                    callback();
+                }
             }
         }
     }
-    static plotAndLoadLoop() {
-        this.svgPlot.plot(() => SVGPlot.plotFinished(), !this.multipleFiles);
+    static plotAndLoadLoop(callback = null) {
+        if (this.svgPlot == null) {
+            return;
+        }
+        this.svgPlot.plot(() => SVGPlot.plotFinished(callback), !this.multipleFiles);
     }
     static clearClicked(event) {
         this.fileIndex = 0;
@@ -1530,8 +1547,8 @@ class SVGPlot {
         transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center));
         transformFolder.addSlider('X', 0, 0, Settings_1.Settings.drawArea.width).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true));
         transformFolder.addSlider('Y', 0, 0, Settings_1.Settings.drawArea.height).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true));
-        transformFolder.addButton('Flip X', SVGPlot.createCallback(SVGPlot.prototype.flipX));
-        transformFolder.addButton('Flip Y', SVGPlot.createCallback(SVGPlot.prototype.flipY));
+        transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX));
+        transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY));
         transformFolder.addButton('Rotate', SVGPlot.createCallback(SVGPlot.prototype.rotate));
         transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(SVGPlot.createCallback(SVGPlot.prototype.scale, true));
     }
@@ -2270,7 +2287,7 @@ class PenPlotter extends Interpreter_1.Interpreter {
         if (delayBefore > 0) {
             this.sendPause(delayBefore);
         }
-        this.queue('M340 P3 S' + servoValue + '\n', message);
+        this.queue('M340 P3 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined);
         if (delayAfter > 0) {
             this.sendPause(delayAfter, callback);
         }
@@ -2303,7 +2320,7 @@ exports.PenPlotter = PenPlotter;
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 const Pen_1 = __webpack_require__(4);
-const Tipibot_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 exports.visualFeedback = null;
 class VisualFeedback {
     constructor() {
@@ -2642,9 +2659,9 @@ exports.Interpreter = Interpreter;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
-const Communication_1 = __webpack_require__(2);
+const Communication_1 = __webpack_require__(1);
 const Pen_1 = __webpack_require__(4);
-const Tipibot_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 class CommandDisplay {
     constructor() {
         // $('#commands-content').click((event)=> this.click(event))
@@ -2652,6 +2669,7 @@ class CommandDisplay {
         document.addEventListener('SendCommand', (event) => this.sendCommand(event.detail), false);
         document.addEventListener('CommandExecuted', (event) => this.commandExecuted(event.detail), false);
         document.addEventListener('ClearQueue', (event) => this.clearQueue(), false);
+        document.addEventListener('CancelCommand', (event) => this.commandExecuted(event.detail), false);
     }
     createGUI(gui) {
         this.gui = gui.addFolder('Commands');
@@ -2702,17 +2720,29 @@ class CommandDisplay {
         $('#commands h3').text('Command list (' + this.listJ.children().length + ')');
     }
     queueCommand(command) {
+        if (Settings_1.Settings.disableCommandList) {
+            return;
+        }
         this.listJ.append(this.createCommandItem(command));
         this.updateName();
         document.dispatchEvent(new CustomEvent('CommandListChanged'));
     }
     sendCommand(command) {
+        if (Settings_1.Settings.disableCommandList) {
+            return;
+        }
         this.listJ.find('#' + command.id).addClass('sent');
     }
     commandExecuted(command) {
+        if (Settings_1.Settings.disableCommandList) {
+            return;
+        }
         this.removeCommand(command.id);
     }
     clearQueue() {
+        if (Settings_1.Settings.disableCommandList) {
+            return;
+        }
         this.listJ.children().remove();
         this.updateName();
         document.dispatchEvent(new CustomEvent('CommandListChanged'));
@@ -2738,6 +2768,7 @@ class Console {
         this.log = console.log.bind(console);
         this.error = console.error.bind(console);
         this.info = console.info.bind(console);
+        this.warn = console.warn.bind(console);
         this.table = console.table.bind(console);
         let log = (args, logger, type) => {
             if (typeof logger === 'function') {
@@ -2777,6 +2808,7 @@ class Console {
         console.log = (...args) => log(args, this.log, 'log');
         console.error = (...args) => log(args, this.error, 'error');
         console.info = (...args) => log(args, this.info, 'info');
+        console.warn = (...args) => log(args, this.warn, 'warn');
         console.table = (...args) => log(args, this.table, 'table');
         this.gui = new GUI_1.GUI({ autoPlace: false });
         let customContainer = document.getElementById('info');
@@ -2868,8 +2900,8 @@ exports.Console = Console;
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 const Plot_1 = __webpack_require__(5);
-const Communication_1 = __webpack_require__(2);
-const Tipibot_1 = __webpack_require__(1);
+const Communication_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 const VisualFeedback_1 = __webpack_require__(7);
 const RequestTimeout = 2000;
 let scale = 1000;
@@ -3169,6 +3201,471 @@ exports.CommeUnDessein = CommeUnDessein;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const Communication_1 = __webpack_require__(1);
+const Plot_1 = __webpack_require__(5);
+class FileManager {
+    constructor() {
+        this.saveFileName = 'drawing.txt';
+        document.addEventListener('ServerMessage', (event) => this.onServerMessage(event.detail), false);
+        this.printingFileName = null;
+    }
+    createGUI(gui) {
+        this.gui = gui.addFolder('File Manager');
+        this.gui.add(this, 'saveFileName').name('File name');
+        this.gui.addButton('Save file', () => this.saveFile());
+        this.filesFolder = this.gui.addFolder('Files');
+        this.listJ = $('<ul id="console-list" class="c-list">');
+        this.listJ.insertAfter($(this.filesFolder.gui.domElement).find('li'));
+    }
+    saveFile() {
+        if (Plot_1.SVGPlot.svgPlot == null) {
+            console.error('No SVG loaded.');
+            return;
+        }
+        if (Communication_1.communication.interpreter.commandQueue.length > 0) {
+            console.error('Command queue is not empty ; please finish / empty queue before saving a file.');
+            return;
+        }
+        Communication_1.communication.send('write-file', this.saveFileName);
+        Plot_1.SVGPlot.plotAndLoadLoop(() => Communication_1.communication.send('close-file'));
+    }
+    exportFile(baseName, i, project, images, group) {
+        let fileName = baseName + "_" + i + ".svg";
+        console.log("Exporting " + fileName + "...");
+        let imageData = project.exportSVG({ asString: true });
+        let blob = new Blob([imageData], { type: 'image/svg+xml' });
+        console.log("Exported " + fileName + ".");
+        images.file(fileName, blob, {});
+        group.removeChildren();
+    }
+    listFiles() {
+        Communication_1.communication.send('list-files');
+    }
+    createFileItem(fileName) {
+        let liJ = $('<li>').attr('id', fileName);
+        let messageJ = $('<div>').append(fileName).addClass('file-name');
+        liJ.append(messageJ);
+        let printButtonJ = $('<button>Print</button>').addClass('print');
+        printButtonJ.click((event) => this.printFileItem(fileName));
+        liJ.append(printButtonJ);
+        let closeButtonJ = $('<button>x</button>').addClass('close');
+        closeButtonJ.click((event) => this.removeFileItem(fileName));
+        liJ.append(closeButtonJ);
+        return liJ;
+    }
+    printFileItem(fileName) {
+        if (this.printingFileName != null) {
+            if (this.printingFileName == fileName) {
+                this.listJ.find('#' + fileName).find('.print').text('Print');
+                Communication_1.communication.send('cancel-print-file', fileName);
+                this.printingFileName = null;
+            }
+            else {
+                console.error('The file ' + this.printingFileName + ' is already being printed.');
+            }
+            return;
+        }
+        this.listJ.find('#' + fileName).find('.print').text('Cancel print');
+        Communication_1.communication.send('print-file', fileName);
+        this.printingFileName = fileName;
+    }
+    removeFileItem(fileName) {
+        this.listJ.find('#' + fileName).remove();
+        Communication_1.communication.send('delete-file', fileName);
+    }
+    onServerMessage(json) {
+        if (json.type == 'files') {
+            this.listJ.children().remove();
+            for (let fileName of json.data) {
+                this.createFileItem(fileName);
+            }
+        }
+        else if (json.type == 'file-printed') {
+            this.listJ.find('#' + json.data).find('.print').text('Print');
+            console.info('File ' + json.data + ' printed.');
+        }
+    }
+}
+exports.FileManager = FileManager;
+
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
+const Communication_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
+class LiveDrawing {
+    constructor() {
+        this.liveDrawing = false;
+        this.mouseDown = false;
+        this.undoRedo = true;
+        document.body.addEventListener('mousedown', (event) => this.onMouseDown(event));
+        document.body.addEventListener('mousemove', (event) => this.onMouseMove(event));
+        document.body.addEventListener('mouseup', (event) => this.onMouseUp(event));
+        document.body.addEventListener('mouseleave', (event) => this.onMouseLeave(event));
+        document.body.addEventListener('keydown', (event) => this.onKeyDown(event));
+        document.body.addEventListener('keyup', (event) => this.onKeyUp(event));
+        document.addEventListener('QueueCommand', (event) => this.queueCommand(event.detail), false);
+        document.addEventListener('SendCommand', (event) => this.sendCommand(event.detail), false);
+        document.addEventListener('CommandExecuted', (event) => this.commandExecuted(event.detail), false);
+        document.addEventListener('ClearQueue', (event) => this.clearQueue(), false);
+        // this.undoButton = new paper.Path.Rectangle(tipibot.drawArea.bounds.left, tipibot.drawArea.bounds.bottom, Settings.drawArea.width / 2, 30)
+        this.mode = '4 Symmetries';
+        this.nRepetitions = 1;
+        this.axes = new paper.Group();
+        this.drawing = new paper.Group();
+        this.currentDrawing = new paper.Group();
+        this.commandQueues = [];
+        this.undoneCommandQueues = [];
+    }
+    setRenderer(renderer) {
+        this.renderer = renderer;
+    }
+    createGUI(gui) {
+        let liveDrawingGui = gui.addFolder('Live drawing');
+        this.toggleLiveDrawingButton = liveDrawingGui.addButton('Start', (value) => this.toggleLiveDrawing());
+        liveDrawingGui.add(this, 'undoRedo').name('Undo / Redo');
+        liveDrawingGui.add({ 'Mode': this.mode }, 'Mode', ['None', '2 Symmetries', '4 Symmetries', 'N. Repetitions']).onFinishChange((value) => this.renderAxes(value));
+        liveDrawingGui.addSlider('N. Repetitions', 1, 1, 10, 1).onChange((value) => {
+            this.nRepetitions = value;
+            this.renderAxes(this.mode);
+        });
+        liveDrawingGui.addButton('Clear drawing', (value) => this.clearDrawing());
+        liveDrawingGui.addButton('Undo', (value) => this.undo());
+        liveDrawingGui.addButton('Redo', (value) => this.redo());
+    }
+    clearDrawing() {
+        this.drawing.removeChildren();
+    }
+    renderAxes(mode) {
+        this.mode = mode;
+        this.axes.removeChildren();
+        let bounds = Tipibot_1.tipibot.drawArea.bounds;
+        if (mode == 'None') {
+        }
+        else if (mode == '2 Symmetries' || mode == '4 Symmetries') {
+            let v = new paper.Path();
+            v.strokeColor = 'black';
+            v.strokeWidth = 1;
+            v.dashArray = [5, 5];
+            v.add(bounds.topCenter);
+            v.add(bounds.bottomCenter);
+            this.axes.addChild(v);
+            let h = v.clone();
+            h.firstSegment.point = bounds.leftCenter;
+            h.lastSegment.point = bounds.rightCenter;
+            // h.rotate(90)
+            this.axes.addChild(h);
+            if (mode == '4 Symmetries') {
+                let d1 = v.clone();
+                d1.firstSegment.point.x -= bounds.height < bounds.width ? bounds.height / 2 : bounds.width / 2;
+                d1.lastSegment.point.x += bounds.height < bounds.width ? bounds.height / 2 : bounds.width / 2;
+                this.axes.addChild(d1);
+                let d2 = v.clone();
+                d2.firstSegment.point.x += bounds.height < bounds.width ? bounds.height / 2 : bounds.width / 2;
+                d2.lastSegment.point.x -= bounds.height < bounds.width ? bounds.height / 2 : bounds.width / 2;
+                this.axes.addChild(d2);
+            }
+        }
+        else if (mode == 'N. Repetitions') {
+            for (let i = 0; i < this.nRepetitions; i++) {
+                let v = new paper.Path();
+                v.strokeColor = 'black';
+                v.strokeWidth = 1;
+                v.dashArray = [5, 5];
+                let center = bounds.center;
+                v.add(center);
+                v.add(bounds.bottomCenter.rotate(i * 360 / this.nRepetitions, center));
+                this.axes.addChild(v);
+            }
+        }
+    }
+    toggleLiveDrawing() {
+        this.liveDrawing = !this.liveDrawing;
+        if (this.liveDrawing) {
+            Settings_1.settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true);
+            Settings_1.settingsManager.settingsFolder.getController('disableCommandList').setValue(true);
+        }
+        this.toggleLiveDrawingButton.setName(this.liveDrawing ? 'Stop' : 'Start');
+        this.renderAxes(this.mode);
+    }
+    createNewCommandQueue() {
+        let commandQueue = { commands: new Array(), paths: new Array() };
+        this.commandQueues.push(commandQueue);
+        return commandQueue;
+    }
+    eventWasOnGUI(event) {
+        return $.contains(document.getElementById('gui'), event.target) || $.contains(document.getElementById('info'), event.target);
+    }
+    onMouseDown(event) {
+        if (!this.liveDrawing || this.eventWasOnGUI(event)) {
+            return;
+        }
+        let point = this.renderer.getWorldPosition(event);
+        if (!Tipibot_1.tipibot.drawArea.bounds.contains(point)) {
+            return;
+        }
+        this.mouseDown = true;
+        this.currentLine = new paper.Path();
+        this.currentLine.strokeWidth = Settings_1.Settings.tipibot.penWidth;
+        this.currentLine.strokeColor = 'green';
+        this.currentLine.add(point);
+        if (this.undoRedo) {
+            let commandQueue = this.createNewCommandQueue();
+            this.undoneCommandQueues = [];
+            Tipibot_1.tipibot.moveDirect(point);
+            Tipibot_1.tipibot.penDown();
+            this.drawing.addChild(this.currentLine);
+            commandQueue.paths.push(this.currentLine);
+        }
+        else {
+            this.currentDrawing.addChild(this.currentLine);
+        }
+    }
+    onMouseMove(event) {
+        if (!this.liveDrawing || this.eventWasOnGUI(event)) {
+            return;
+        }
+        if (this.mouseDown) {
+            let point = this.renderer.getWorldPosition(event);
+            if (!Tipibot_1.tipibot.drawArea.bounds.contains(point)) {
+                return;
+            }
+            if (this.undoRedo) {
+                Tipibot_1.tipibot.moveLinear(point);
+            }
+            this.currentLine.add(point);
+        }
+    }
+    addLines(lines, commandQueue) {
+        if (this.undoRedo) {
+            this.drawing.addChild(lines);
+            this.drawLines(lines);
+            commandQueue.paths.push(lines);
+        }
+        else {
+            this.currentDrawing.addChild(lines);
+        }
+    }
+    pathDrawn(lines) {
+        lines.strokeColor = 'black';
+    }
+    penUp(lines) {
+        Tipibot_1.tipibot.penUp(undefined, undefined, undefined, () => this.pathDrawn(lines));
+    }
+    drawLines(lines) {
+        Tipibot_1.tipibot.penUp();
+        Tipibot_1.tipibot.moveDirect(lines.firstSegment.point);
+        Tipibot_1.tipibot.penDown();
+        for (let segment of lines.segments) {
+            Tipibot_1.tipibot.moveLinear(segment.point);
+        }
+        this.penUp(lines);
+    }
+    onMouseUp(event) {
+        if (!this.liveDrawing || this.eventWasOnGUI(event)) {
+            return;
+        }
+        this.mouseDown = false;
+        if (this.undoRedo) {
+            this.penUp(this.currentLine);
+        }
+        let commandQueue = this.commandQueues[this.commandQueues.length - 1];
+        if (this.mode == 'None') {
+        }
+        else if (this.mode == '2 Symmetries' || this.mode == '4 Symmetries') {
+            // let definition = new (<any>paper).SymbolDefinition(this.currentLine)
+            // let instance = definition.place()
+            let instance = this.currentLine.clone();
+            instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+            instance.scaling.y = -1;
+            this.addLines(instance, commandQueue);
+            instance = this.currentLine.clone(); // definition.place()
+            instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+            instance.scaling.x = -1;
+            this.addLines(instance, commandQueue);
+            instance = this.currentLine.clone(); // definition.place()
+            instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+            instance.scaling.x = -1;
+            instance.scaling.y = -1;
+            this.addLines(instance, commandQueue);
+            if (this.mode == '4 Symmetries') {
+                let instance = this.currentLine.clone(); // definition.place()
+                instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+                instance.rotate(90);
+                this.addLines(instance, commandQueue);
+                instance = this.currentLine.clone(); // definition.place()
+                instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+                instance.rotate(90);
+                instance.scaling.x = -1;
+                this.addLines(instance, commandQueue);
+                instance = this.currentLine.clone(); // definition.place()
+                instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+                instance.rotate(90);
+                instance.scaling.y = -1;
+                this.addLines(instance, commandQueue);
+                instance = this.currentLine.clone(); // definition.place()
+                instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+                instance.rotate(90);
+                instance.scaling.x = -1;
+                instance.scaling.y = -1;
+                this.addLines(instance, commandQueue);
+            }
+        }
+        else if (this.mode == 'N. Repetitions') {
+            //let definition = new (<any>paper).SymbolDefinition(this.currentLine)
+            for (let i = 1; i < this.nRepetitions; i++) {
+                let instance = this.currentLine.clone(); // definition.place()
+                instance.pivot = Tipibot_1.tipibot.drawArea.bounds.center;
+                instance.rotate(i * 360 / this.nRepetitions);
+                this.addLines(instance, commandQueue);
+            }
+        }
+    }
+    onMouseLeave(event) {
+        if (!this.liveDrawing) {
+            return;
+        }
+    }
+    onKeyDown(event) {
+        if (!this.liveDrawing) {
+            return;
+        }
+        switch (event.keyCode) {
+            case 37:
+                if (this.undoRedo) {
+                    this.undo();
+                }
+                else {
+                    this.currentDrawing.removeChildren();
+                }
+                break;
+            case 39:
+                if (this.undoRedo) {
+                    this.redo();
+                }
+                else {
+                    for (let child of this.currentDrawing.children.slice()) {
+                        child.strokeColor = 'black';
+                        this.drawing.addChild(child);
+                        this.drawLines(child);
+                    }
+                    this.currentDrawing.removeChildren();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    onKeyUp(event) {
+        if (!this.liveDrawing) {
+            return;
+        }
+    }
+    undo() {
+        if (!this.liveDrawing) {
+            return;
+        }
+        let commandQueue = this.commandQueues.pop();
+        if (commandQueue != null) {
+            this.undoneCommandQueues.push(commandQueue);
+            for (let command of commandQueue.commands) {
+                Communication_1.communication.interpreter.removeCommand(command.id);
+                document.dispatchEvent(new CustomEvent('CancelCommand', { detail: command }));
+            }
+            for (let path of commandQueue.paths) {
+                path.remove();
+            }
+        }
+    }
+    redo() {
+        if (!this.liveDrawing) {
+            return;
+        }
+        let commandQueue = this.undoneCommandQueues.pop();
+        if (commandQueue != null) {
+            this.createNewCommandQueue();
+            for (let command of commandQueue.commands) {
+                Communication_1.communication.interpreter.queue(command.data, command.message, command.callback);
+            }
+            for (let path of commandQueue.paths) {
+                this.drawing.addChild(path);
+                this.commandQueues[this.commandQueues.length - 1].paths.push(path);
+            }
+        }
+    }
+    removeCommand(commandQueue, commandID) {
+        let index = commandQueue.findIndex((command) => command.id == commandID);
+        if (index >= 0) {
+            commandQueue.splice(index, 1);
+        }
+    }
+    removeCommandFromQueues(commandID) {
+        for (let commandQueue of this.commandQueues) {
+            for (let command of commandQueue.commands) {
+                if (command.id == commandID) {
+                    this.removeCommand(commandQueue.commands, commandID);
+                }
+            }
+        }
+    }
+    queueCommand(command) {
+        if (!this.liveDrawing || !this.undoRedo) {
+            return;
+        }
+        this.commandQueues[this.commandQueues.length - 1].commands.push(command);
+    }
+    sendCommand(command) {
+        if (!this.liveDrawing || !this.undoRedo) {
+            return;
+        }
+        for (let commandQueue of this.commandQueues) {
+            for (let c of commandQueue.commands) {
+                if (command == c) {
+                    let index = this.commandQueues.findIndex((cq) => cq == commandQueue);
+                    if (index >= 0) {
+                        this.commandQueues.splice(index, 1);
+                    }
+                    if (this.commandQueues.length <= 0) {
+                        this.createNewCommandQueue();
+                    }
+                    for (let path of commandQueue.paths) {
+                        path.strokeColor = 'blue';
+                    }
+                    return;
+                }
+            }
+        }
+    }
+    commandExecuted(command) {
+        if (!this.liveDrawing || !this.undoRedo) {
+            return;
+        }
+        this.removeCommandFromQueues(command.id);
+    }
+    clearQueue() {
+        if (!this.liveDrawing) {
+            return;
+        }
+        this.commandQueues = [];
+        this.undoneCommandQueues = [];
+    }
+}
+exports.LiveDrawing = LiveDrawing;
+
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const GUI_1 = __webpack_require__(3);
 const Plot_1 = __webpack_require__(5);
 class SVGSplitter {
@@ -3283,13 +3780,13 @@ exports.SVGSplitter = SVGSplitter;
 
 
 /***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const Tipibot_1 = __webpack_require__(1);
+const Tipibot_1 = __webpack_require__(2);
 class Move {
     constructor(telescreen) {
         this.timeoutID = -1;
@@ -3472,7 +3969,7 @@ exports.Telescreen = Telescreen;
 
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3577,7 +4074,7 @@ exports.Renderer = Renderer;
 
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3612,7 +4109,7 @@ exports.FredBot = FredBot;
 
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3786,8 +4283,8 @@ class Polargraph extends Interpreter_1.Interpreter {
     sendMotorOff() {
     }
     sendPenLiftRange(servoDownValue = Settings_1.SettingsManager.servoDownAngle(), servoUpValue = Settings_1.SettingsManager.servoUpAngle()) {
-        let message = 'Set pen lift range: ' + servoDownValue + ',' + servoUpValue;
-        this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END', message);
+        let message = 'Set pen lift range: ' + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2);
+        this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2) + ',1,END', message);
     }
     sendPenDelays(servoDownDelay = Settings_1.Settings.servo.delay.down.before, servoUpDelay = Settings_1.Settings.servo.delay.up.before) {
     }
@@ -3795,8 +4292,8 @@ class Polargraph extends Interpreter_1.Interpreter {
         if (servoUpTempoBefore > 0) {
             this.sendPause(servoUpTempoBefore);
         }
-        let message = 'Set pen up: ' + Settings_1.SettingsManager.servoUpAngle();
-        this.queue(commands.CMD_PENUP + Settings_1.SettingsManager.servoUpAngle() + ",END", message);
+        let message = 'Set pen up: ' + Settings_1.SettingsManager.servoUpAngle().toFixed(2);
+        this.queue(commands.CMD_PENUP + Settings_1.SettingsManager.servoUpAngle().toFixed(2) + ",END", message);
         // this.queue(commands.CMD_PENUP + "END", callback);
         if (servoUpTempoAfter > 0) {
             this.sendPause(servoUpTempoAfter, callback);
@@ -3806,8 +4303,8 @@ class Polargraph extends Interpreter_1.Interpreter {
         if (servoDownTempoBefore > 0) {
             this.sendPause(servoDownTempoBefore);
         }
-        let message = 'Set pen down: ' + Settings_1.SettingsManager.servoDownAngle();
-        this.queue(commands.CMD_PENDOWN + Settings_1.SettingsManager.servoDownAngle() + ",END", message);
+        let message = 'Set pen down: ' + Settings_1.SettingsManager.servoDownAngle().toFixed(2);
+        this.queue(commands.CMD_PENDOWN + Settings_1.SettingsManager.servoDownAngle().toFixed(2) + ",END", message);
         // this.queue(commands.CMD_PENDOWN + "END", callback);
         if (servoDownTempoAfter > 0) {
             this.sendPause(servoDownTempoAfter, callback);
@@ -3824,7 +4321,7 @@ exports.Polargraph = Polargraph;
 
 
 /***/ }),
-/* 17 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3875,7 +4372,7 @@ exports.TipibotInterpreter = TipibotInterpreter;
 
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3889,18 +4386,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 const Settings_1 = __webpack_require__(0);
-const Tipibot_1 = __webpack_require__(1);
-const Renderer_1 = __webpack_require__(14);
+const Tipibot_1 = __webpack_require__(2);
+const Renderer_1 = __webpack_require__(16);
 const Pen_1 = __webpack_require__(4);
 const Plot_1 = __webpack_require__(5);
-const Communication_1 = __webpack_require__(2);
+const Communication_1 = __webpack_require__(1);
 const CommandDisplay_1 = __webpack_require__(9);
 const GUI_1 = __webpack_require__(3);
 const Console_1 = __webpack_require__(10);
 const VisualFeedback_1 = __webpack_require__(7);
 const CommeUnDessein_1 = __webpack_require__(11);
-const Telescreen_1 = __webpack_require__(13);
-const SVGSplitter_1 = __webpack_require__(12);
+const Telescreen_1 = __webpack_require__(15);
+const SVGSplitter_1 = __webpack_require__(14);
+const FileManager_1 = __webpack_require__(12);
+const LiveDrawing_1 = __webpack_require__(13);
 let communication = null;
 let container = null;
 let renderer = null;
@@ -3935,6 +4434,11 @@ document.addEventListener("DOMContentLoaded", function (event) {
         telescreen.createGUI(pluginFolder);
         let svgSplitter = new SVGSplitter_1.SVGSplitter();
         svgSplitter.createGUI(pluginFolder);
+        let fileManager = new FileManager_1.FileManager();
+        fileManager.createGUI(pluginFolder);
+        let liveDrawing = new LiveDrawing_1.LiveDrawing();
+        liveDrawing.createGUI(pluginFolder);
+        liveDrawing.setRenderer(renderer);
         // debug
         w.tipibot = Tipibot_1.tipibot;
         w.settingsManager = Settings_1.settingsManager;
@@ -3960,12 +4464,18 @@ document.addEventListener("DOMContentLoaded", function (event) {
         renderer.centerOnTipibot(Settings_1.Settings.tipibot, false);
     }
     function eventWasOnGUI(event) {
-        return $.contains(gui.getDomElement(), event.target);
+        return $.contains(document.getElementById('gui'), event.target) || $.contains(document.getElementById('info'), event.target);
     }
     function mouseDown(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         renderer.mouseDown(event);
     }
     function mouseMove(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         renderer.mouseMove(event);
         if (Tipibot_1.tipibot.settingPosition) {
             let position = renderer.getWorldPosition(event);
@@ -3977,6 +4487,9 @@ document.addEventListener("DOMContentLoaded", function (event) {
         }
     }
     function mouseUp(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         renderer.mouseUp(event);
         if (Tipibot_1.tipibot.settingPosition && !Settings_1.settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(event.target)) {
             if (positionPreview != null) {
@@ -3988,16 +4501,28 @@ document.addEventListener("DOMContentLoaded", function (event) {
         }
     }
     function mouseLeave(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         renderer.mouseLeave(event);
     }
     function mouseWheel(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         renderer.mouseWheel(event);
     }
     function keyDown(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         Tipibot_1.tipibot.keyDown(event);
         renderer.keyDown(event);
     }
     function keyUp(event) {
+        if (Settings_1.Settings.disableMouseInteractions) {
+            return;
+        }
         Tipibot_1.tipibot.keyUp(event);
         renderer.keyUp(event);
     }

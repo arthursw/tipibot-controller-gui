@@ -163,8 +163,12 @@ body {
 	color: #ff3939;
 }
 
-#console-list li p.info {
+#console-list li p.warn {
 	color: orange;
+}
+
+#console-list li p.info {
+	color: #00BCD4;
 }
 
 table {

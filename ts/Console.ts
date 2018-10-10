@@ -12,6 +12,7 @@ export class Console {
 	listJ: JQuery
 
 	log: ()=> void
+	warn: ()=> void
 	error: ()=> void
 	info: ()=> void
 	table: ()=> void
@@ -22,6 +23,7 @@ export class Console {
 		this.log = console.log.bind(console)
 		this.error = console.error.bind(console)
 		this.info = console.info.bind(console)
+		this.warn = console.warn.bind(console)
 		this.table = console.table.bind(console)
 
 		let log = (args: any[], logger: (message:string)=>void, type: string)=> {
@@ -64,8 +66,8 @@ export class Console {
 		console.log = (...args: any[])=> log(args, this.log, 'log')
 		console.error = (...args: any[])=> log(args, this.error, 'error')
 		console.info = (...args: any[])=> log(args, this.info, 'info')
+		console.warn = (...args: any[])=> log(args, this.warn, 'warn')
 		console.table = (...args: any[])=> log(args, this.table, 'table')
-
 
 
 		this.gui = new GUI({ autoPlace: false })

@@ -115,6 +115,8 @@ export class Communication {
 		let type = json.type;
 		let data = json.data;
 
+		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: json }))
+
 		if(type == 'opened') {
 			this.onSerialPortConnectionOpened()
 		} else if(type == 'closed') {
@@ -146,7 +148,10 @@ export class Communication {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
 		} else if(type == 'data') {
 			this.interpreter.messageReceived(data)
+		} else if(type == 'info') {
+			console.info(data)
 		} else if(type == 'warning') {
+			console.warn(data)
 		} else if(type == 'already-opened') {
 			this.onSerialPortConnectionOpened(data)
 		} else if(type == 'error') {

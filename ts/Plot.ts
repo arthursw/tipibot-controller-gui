@@ -89,19 +89,25 @@ export class SVGPlot {
 		reader.readAsText(file)
 	}
 
-	public static plotFinished() {
+	public static plotFinished(callback:()=> void = null) {
 		if(this.multipleFiles) {
 			this.fileIndex++
 			if(this.fileIndex < this.files.length) {
-				this.loadNextFile(()=> this.plotAndLoadLoop())
+				this.loadNextFile(()=> this.plotAndLoadLoop(callback))
 			} else {
 				tipibot.goHome()
+				if(callback != null) {
+					callback()
+				}
 			}
 		}
 	}
 
-	public static plotAndLoadLoop() {
-		this.svgPlot.plot(()=> SVGPlot.plotFinished(), !this.multipleFiles)
+	public static plotAndLoadLoop(callback:()=> void = null) {
+		if(this.svgPlot == null) {
+			return
+		}
+		this.svgPlot.plot(()=> SVGPlot.plotFinished(callback), !this.multipleFiles)
 	}
 
 	public static clearClicked(event: any) {
@@ -157,8 +163,8 @@ export class SVGPlot {
 		transformFolder.addSlider('X', 0, 0, Settings.drawArea.width).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
 		transformFolder.addSlider('Y', 0, 0, Settings.drawArea.height).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
 		
-		transformFolder.addButton('Flip X', SVGPlot.createCallback(SVGPlot.prototype.flipX))
-		transformFolder.addButton('Flip Y', SVGPlot.createCallback(SVGPlot.prototype.flipY))
+		transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX))
+		transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY))
 
 		transformFolder.addButton('Rotate', SVGPlot.createCallback(SVGPlot.prototype.rotate))
 

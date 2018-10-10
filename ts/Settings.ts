@@ -15,6 +15,8 @@ export let Settings = {
 	firmware: 'Tipibot',
 	forceLinearMoves: true,
 	forceInitialization: true,
+	disableMouseInteractions: false,
+	disableCommandList: false,
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
@@ -79,6 +81,7 @@ export class SettingsManager {
 	gui: GUI = null
 	tipibotPositionFolder: GUI = null
 	drawAreaDimensionsFolder: GUI = null
+	settingsFolder: GUI = null
 	motorsFolder: GUI = null
 	homeFolder: GUI = null
 	tipibot: TipibotInterface
@@ -118,6 +121,7 @@ export class SettingsManager {
 	createGUI(gui: GUI) {
 		this.gui = gui
 		let settingsFolder = gui.addFolder('Settings')
+		this.settingsFolder = settingsFolder
 		settingsFolder.open()
 
 		let loadSaveFolder = settingsFolder.addFolder('Load & Save')
@@ -188,6 +192,8 @@ export class SettingsManager {
 
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
+		settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
+		settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
 		
 
 		let controllers = this.getControllers()
@@ -198,6 +204,8 @@ export class SettingsManager {
 			controller.onChange( (value: any) => this.settingChanged(parentNames, name, value, false) )
 			controller.onFinishChange( (value: any) => this.settingChanged(parentNames, name, value, true) )
 		}
+
+		
 	}
 
 	setTipibot(tipibot: TipibotInterface) {

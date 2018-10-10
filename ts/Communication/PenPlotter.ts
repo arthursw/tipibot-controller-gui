@@ -110,7 +110,7 @@ export class PenPlotter extends Interpreter {
 		if(delayBefore > 0) {
 			this.sendPause(delayBefore)
 		}
-		this.queue('M340 P3 S' + servoValue + '\n', message)
+		this.queue('M340 P3 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
 		if(delayAfter > 0) {
 			this.sendPause(delayAfter, callback)
 		}

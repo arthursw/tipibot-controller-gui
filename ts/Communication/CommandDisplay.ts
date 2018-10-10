@@ -19,6 +19,7 @@ export class CommandDisplay {
 		document.addEventListener('SendCommand', (event: CustomEvent)=> this.sendCommand(event.detail), false)
 		document.addEventListener('CommandExecuted', (event: CustomEvent)=> this.commandExecuted(event.detail), false)
 		document.addEventListener('ClearQueue', (event: CustomEvent)=> this.clearQueue(), false)
+		document.addEventListener('CancelCommand', (event: CustomEvent)=> this.commandExecuted(event.detail), false)
 	}
 
 	createGUI(gui: GUI) {
@@ -83,20 +84,32 @@ export class CommandDisplay {
 	}
 
 	queueCommand(command: Command) {
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
 		document.dispatchEvent(new CustomEvent('CommandListChanged'))
 	}
 
 	sendCommand(command: Command) {
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.listJ.find('#'+command.id).addClass('sent')
 	}
 
 	commandExecuted(command: Command) {
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.removeCommand(command.id)
 	}
 
 	clearQueue() {
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.listJ.children().remove()
 		this.updateName()
 		document.dispatchEvent(new CustomEvent('CommandListChanged'))

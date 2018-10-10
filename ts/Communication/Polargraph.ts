@@ -192,8 +192,8 @@ export class Polargraph extends Interpreter {
 	}
 
 	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
-		let message = 'Set pen lift range: ' + servoDownValue + ',' + servoUpValue
-		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue + ',' + servoUpValue + ',1,END', message);
+		let message = 'Set pen lift range: ' + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2)
+		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2) + ',1,END', message);
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
@@ -203,8 +203,8 @@ export class Polargraph extends Interpreter {
 		if(servoUpTempoBefore > 0) {
 			this.sendPause(servoUpTempoBefore)
 		}
-		let message = 'Set pen up: ' + SettingsManager.servoUpAngle()
-		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle() + ",END", message);
+		let message = 'Set pen up: ' + SettingsManager.servoUpAngle().toFixed(2)
+		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle().toFixed(2) + ",END", message);
 		// this.queue(commands.CMD_PENUP + "END", callback);
 		if(servoUpTempoAfter > 0) {
 			this.sendPause(servoUpTempoAfter, callback)
@@ -215,8 +215,8 @@ export class Polargraph extends Interpreter {
 		if(servoDownTempoBefore > 0) {
 			this.sendPause(servoDownTempoBefore)
 		}
-		let message = 'Set pen down: ' + SettingsManager.servoDownAngle()
-		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle() + ",END", message);
+		let message = 'Set pen down: ' + SettingsManager.servoDownAngle().toFixed(2)
+		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle().toFixed(2) + ",END", message);
 		// this.queue(commands.CMD_PENDOWN + "END", callback);
 		if(servoDownTempoAfter > 0) {
 			this.sendPause(servoDownTempoAfter, callback)
