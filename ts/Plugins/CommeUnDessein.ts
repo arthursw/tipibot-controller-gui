@@ -117,7 +117,7 @@ export class CommeUnDessein {
 		})
 
 		this.startButton = commeUnDesseinGUI.addButton('Start', ()=> this.toggleStart())
-		commeUnDesseinGUI.open()
+		// commeUnDesseinGUI.open()
 	}
 
 	toggleStart() {

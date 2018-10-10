@@ -26,6 +26,8 @@ export class Tipibot implements TipibotInterface {
 
 	motorsEnabled = true
 
+	ignoreKeyEvents = false
+
 	constructor() {
 		this.moveToButtons = []
 		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
@@ -413,6 +415,9 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	keyDown(event:KeyboardEvent) {
+		if(this.ignoreKeyEvents) {
+			return
+		}
 		let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1
 		switch (event.keyCode) {
 			case 37: 			// left arrow

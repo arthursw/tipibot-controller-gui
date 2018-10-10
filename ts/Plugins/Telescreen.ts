@@ -143,7 +143,7 @@ export class Telescreen {
 		let telescreenGUI = gui.addFolder('Telescreen')
 		telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value)=> this.speed = value)
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
-		telescreenGUI.open()
+		// telescreenGUI.open()
 	}
 
 	changeMode(mode: string) {

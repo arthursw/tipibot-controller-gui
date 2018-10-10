@@ -15,7 +15,7 @@ export let Settings = {
 	firmware: 'Tipibot',
 	forceLinearMoves: true,
 	forceInitialization: true,
-	disableMouseInteractions: false,
+	// disableMouseInteractions: false,
 	disableCommandList: false,
 	tipibot: {
 		width: tipibotWidth,
@@ -161,8 +161,8 @@ export class SettingsManager {
 
 		let anglesFolder = penFolder.addFolder('Angles')
 		anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
-		anglesFolder.add(Settings.servo.position, 'up', 0, 180).name('Up')
-		anglesFolder.add(Settings.servo.position, 'down', 0, 180).name('Down')
+		anglesFolder.add(Settings.servo.position, 'up', 0, 3180).name('Up')
+		anglesFolder.add(Settings.servo.position, 'down', 0, 3180).name('Down')
 
 		let delaysFolder = penFolder.addFolder('Delays')
 		let delaysUpFolder = delaysFolder.addFolder('Up')
@@ -192,7 +192,7 @@ export class SettingsManager {
 
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
-		settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
+		// settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
 		settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
 		
 

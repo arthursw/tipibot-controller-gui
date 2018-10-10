@@ -84,7 +84,7 @@ exports.Settings = {
     firmware: 'Tipibot',
     forceLinearMoves: true,
     forceInitialization: true,
-    disableMouseInteractions: false,
+    // disableMouseInteractions: false,
     disableCommandList: false,
     tipibot: {
         width: tipibotWidth,
@@ -206,8 +206,8 @@ class SettingsManager {
         penFolder.add(exports.Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.');
         let anglesFolder = penFolder.addFolder('Angles');
         anglesFolder.add(exports.Settings.servo.position, 'invert').name('Invert');
-        anglesFolder.add(exports.Settings.servo.position, 'up', 0, 180).name('Up');
-        anglesFolder.add(exports.Settings.servo.position, 'down', 0, 180).name('Down');
+        anglesFolder.add(exports.Settings.servo.position, 'up', 0, 3180).name('Up');
+        anglesFolder.add(exports.Settings.servo.position, 'down', 0, 3180).name('Down');
         let delaysFolder = penFolder.addFolder('Delays');
         let delaysUpFolder = delaysFolder.addFolder('Up');
         delaysUpFolder.add(exports.Settings.servo.delay.up, 'before', 0, 3000, 1).name('Before');
@@ -231,7 +231,7 @@ class SettingsManager {
         feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(new CustomEvent('ClearFeedback')));
         settingsFolder.add(exports.Settings, 'forceLinearMoves').name('Force linear moves');
         settingsFolder.add(exports.Settings, 'forceInitialization').name('Force initialization');
-        settingsFolder.add(exports.Settings, 'disableMouseInteractions').name('Disable mouse interactions');
+        // settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
         settingsFolder.add(exports.Settings, 'disableCommandList').name('Disable command list');
         let controllers = this.getControllers();
         for (let controller of controllers) {
@@ -713,6 +713,7 @@ class Tipibot {
         this.initialPosition = null;
         this.initializedCommunication = false;
         this.motorsEnabled = true;
+        this.ignoreKeyEvents = false;
         this.moveToButtons = [];
         document.addEventListener('ZoomChanged', (event) => this.onZoomChanged(), false);
         this.lastSentPosition = new paper.Point(0, 0);
@@ -1041,6 +1042,9 @@ class Tipibot {
         this.moveDirect(homePoint, callback, false);
     }
     keyDown(event) {
+        if (this.ignoreKeyEvents) {
+            return;
+        }
         let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;
         switch (event.keyCode) {
             case 37:
@@ -2992,7 +2996,7 @@ class CommeUnDessein {
             window.localStorage.setItem('commeUnDesseinHeight', value);
         });
         this.startButton = commeUnDesseinGUI.addButton('Start', () => this.toggleStart());
-        commeUnDesseinGUI.open();
+        // commeUnDesseinGUI.open()
     }
     toggleStart() {
         if (!this.started) {
@@ -3304,22 +3308,20 @@ class LiveDrawing {
         this.liveDrawing = false;
         this.mouseDown = false;
         this.undoRedo = true;
+        this.mustClearCommandQueueOnMouseUp = false;
         document.body.addEventListener('mousedown', (event) => this.onMouseDown(event));
         document.body.addEventListener('mousemove', (event) => this.onMouseMove(event));
         document.body.addEventListener('mouseup', (event) => this.onMouseUp(event));
         document.body.addEventListener('mouseleave', (event) => this.onMouseLeave(event));
         document.body.addEventListener('keydown', (event) => this.onKeyDown(event));
         document.body.addEventListener('keyup', (event) => this.onKeyUp(event));
+        window.addEventListener('resize', (event) => this.windowResize(event));
         document.addEventListener('QueueCommand', (event) => this.queueCommand(event.detail), false);
         document.addEventListener('SendCommand', (event) => this.sendCommand(event.detail), false);
         document.addEventListener('CommandExecuted', (event) => this.commandExecuted(event.detail), false);
         document.addEventListener('ClearQueue', (event) => this.clearQueue(), false);
-        // this.undoButton = new paper.Path.Rectangle(tipibot.drawArea.bounds.left, tipibot.drawArea.bounds.bottom, Settings.drawArea.width / 2, 30)
         this.mode = '4 Symmetries';
         this.nRepetitions = 1;
-        this.axes = new paper.Group();
-        this.drawing = new paper.Group();
-        this.currentDrawing = new paper.Group();
         this.commandQueues = [];
         this.undoneCommandQueues = [];
     }
@@ -3385,14 +3387,71 @@ class LiveDrawing {
             }
         }
     }
+    windowResize(event = null) {
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        this.canvasJ.width(width);
+        this.canvasJ.height(height);
+        paper.view.viewSize = new paper.Size(width, height);
+        this.renderer.centerOnTipibot(this.drawArea.bounds, true, this.canvasJ.get(0));
+        this.project.view.setCenter(this.drawArea.bounds.center);
+    }
+    startLiveDrawing() {
+        // settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true)
+        Settings_1.settingsManager.settingsFolder.getController('disableCommandList').setValue(true);
+        if (this.canvasJ == null) {
+            this.divJ = $('<div>');
+            this.canvasJ = $('<canvas>');
+            let zIndex = 1000000;
+            this.canvasJ.css({ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 'z-index': zIndex++, width: window.innerWidth, height: window.innerHeight, background: 'white' });
+            this.divJ.append(this.canvasJ);
+            this.footerJ = $('<div>').css({ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', 'flex-direction': 'row', 'justify-content': 'center', 'z-index': zIndex++ });
+            let buttonCss = {
+                width: '200px',
+                height: '40px',
+                'margin-bottom': '20px',
+            };
+            this.undoButtonJ = $('<button>').html('&#8592;').css(buttonCss).click(() => this.left());
+            this.redoButtonJ = $('<button>').html('&#8594;').css(buttonCss).click(() => this.right());
+            this.footerJ.append(this.undoButtonJ);
+            this.footerJ.append(this.redoButtonJ);
+            this.divJ.append(this.footerJ);
+            $('body').append(this.divJ);
+            this.project = new paper.Project(this.canvasJ.get(0));
+            this.project.activate();
+            this.axes = new paper.Group();
+            this.drawing = new paper.Group();
+            this.currentDrawing = new paper.Group();
+            this.drawArea = paper.Path.Rectangle(Tipibot_1.tipibot.drawArea.bounds);
+            this.drawArea.strokeColor = 'black';
+            this.drawArea.strokeWidth = 1;
+            this.windowResize();
+        }
+        else {
+            this.divJ.show();
+            this.project.activate();
+        }
+        this.renderAxes(this.mode);
+        Tipibot_1.tipibot.ignoreKeyEvents = true;
+        this.renderer.ignoreWindowResize = true;
+    }
+    stopLiveDrawing() {
+        this.divJ.hide();
+        paper.projects[0].activate();
+        this.axes.removeChildren();
+        Tipibot_1.tipibot.ignoreKeyEvents = false;
+        this.renderer.ignoreWindowResize = false;
+        this.renderer.windowResize();
+    }
     toggleLiveDrawing() {
         this.liveDrawing = !this.liveDrawing;
-        if (this.liveDrawing) {
-            Settings_1.settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true);
-            Settings_1.settingsManager.settingsFolder.getController('disableCommandList').setValue(true);
-        }
         this.toggleLiveDrawingButton.setName(this.liveDrawing ? 'Stop' : 'Start');
-        this.renderAxes(this.mode);
+        if (this.liveDrawing) {
+            this.startLiveDrawing();
+        }
+        else {
+            this.stopLiveDrawing();
+        }
     }
     createNewCommandQueue() {
         let commandQueue = { commands: new Array(), paths: new Array() };
@@ -3400,7 +3459,7 @@ class LiveDrawing {
         return commandQueue;
     }
     eventWasOnGUI(event) {
-        return $.contains(document.getElementById('gui'), event.target) || $.contains(document.getElementById('info'), event.target);
+        return $.contains(document.getElementById('gui'), event.target) || $.contains(document.getElementById('info'), event.target) || $.contains(this.footerJ.get(0), event.target);
     }
     onMouseDown(event) {
         if (!this.liveDrawing || this.eventWasOnGUI(event)) {
@@ -3411,12 +3470,12 @@ class LiveDrawing {
             return;
         }
         this.mouseDown = true;
+        let commandQueue = this.undoRedo ? this.createNewCommandQueue() : null;
         this.currentLine = new paper.Path();
         this.currentLine.strokeWidth = Settings_1.Settings.tipibot.penWidth;
         this.currentLine.strokeColor = 'green';
         this.currentLine.add(point);
         if (this.undoRedo) {
-            let commandQueue = this.createNewCommandQueue();
             this.undoneCommandQueues = [];
             Tipibot_1.tipibot.moveDirect(point);
             Tipibot_1.tipibot.penDown();
@@ -3526,6 +3585,14 @@ class LiveDrawing {
                 this.addLines(instance, commandQueue);
             }
         }
+        if (this.mustClearCommandQueueOnMouseUp && this.commandQueues.length == 1) {
+            this.mustClearCommandQueueOnMouseUp = false;
+            for (let path of this.commandQueues[0].paths) {
+                path.strokeColor = 'blue';
+            }
+            this.commandQueues = [];
+            this.createNewCommandQueue();
+        }
     }
     onMouseLeave(event) {
         if (!this.liveDrawing) {
@@ -3538,25 +3605,13 @@ class LiveDrawing {
         }
         switch (event.keyCode) {
             case 37:
-                if (this.undoRedo) {
-                    this.undo();
-                }
-                else {
-                    this.currentDrawing.removeChildren();
-                }
+                this.left();
                 break;
             case 39:
-                if (this.undoRedo) {
-                    this.redo();
-                }
-                else {
-                    for (let child of this.currentDrawing.children.slice()) {
-                        child.strokeColor = 'black';
-                        this.drawing.addChild(child);
-                        this.drawLines(child);
-                    }
-                    this.currentDrawing.removeChildren();
-                }
+                this.right();
+                break;
+            case 27:
+                this.toggleLiveDrawing();
                 break;
             default:
                 break;
@@ -3599,6 +3654,27 @@ class LiveDrawing {
             }
         }
     }
+    left() {
+        if (this.undoRedo) {
+            this.undo();
+        }
+        else {
+            this.currentDrawing.removeChildren();
+        }
+    }
+    right() {
+        if (this.undoRedo) {
+            this.redo();
+        }
+        else {
+            for (let child of this.currentDrawing.children.slice()) {
+                child.strokeColor = 'black';
+                this.drawing.addChild(child);
+                this.drawLines(child);
+            }
+            this.currentDrawing.removeChildren();
+        }
+    }
     removeCommand(commandQueue, commandID) {
         let index = commandQueue.findIndex((command) => command.id == commandID);
         if (index >= 0) {
@@ -3627,9 +3703,13 @@ class LiveDrawing {
         for (let commandQueue of this.commandQueues) {
             for (let c of commandQueue.commands) {
                 if (command == c) {
+                    console.log('SEND');
                     let index = this.commandQueues.findIndex((cq) => cq == commandQueue);
-                    if (index >= 0) {
+                    if (index >= 0 && !(this.mouseDown && this.commandQueues.length == 1)) {
                         this.commandQueues.splice(index, 1);
+                    }
+                    else if (index >= 0 && this.mouseDown && this.commandQueues.length == 1) {
+                        this.mustClearCommandQueueOnMouseUp = true;
                     }
                     if (this.commandQueues.length <= 0) {
                         this.createNewCommandQueue();
@@ -3898,7 +3978,7 @@ class Telescreen {
         let telescreenGUI = gui.addFolder('Telescreen');
         telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value) => this.speed = value);
         this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', ['Orthographic', 'Polar', 'Direction']).onFinishChange((value) => this.modeChanged(value));
-        telescreenGUI.open();
+        // telescreenGUI.open()
     }
     changeMode(mode) {
         for (let m of this.moves) {
@@ -3978,6 +4058,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 class Renderer {
     constructor() {
+        this.ignoreWindowResize = false;
         this.canvas = document.createElement('canvas');
         let containerJ = $('#canvas');
         this.canvas.width = containerJ.width();
@@ -3997,10 +4078,10 @@ class Renderer {
             this.centerOnTipibot(Settings_1.Settings.tipibot, true);
         }
     }
-    centerOnTipibot(tipibot, zoom = true) {
+    centerOnTipibot(tipibot, zoom = true, canvas = this.canvas) {
         if (zoom) {
             let margin = 200;
-            let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio);
+            let ratio = Math.max((tipibot.width + margin) / canvas.width * window.devicePixelRatio, (tipibot.height + margin) / canvas.height * window.devicePixelRatio);
             paper.view.zoom = 1 / ratio;
             document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: {} }));
         }
@@ -4010,6 +4091,9 @@ class Renderer {
         return paper.view.element;
     }
     windowResize() {
+        if (this.ignoreWindowResize) {
+            return;
+        }
         let containerJ = $('#canvas');
         let width = containerJ.width();
         let height = containerJ.height();
@@ -4017,6 +4101,7 @@ class Renderer {
         canvasJ.width(width);
         canvasJ.height(height);
         paper.view.viewSize = new paper.Size(width, height);
+        this.centerOnTipibot(Settings_1.Settings.tipibot, false);
     }
     getMousePosition(event) {
         return new paper.Point(event.clientX, event.clientY);
@@ -4461,21 +4546,14 @@ document.addEventListener("DOMContentLoaded", function (event) {
     animate();
     function windowResize() {
         renderer.windowResize();
-        renderer.centerOnTipibot(Settings_1.Settings.tipibot, false);
     }
     function eventWasOnGUI(event) {
         return $.contains(document.getElementById('gui'), event.target) || $.contains(document.getElementById('info'), event.target);
     }
     function mouseDown(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         renderer.mouseDown(event);
     }
     function mouseMove(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         renderer.mouseMove(event);
         if (Tipibot_1.tipibot.settingPosition) {
             let position = renderer.getWorldPosition(event);
@@ -4487,9 +4565,6 @@ document.addEventListener("DOMContentLoaded", function (event) {
         }
     }
     function mouseUp(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         renderer.mouseUp(event);
         if (Tipibot_1.tipibot.settingPosition && !Settings_1.settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(event.target)) {
             if (positionPreview != null) {
@@ -4501,28 +4576,16 @@ document.addEventListener("DOMContentLoaded", function (event) {
         }
     }
     function mouseLeave(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         renderer.mouseLeave(event);
     }
     function mouseWheel(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         renderer.mouseWheel(event);
     }
     function keyDown(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         Tipibot_1.tipibot.keyDown(event);
         renderer.keyDown(event);
     }
     function keyUp(event) {
-        if (Settings_1.Settings.disableMouseInteractions) {
-            return;
-        }
         Tipibot_1.tipibot.keyUp(event);
         renderer.keyUp(event);
     }

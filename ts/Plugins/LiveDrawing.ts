@@ -19,6 +19,7 @@ export class LiveDrawing {
 	mode: string
 	nRepetitions: number
 	undoRedo = true
+	mustClearCommandQueueOnMouseUp = false
 
 	axes: paper.Group
 
@@ -26,8 +27,14 @@ export class LiveDrawing {
 	currentDrawing: paper.Group
 
 	currentLine: paper.Path
-	undoButton: paper.Path
-	redoButton: paper.Path
+
+	drawArea: paper.Path
+	canvasJ: any
+	divJ: any
+	footerJ: any
+	undoButtonJ: any
+	redoButtonJ: any
+	project: paper.Project
 
 	constructor() {
 
@@ -38,18 +45,14 @@ export class LiveDrawing {
 		document.body.addEventListener('mouseleave', (event)=> this.onMouseLeave(event))
 		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
 		document.body.addEventListener('keyup', (event)=> this.onKeyUp(event))
+		window.addEventListener( 'resize', (event)=> this.windowResize(event))
 		document.addEventListener('QueueCommand', (event: CustomEvent)=> this.queueCommand(event.detail), false)
 		document.addEventListener('SendCommand', (event: CustomEvent)=> this.sendCommand(event.detail), false)
 		document.addEventListener('CommandExecuted', (event: CustomEvent)=> this.commandExecuted(event.detail), false)
 		document.addEventListener('ClearQueue', (event: CustomEvent)=> this.clearQueue(), false)
 
-		// this.undoButton = new paper.Path.Rectangle(tipibot.drawArea.bounds.left, tipibot.drawArea.bounds.bottom, Settings.drawArea.width / 2, 30)
-
 		this.mode = '4 Symmetries'
 		this.nRepetitions = 1
-		this.axes = new paper.Group()
-		this.drawing = new paper.Group()
-		this.currentDrawing = new paper.Group()
 		this.commandQueues = []
 		this.undoneCommandQueues = []
 
@@ -121,18 +124,90 @@ export class LiveDrawing {
 			}
 		}
 	}
+	
+	windowResize(event: Event = null){
+		let width = window.innerWidth
+		let height = window.innerHeight
+		this.canvasJ.width(width)
+		this.canvasJ.height(height)
+		paper.view.viewSize = new paper.Size(width, height)
+		this.renderer.centerOnTipibot(this.drawArea.bounds, true, this.canvasJ.get(0))
+		this.project.view.setCenter(this.drawArea.bounds.center)
+	}
+
+	startLiveDrawing() {
+		// settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true)
+		settingsManager.settingsFolder.getController('disableCommandList').setValue(true)
+
+		if(this.canvasJ == null) {
+			this.divJ = $('<div>')
+
+			this.canvasJ = $('<canvas>')
+			let zIndex = 1000000
+			this.canvasJ.css({position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 'z-index': zIndex++, width: window.innerWidth, height: window.innerHeight, background: 'white'})
+			this.divJ.append(this.canvasJ)
+
+			this.footerJ = $('<div>').css({position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', 'flex-direction': 'row', 'justify-content': 'center', 'z-index': zIndex++})
+
+			let buttonCss = {
+				width: '200px',
+				height: '40px',
+				'margin-bottom': '20px',
+			}
+			this.undoButtonJ = $('<button>').html('&#8592;').css(buttonCss).click(()=> this.left())
+			this.redoButtonJ = $('<button>').html('&#8594;').css(buttonCss).click(()=> this.right())
+
+			this.footerJ.append(this.undoButtonJ)
+			this.footerJ.append(this.redoButtonJ)
+			this.divJ.append(this.footerJ)
+
+			$('body').append(this.divJ)
+			this.project = new paper.Project(this.canvasJ.get(0))
+			this.project.activate()
+
+			this.axes = new paper.Group()
+			this.drawing = new paper.Group()
+			this.currentDrawing = new paper.Group()
+
+			this.drawArea = paper.Path.Rectangle(tipibot.drawArea.bounds)
+			this.drawArea.strokeColor = 'black'
+			this.drawArea.strokeWidth = 1
+
+			
+			this.windowResize()
+			
+		} else {
+			this.divJ.show()
+			this.project.activate()
+		}
+
+		this.renderAxes(this.mode)
+
+		tipibot.ignoreKeyEvents = true
+		this.renderer.ignoreWindowResize = true
+	}
+
+	stopLiveDrawing() {
+		this.divJ.hide()
+		paper.projects[0].activate()
+		this.axes.removeChildren()
+
+		tipibot.ignoreKeyEvents = false
+		this.renderer.ignoreWindowResize = false
+		this.renderer.windowResize()
+	}
 
 	toggleLiveDrawing() {
 
 		this.liveDrawing = !this.liveDrawing
+		this.toggleLiveDrawingButton.setName(this.liveDrawing ? 'Stop' : 'Start')
 		
 		if(this.liveDrawing) {
-			settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true)
-			settingsManager.settingsFolder.getController('disableCommandList').setValue(true)
+			this.startLiveDrawing()
+		} else {
+			this.stopLiveDrawing()
 		}
 
-		this.toggleLiveDrawingButton.setName(this.liveDrawing ? 'Stop' : 'Start')
-		this.renderAxes(this.mode)
 	}
 
 	createNewCommandQueue() {
@@ -142,7 +217,7 @@ export class LiveDrawing {
 	}
 	
 	eventWasOnGUI(event: MouseEvent) {
-		return $.contains(document.getElementById('gui'), <any>event.target) || $.contains(document.getElementById('info'), <any>event.target)
+		return $.contains(document.getElementById('gui'), <any>event.target) || $.contains(document.getElementById('info'), <any>event.target) || $.contains(this.footerJ.get(0), <any>event.target)
 	}
 
 	onMouseDown(event: MouseEvent) {
@@ -156,6 +231,8 @@ export class LiveDrawing {
 
 		this.mouseDown = true
 
+		let commandQueue = this.undoRedo ? this.createNewCommandQueue() : null
+
 		this.currentLine = new paper.Path()
 		this.currentLine.strokeWidth = Settings.tipibot.penWidth
 		this.currentLine.strokeColor = 'green'
@@ -163,7 +240,6 @@ export class LiveDrawing {
 
 		if(this.undoRedo) {
 
-			let commandQueue = this.createNewCommandQueue()
 			this.undoneCommandQueues = []
 			
 			tipibot.moveDirect(point)
@@ -296,6 +372,15 @@ export class LiveDrawing {
 				this.addLines(instance, commandQueue)
 			}
 		}
+
+		if(this.mustClearCommandQueueOnMouseUp && this.commandQueues.length == 1) {
+			this.mustClearCommandQueueOnMouseUp = false
+			for(let path of this.commandQueues[0].paths) {
+				path.strokeColor = 'blue'
+			}
+			this.commandQueues = []
+			this.createNewCommandQueue()
+		}
 	}
 
 	onMouseLeave(event: MouseEvent) {
@@ -310,25 +395,14 @@ export class LiveDrawing {
 		}
 		switch (event.keyCode) {
 			case 37: 			// left arrow
-				if(this.undoRedo) {
-					this.undo()
-				} else {
-					this.currentDrawing.removeChildren()
-				}
+				this.left()
 				break;
 			case 39: 			// right arrow
-				if(this.undoRedo) {
-					this.redo()
-				} else {
-					for(let child of this.currentDrawing.children.slice()) {
-						child.strokeColor = 'black'
-						this.drawing.addChild(child)
-						this.drawLines(<paper.Path>child)
-					}
-					this.currentDrawing.removeChildren()
-				}
+				this.right()
 				break;
-			
+			case 27: 			// Escape
+				this.toggleLiveDrawing()
+				break;
 			default:
 				break;
 		}
@@ -379,6 +453,27 @@ export class LiveDrawing {
 		}
 	}
 
+	left() {
+		if(this.undoRedo) {
+			this.undo()
+		} else {
+			this.currentDrawing.removeChildren()
+		}
+	}
+
+	right() {
+		if(this.undoRedo) {
+			this.redo()
+		} else {
+			for(let child of this.currentDrawing.children.slice()) {
+				child.strokeColor = 'black'
+				this.drawing.addChild(child)
+				this.drawLines(<paper.Path>child)
+			}
+			this.currentDrawing.removeChildren()
+		}
+
+	}
 
 	removeCommand(commandQueue: Array<Command>, commandID: number) {
 		let index = commandQueue.findIndex((command)=> command.id == commandID)
@@ -412,10 +507,12 @@ export class LiveDrawing {
 		for(let commandQueue of this.commandQueues) {
 			for(let c of commandQueue.commands) {
 				if(command == c) {
-
+					console.log('SEND')
 					let index = this.commandQueues.findIndex((cq)=> cq == commandQueue)
-					if(index >= 0) {
+					if(index >= 0 && !(this.mouseDown && this.commandQueues.length == 1)) {
 						this.commandQueues.splice(index, 1)
+					} else if(index >= 0 && this.mouseDown && this.commandQueues.length == 1) {
+						this.mustClearCommandQueueOnMouseUp = true
 					}
 					if(this.commandQueues.length <= 0) {
 						this.createNewCommandQueue()

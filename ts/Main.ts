@@ -119,7 +119,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 	function windowResize() {
 		renderer.windowResize()
-		renderer.centerOnTipibot(Settings.tipibot, false)
 	}
 
 	function eventWasOnGUI(event: MouseEvent) {
@@ -127,16 +126,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseDown(event: MouseEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		renderer.mouseDown(event)
 	}
 
 	function mouseMove(event: MouseEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		renderer.mouseMove(event)
 
 		if(tipibot.settingPosition) {
@@ -150,9 +143,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseUp(event: MouseEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		renderer.mouseUp(event)
 		if(tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(<HTMLElement>event.target) ) {
 			if(positionPreview != null) {
@@ -165,31 +155,19 @@ document.addEventListener("DOMContentLoaded", function(event) {
 	}
 
 	function mouseLeave(event: MouseEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		renderer.mouseLeave(event)
 	}
 
 	function mouseWheel(event: WheelEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		renderer.mouseWheel(event)
 	}
 
 	function keyDown(event: KeyboardEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		tipibot.keyDown(event)
 		renderer.keyDown(event)
 	}
 
 	function keyUp(event: KeyboardEvent) {
-		if(Settings.disableMouseInteractions) {
-			return
-		}
 		tipibot.keyUp(event)
 		renderer.keyUp(event)
 	}

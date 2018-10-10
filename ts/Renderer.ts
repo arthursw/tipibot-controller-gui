@@ -7,6 +7,8 @@ export class Renderer {
 	previousPosition: paper.Point
 	spacePressed: boolean
 
+	ignoreWindowResize = false
+
 	constructor() {
 		this.canvas = document.createElement('canvas')
 		let containerJ = $('#canvas')
@@ -33,10 +35,10 @@ export class Renderer {
 		}
 	}
 
-	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true) {
+	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true, canvas=this.canvas) {
 		if(zoom) {
 			let margin = 200
-			let ratio = Math.max((tipibot.width + margin) / this.canvas.width * window.devicePixelRatio, (tipibot.height + margin) / this.canvas.height * window.devicePixelRatio)
+			let ratio = Math.max((tipibot.width + margin) / canvas.width * window.devicePixelRatio, (tipibot.height + margin) / canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
 			document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		}
@@ -49,6 +51,10 @@ export class Renderer {
 	}
 
 	windowResize(){
+		if(this.ignoreWindowResize) {
+			return
+		}
+		
 		let containerJ = $('#canvas')
 		let width = containerJ.width()
 		let height = containerJ.height()
@@ -56,6 +62,8 @@ export class Renderer {
 		canvasJ.width(width)
 		canvasJ.height(height)
 		paper.view.viewSize = new paper.Size(width, height)
+
+		this.centerOnTipibot(Settings.tipibot, false)
 	}
 
 	getMousePosition(event: MouseEvent): paper.Point {
