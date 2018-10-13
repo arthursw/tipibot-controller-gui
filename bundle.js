@@ -3492,7 +3492,7 @@ class LiveDrawing {
         }
         if (this.mouseDown) {
             let point = this.renderer.getWorldPosition(event);
-            if (!Tipibot_1.tipibot.drawArea.bounds.contains(point)) {
+            if (!Tipibot_1.tipibot.drawArea.bounds.contains(point) || (this.undoRedo && point.getDistance(this.currentLine.lastSegment.point) < 15)) {
                 return;
             }
             if (this.undoRedo) {
@@ -3530,9 +3530,23 @@ class LiveDrawing {
         if (!this.liveDrawing || this.eventWasOnGUI(event)) {
             return;
         }
+        let point = this.renderer.getWorldPosition(event);
+        if (!Tipibot_1.tipibot.drawArea.bounds.contains(point)) {
+            return;
+        }
+        if (this.undoRedo) {
+            Tipibot_1.tipibot.moveLinear(point);
+        }
+        this.currentLine.add(point);
         this.mouseDown = false;
         if (this.undoRedo) {
             this.penUp(this.currentLine);
+        }
+        else {
+            this.currentLine.simplify();
+            // this.currentLine.smooth()
+            this.currentLine.flatten(4.25);
+            this.currentLine.selected = true;
         }
         let commandQueue = this.commandQueues[this.commandQueues.length - 1];
         if (this.mode == 'None') {

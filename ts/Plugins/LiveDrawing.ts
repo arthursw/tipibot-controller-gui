@@ -260,7 +260,7 @@ export class LiveDrawing {
 		}
 		if(this.mouseDown) {
 			let point = this.renderer.getWorldPosition(event)
-			if(!tipibot.drawArea.bounds.contains(point)) {
+			if(!tipibot.drawArea.bounds.contains(point) || (this.undoRedo && point.getDistance(this.currentLine.lastSegment.point) < 15)) {
 				return
 			}
 			
@@ -306,10 +306,26 @@ export class LiveDrawing {
 			return
 		}
 
+		let point = this.renderer.getWorldPosition(event)
+		if(!tipibot.drawArea.bounds.contains(point)) {
+			return
+		}
+		
+		if(this.undoRedo) {
+			tipibot.moveLinear(point)
+		}
+
+		this.currentLine.add(point)
+
 		this.mouseDown = false
 
 		if(this.undoRedo) {
 			this.penUp(this.currentLine)
+		} else {
+			this.currentLine.simplify()
+			// this.currentLine.smooth()
+			this.currentLine.flatten(4.25)
+			this.currentLine.selected = true
 		}
 
 		let commandQueue = this.commandQueues[this.commandQueues.length-1]
