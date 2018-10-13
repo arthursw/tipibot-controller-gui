@@ -323,9 +323,8 @@ export class LiveDrawing {
 			this.penUp(this.currentLine)
 		} else {
 			this.currentLine.simplify()
-			// this.currentLine.smooth()
 			this.currentLine.flatten(4.25)
-			this.currentLine.selected = true
+			// this.currentLine.selected = true
 		}
 
 		let commandQueue = this.commandQueues[this.commandQueues.length-1]
