@@ -19,6 +19,7 @@ export class LiveDrawing {
 	mode: string
 	nRepetitions: number
 	undoRedo = true
+	undoRedoButtons = false
 	mustClearCommandQueueOnMouseUp = false
 
 	axes: paper.Group
@@ -67,6 +68,7 @@ export class LiveDrawing {
 		this.toggleLiveDrawingButton = liveDrawingGui.addButton('Start', (value)=> this.toggleLiveDrawing())
 		
 		liveDrawingGui.add(this, 'undoRedo').name('Undo / Redo')
+		liveDrawingGui.add(this, 'undoRedoButtons').name('Display buttons')
 
 		liveDrawingGui.add({ 'Mode': this.mode }, 'Mode', <any>['None', '2 Symmetries', '4 Symmetries', 'N. Repetitions']).onFinishChange((value: string)=> this.renderAxes(value))
 		liveDrawingGui.addSlider('N. Repetitions', 1, 1, 10, 1).onChange((value)=> {
@@ -76,10 +78,25 @@ export class LiveDrawing {
 		liveDrawingGui.addButton('Clear drawing', (value)=> this.clearDrawing())
 		liveDrawingGui.addButton('Undo', (value)=> this.undo())
 		liveDrawingGui.addButton('Redo', (value)=> this.redo())
+		liveDrawingGui.addButton('Export SVG', (value)=> this.exportSVG())
 	}
 
 	clearDrawing() {
 		this.drawing.removeChildren()
+	}
+
+	exportSVG() {
+        let svg = this.project.exportSVG( { asString: true })
+
+        // create an svg image, create a link to download the image, and click it
+        let blob = new Blob([svg], {type: 'image/svg+xml'})
+        let url = URL.createObjectURL(blob)
+        let link = document.createElement("a")
+        document.body.appendChild(link)
+        link.download = 'result.svg'
+        link.href = url
+        link.click()
+        document.body.removeChild(link)
 	}
 
 	renderAxes(mode: string) {
@@ -153,6 +170,7 @@ export class LiveDrawing {
 				width: '200px',
 				height: '40px',
 				'margin-bottom': '20px',
+				'user-select': 'none'
 			}
 			this.undoButtonJ = $('<button>').html('&#8592;').css(buttonCss).click(()=> this.left())
 			this.redoButtonJ = $('<button>').html('&#8594;').css(buttonCss).click(()=> this.right())
@@ -173,12 +191,24 @@ export class LiveDrawing {
 			this.drawArea.strokeColor = 'black'
 			this.drawArea.strokeWidth = 1
 
-			
+			if(!this.undoRedoButtons) {
+				this.undoButtonJ.hide()
+				this.redoButtonJ.hide()
+			}
+
 			this.windowResize()
 			
 		} else {
 			this.divJ.show()
 			this.project.activate()
+			
+			if(this.undoRedoButtons) {
+				this.undoButtonJ.show()
+				this.redoButtonJ.show()
+			} else {
+				this.undoButtonJ.hide()
+				this.redoButtonJ.hide()
+			}
 		}
 
 		this.renderAxes(this.mode)
