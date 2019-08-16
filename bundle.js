@@ -149,6 +149,7 @@ class SettingsManager {
         this.settingsFolder = null;
         this.motorsFolder = null;
         this.homeFolder = null;
+        this.debug = false;
         this.loadLocalStorage();
     }
     static mmPerSteps() {
@@ -288,6 +289,9 @@ class SettingsManager {
         this.tipibot.setHome(false);
     }
     settingChanged(parentNames, name, value = null, changeFinished = false) {
+        if (exports.settingsManager.debug) {
+            debugger;
+        }
         // update sliders and transmit change to concerned object
         if (parentNames[0] == 'Machine dimensions') {
             if (name == 'width') {
@@ -689,6 +693,8 @@ class Communication {
     send(type, data = null) {
         let message = { type: type, data: data };
         this.socket.send(JSON.stringify(message));
+        console.log('Send ', type, data);
+        console.log('Wait for "ready"...');
     }
 }
 exports.Communication = Communication;
@@ -2787,7 +2793,8 @@ class Console {
                 for (let arg of args) {
                     let p = null;
                     if (typeof arg == 'object') {
-                        p = this.logObject(arg);
+                        // p = this.logObject(arg)
+                        p = $('<p>').append(arg).addClass(type);
                     }
                     else if (arg instanceof Array) {
                         let result = JSON.stringify(arg);
@@ -2930,33 +2937,34 @@ let posOnPlanetToDrawArea = function (point, planet) {
     let posOnProject = posOnPlanetToProject(point, planet);
     return commeUnDesseinToDrawArea(posOnProject);
 };
-let commeundesseinAjaxURL = '/ajaxCall/';
+let commeundesseinAjaxURL = '/ajaxCallNoCSRF/';
 const ModeKey = 'Mode';
+const OriginKey = 'Origin';
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret';
-$.ajaxSetup({
-    beforeSend: function (xhr, settings) {
-        let getCookie = function (name) {
-            var cookie, cookieValue, cookies, i;
-            cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                cookies = document.cookie.split(';');
-                i = 0;
-                while (i < cookies.length) {
-                    cookie = jQuery.trim(cookies[i]);
-                    if (cookie.substring(0, name.length + 1) === name + '=') {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                    i++;
-                }
-            }
-            return cookieValue;
-        };
-        if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
-            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-        }
-    }
-});
+// $.ajaxSetup({
+// 	beforeSend: function(xhr, settings) {
+// 		let getCookie = function(name: string) {
+// 			var cookie, cookieValue, cookies, i;
+// 			cookieValue = null;
+// 			if (document.cookie && document.cookie !== '') {
+// 				cookies = document.cookie.split(';');
+// 				i = 0;
+// 				while (i < cookies.length) {
+// 					cookie = jQuery.trim(cookies[i]);
+// 					if (cookie.substring(0, name.length + 1) === name + '=') {
+// 						cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+// 						break;
+// 					}
+// 					i++;
+// 				}
+// 			}
+// 			return cookieValue;
+// 		};
+// 		if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+// 			xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+// 		}
+// 	}
+// });
 var State;
 (function (State) {
     State[State["NextDrawing"] = 0] = "NextDrawing";
@@ -2968,12 +2976,14 @@ var State;
 class CommeUnDessein {
     constructor(testMode = false) {
         this.mode = 'CommeUnDessein';
+        this.origin = '';
         this.secret = '******';
         this.state = State.NextDrawing;
         this.started = false;
         this.timeoutID = -1;
         this.testMode = testMode;
         this.mode = localStorage.getItem(ModeKey) || 'CommeUnDessein';
+        this.origin = localStorage.getItem(OriginKey) || '';
         let secret = localStorage.getItem(CommeUnDesseinSecretKey);
         if (secret != null) {
             this.secret = secret;
@@ -2985,6 +2995,7 @@ class CommeUnDessein {
             folderName += ' (Test mode)';
         }
         let commeUnDesseinGUI = gui.addFolder(folderName);
+        commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => localStorage.setItem(OriginKey, value));
         commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value));
         commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value));
         CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || Tipibot_1.tipibot.drawArea.bounds.width;
@@ -3029,7 +3040,7 @@ class CommeUnDessein {
             return;
         }
         let args = {
-            city: { name: this.mode, secret: this.secret }
+            cityName: this.mode, secret: this.secret
         };
         let functionName = this.testMode ? 'getNextTestDrawing' : 'getNextValidatedDrawing';
         let data = {
@@ -3038,7 +3049,7 @@ class CommeUnDessein {
         this.state = State.RequestedNextDrawing;
         console.log('Request next drawing...');
         // let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
-        let url = commeundesseinAjaxURL;
+        let url = this.origin + commeundesseinAjaxURL;
         // $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
         $.ajax({ method: "POST", url: url, data: data }).done((results) => {
             if (this.testMode) {
@@ -3166,7 +3177,7 @@ class CommeUnDessein {
         if (this.testMode) {
             console.log('setDrawingStatusDrawn');
         }
-        let url = commeundesseinAjaxURL;
+        let url = this.origin + commeundesseinAjaxURL;
         $.ajax({ method: "POST", url: url, data: data }).done((results) => {
             console.log(results);
             if (this.testMode) {

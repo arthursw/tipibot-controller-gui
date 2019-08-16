@@ -239,6 +239,8 @@ export class Communication {
 	send(type: string, data: any = null) {
 		let message = { type: type, data: data }
 		this.socket.send(JSON.stringify(message))
+		console.log('Send ', type, data)
+		console.log('Wait for "ready"...')
 	}
 }
 

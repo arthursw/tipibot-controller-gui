@@ -35,38 +35,39 @@ let posOnPlanetToDrawArea = function(point: paper.Point, planet: paper.Point) {
 	return commeUnDesseinToDrawArea(posOnProject)
 }
 
-let commeundesseinAjaxURL = '/ajaxCall/'
+let commeundesseinAjaxURL = '/ajaxCallNoCSRF/'
 
 const ModeKey = 'Mode'
+const OriginKey = 'Origin'
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret'
 
 
-$.ajaxSetup({
-	beforeSend: function(xhr, settings) {
+// $.ajaxSetup({
+// 	beforeSend: function(xhr, settings) {
 		
-		let getCookie = function(name: string) {
-			var cookie, cookieValue, cookies, i;
-			cookieValue = null;
-			if (document.cookie && document.cookie !== '') {
-				cookies = document.cookie.split(';');
-				i = 0;
-				while (i < cookies.length) {
-					cookie = jQuery.trim(cookies[i]);
-					if (cookie.substring(0, name.length + 1) === name + '=') {
-						cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-						break;
-					}
-					i++;
-				}
-			}
-			return cookieValue;
-		};
+// 		let getCookie = function(name: string) {
+// 			var cookie, cookieValue, cookies, i;
+// 			cookieValue = null;
+// 			if (document.cookie && document.cookie !== '') {
+// 				cookies = document.cookie.split(';');
+// 				i = 0;
+// 				while (i < cookies.length) {
+// 					cookie = jQuery.trim(cookies[i]);
+// 					if (cookie.substring(0, name.length + 1) === name + '=') {
+// 						cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+// 						break;
+// 					}
+// 					i++;
+// 				}
+// 			}
+// 			return cookieValue;
+// 		};
 
-		if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
-			xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-		}
-	}
-});
+// 		if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+// 			xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+// 		}
+// 	}
+// });
 
 enum State {
 	NextDrawing,
@@ -79,6 +80,7 @@ enum State {
 export class CommeUnDessein {
 
 	mode: string = 'CommeUnDessein'
+	origin: string = ''
 	secret: string = '******'
 	currentDrawing: { items: any[], pk: string }
 	state: State = State.NextDrawing
@@ -90,6 +92,7 @@ export class CommeUnDessein {
 	constructor(testMode=false) {
 		this.testMode = testMode
 		this.mode = localStorage.getItem(ModeKey) || 'CommeUnDessein'
+		this.origin = localStorage.getItem(OriginKey) || ''
 
 		let secret = localStorage.getItem(CommeUnDesseinSecretKey)
 		if (secret != null) {
@@ -103,6 +106,7 @@ export class CommeUnDessein {
 			folderName += ' (Test mode)'
 		}
 		let commeUnDesseinGUI = gui.addFolder(folderName)
+		commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => localStorage.setItem(OriginKey, value))
 		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
 		
@@ -153,7 +157,7 @@ export class CommeUnDessein {
 		}
 
 		let args = {
-			city: { name: this.mode, secret: this.secret }
+			cityName: this.mode, secret: this.secret
 		}
 		let functionName: String = this.testMode ? 'getNextTestDrawing' : 'getNextValidatedDrawing'
 		let data = {
@@ -164,7 +168,7 @@ export class CommeUnDessein {
 		console.log('Request next drawing...')
 
 		// let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
-		let url = commeundesseinAjaxURL
+		let url = this.origin + commeundesseinAjaxURL
 		// $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
 		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
 			if(this.testMode) {
@@ -312,7 +316,7 @@ export class CommeUnDessein {
 			console.log('setDrawingStatusDrawn')
 		}
 
-		let url = commeundesseinAjaxURL
+		let url = this.origin + commeundesseinAjaxURL
 		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
 			console.log(results)
 			if(this.testMode) {

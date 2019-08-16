@@ -85,6 +85,7 @@ export class SettingsManager {
 	motorsFolder: GUI = null
 	homeFolder: GUI = null
 	tipibot: TipibotInterface
+	debug = false
 
 	static mmPerSteps() {
 		return Settings.tipibot.mmPerRev / ( Settings.tipibot.stepsPerRev * Settings.tipibot.microstepResolution );
@@ -249,7 +250,9 @@ export class SettingsManager {
 	}
 
 	settingChanged(parentNames: string[], name: string, value: any=null, changeFinished=false) {
-
+		if(settingsManager.debug) {
+			debugger
+		}
 		// update sliders and transmit change to concerned object
 		if(parentNames[0] == 'Machine dimensions') {
 			if(name == 'width') {

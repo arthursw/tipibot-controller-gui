@@ -41,7 +41,8 @@ export class Console {
 				for(let arg of args) {
 					let p = null
 					if(typeof arg == 'object') {
-						p = this.logObject(arg)
+						// p = this.logObject(arg)
+						p = $('<p>').append(arg).addClass(type)
 					} else if(arg instanceof Array) {
 						let result = JSON.stringify(arg)
 						if(result.length > 100) {
