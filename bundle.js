@@ -3012,8 +3012,7 @@ class CommeUnDessein {
     toggleStart() {
         if (!this.started) {
             if (document.cookie.indexOf('csrftoken') < 0) {
-                console.error('The csrf token cookie is not present, please visit http://commeundessein.co/ before starting Comme un Dessein');
-                return;
+                console.log('Old Warning (which you can ignore safely): the Comme un dessein csrf token cookie is not present, please visit http://commeundessein.co/ before starting Comme un Dessein');
             }
             this.startButton.setName('Stop, clear queue & go home');
             this.requestNextDrawing();
