@@ -143,6 +143,11 @@ export class LiveDrawing {
 	}
 	
 	windowResize(event: Event = null){
+
+		if(this.canvasJ == null) {
+			return
+		}
+
 		let width = window.innerWidth
 		let height = window.innerHeight
 		this.canvasJ.width(width)

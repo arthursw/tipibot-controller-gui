@@ -693,8 +693,8 @@ class Communication {
     send(type, data = null) {
         let message = { type: type, data: data };
         this.socket.send(JSON.stringify(message));
-        console.log('Send ', type, data);
-        console.log('Wait for "ready"...');
+        // console.log('Send ', type, data)
+        // console.log('Wait for "ready"...')
     }
 }
 exports.Communication = Communication;
@@ -3414,6 +3414,9 @@ class LiveDrawing {
         }
     }
     windowResize(event = null) {
+        if (this.canvasJ == null) {
+            return;
+        }
         let width = window.innerWidth;
         let height = window.innerHeight;
         this.canvasJ.width(width);
