@@ -2927,8 +2927,8 @@ let posOnPlanetToProject = function (point, planet) {
     if (point.x == null && point.y == null) {
         point = new paper.Point(point);
     }
-    let x = planet.x * 360 + point.x;
-    let y = planet.y * 180 + point.y;
+    let x = planet.x * 180 + point.x;
+    let y = planet.y * 90 + point.y;
     x *= scale;
     y *= scale;
     return new paper.Point(x, y);
