@@ -5,6 +5,8 @@ import { PenPlotter } from "./PenPlotter"
 export class TipibotInterpreter extends PenPlotter {
 
 	readonly initializationMessage = 'Initialize'
+	name = 'tipibot'
+	continueMessage = 'READY'
 
 	serialPortConnectionOpened() {
 
@@ -16,6 +18,15 @@ export class TipibotInterpreter extends PenPlotter {
 		// console.log('Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep)
 		let message = 'Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + stepsPerRev + ', microstepResolution: ' + microstepResolution + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep
 		this.queue('M4 X' + tipibotWidth + ' S' + stepsPerRev + ' F' + microstepResolution + ' P' + mmPerRev + '\n', message)
+	}
+
+	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
+		super.sendSetPosition(point)
+		// let lengths = this.tipibot.cartesianToLengths(point)
+		// let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		// console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
+		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
+		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
 	}
 
 	sendServoSpeed(servoSpeed: number=Settings.servo.speed) {

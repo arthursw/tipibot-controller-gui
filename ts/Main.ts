@@ -12,6 +12,7 @@ import { Tipibot, tipibot } from "./Tipibot"
 import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
 import { SVGPlot } from "./Plot"
+import { Calibration } from "./Calibration"
 import { Communication } from "./Communication/Communication"
 import { CommandDisplay } from "./Communication/CommandDisplay"
 import { GUI } from "./GUI"
@@ -22,6 +23,7 @@ import { Telescreen } from "./Plugins/Telescreen"
 import { SVGSplitter } from "./Plugins/SVGSplitter"
 import { FileManager } from "./Plugins/FileManager"
 import { LiveDrawing } from "./Plugins/LiveDrawing"
+import { GCodeViewer } from "./Plugins/GCodeViewer"
 
 declare var addWheelListener: any
 declare var dat: any
@@ -63,6 +65,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		settingsManager.createGUI(gui)
 		
 		SVGPlot.createGUI(gui)
+
+		Calibration.initialize(gui)
 		
 		renderer = new Renderer()
 		
@@ -92,10 +96,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
 		let liveDrawing = new LiveDrawing()
 		liveDrawing.createGUI(pluginFolder)
 		liveDrawing.setRenderer(renderer)
+
+		let gcodeViewer = new GCodeViewer()
+		gcodeViewer.createGUI(pluginFolder)
 		
 		// debug
 		w.tipibot = tipibot
 		w.settingsManager = settingsManager
+		w.Settings = Settings
 		w.gui = gui
 		w.GUI = GUI
 		w.renderer = renderer

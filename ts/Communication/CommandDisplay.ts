@@ -1,7 +1,7 @@
 import { Settings, settingsManager } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
-import { Command } from "../Communication/Interpreter"
+import { Command, SpecialCommandTypes } from "../Communication/Interpreter"
 import { Pen, MoveType } from "../Pen"
 import { tipibot } from "../Tipibot"
 
@@ -93,6 +93,10 @@ export class CommandDisplay {
 	}
 
 	sendCommand(command: Command) {
+		if(command.special == SpecialCommandTypes.ChangePen) {
+			this.pauseButton.setValue(true)
+			return
+		}
 		if(Settings.disableCommandList) {
 			return
 		}

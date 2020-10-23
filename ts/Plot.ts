@@ -20,6 +20,7 @@ export class SVGPlot {
 	public static readonly nSegmentsPerBatch = 1000
 	public static readonly nSegmentsMax = SVGPlot.nSegmentsPerBatch * 3
 
+	currentColorIndex = 0
 	nSegments = 0
 	currentPath: paper.Path = null
 
@@ -30,6 +31,7 @@ export class SVGPlot {
 		svgPlot.center()
 
 		SVGPlot.gui.getController('Draw').show()
+		SVGPlot.gui.getController('Save GCode').show()
 		console.log('SVG imported.')
 
 		GUI.stopLoadingAnimation()
@@ -110,6 +112,13 @@ export class SVGPlot {
 		this.svgPlot.plot(()=> SVGPlot.plotFinished(callback), !this.multipleFiles)
 	}
 
+	public static saveGCode() {
+		if(this.svgPlot == null) {
+			return
+		}
+		this.svgPlot.plot(null, !this.multipleFiles, true)
+	}
+
 	public static clearClicked(event: any) {
 		this.fileIndex = 0
 		communication.interpreter.clearQueue()
@@ -119,6 +128,7 @@ export class SVGPlot {
 		SVGPlot.svgPlot = null
 		SVGPlot.gui.getController('Draw').name('Draw')
 		SVGPlot.gui.getController('Draw').hide()
+		SVGPlot.gui.getController('Save GCode').hide()
 	}
 
 	public static drawClicked(event: any) {
@@ -136,6 +146,20 @@ export class SVGPlot {
 		}
 	}
 
+	public static saveGCodeClicked(event: any) {
+		if(SVGPlot.svgPlot != null) {
+			communication.interpreter.sendStop(true)
+			communication.interpreter.clearQueue()
+			communication.interpreter.saveGCode = true
+			SVGPlot.saveGCode()
+			let gCode = communication.interpreter.getGCode()
+			let blob = new Blob([gCode], {type: "text/plain;charset=utf-8"})
+			saveAs(blob, "gcode.txt")
+			communication.interpreter.clearQueue()
+			communication.interpreter.saveGCode = false
+		}
+	}
+
 	public static createGUI(gui: GUI) {
 		SVGPlot.gui = gui.addFolder('Plot')
 		SVGPlot.gui.open()
@@ -149,6 +173,8 @@ export class SVGPlot {
 		clearSVGButton.hide()
 		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
 		drawButton.hide()
+		let saveGCodeButton = SVGPlot.gui.addButton('Save GCode', SVGPlot.saveGCodeClicked)
+		saveGCodeButton.hide()
 
 		let filterFolder = SVGPlot.gui.addFolder('Filter')
 		filterFolder.add(Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true))
@@ -160,8 +186,8 @@ export class SVGPlot {
 		let transformFolder = SVGPlot.gui.addFolder('Transform')
 		SVGPlot.transformFolder = transformFolder
 		transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center))
-		transformFolder.addSlider('X', 0, 0, Settings.drawArea.width).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
-		transformFolder.addSlider('Y', 0, 0, Settings.drawArea.height).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
+		transformFolder.addSlider('X', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
+		transformFolder.addSlider('Y', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
 		
 		transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX))
 		transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY))
@@ -184,7 +210,7 @@ export class SVGPlot {
 	}
 
 	public static itemMustBeDrawn(item: paper.Item) {
-		return (item.strokeWidth > 0 && item.strokeColor != null) || item.fillColor != null
+		return (item.strokeWidth > 0 && item.strokeColor != null) // || item.fillColor != null
 	}
 
 	public static convertShapeToPath(shape: paper.Shape): paper.Path {
@@ -258,11 +284,11 @@ export class SVGPlot {
 
 		item = this.convertShapeToPath(<paper.Shape>item)
 
-		if(item.strokeWidth == null || item.strokeWidth <= 0 || Number.isNaN(item.strokeWidth)) {
-			item.strokeWidth = Number.isNaN(parent.strokeWidth) ? 1 : parent.strokeWidth
+		if(Number.isNaN(item.strokeWidth)) {
+			item.strokeWidth = parent.strokeWidth
 		}
 		if(item.strokeColor == null) {
-			item.strokeColor = parent.strokeColor != null ? parent.strokeColor : 'black'
+			item.strokeColor = parent.strokeColor
 		}
 		if((item.strokeWidth == null || item.strokeWidth <= 0 || item.strokeColor == null) && item.fillColor == null) {
 			item.fillColor = parent.fillColor
@@ -530,7 +556,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		return closestPath
 	}
 
-	optimizeTrajectoriesLoaded(item: paper.Item) {
+	optimizeTrajectories(item: paper.Item) {
 
 		let sortedPaths = []
 		let currentChild = item.firstChild
@@ -572,20 +598,9 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		// c2.fillColor = 'turquoise'
 		// path.sendToBack()
 
-		GUI.stopLoadingAnimation()
 	}
 
-	optimizeTrajectories(item: paper.Item) {
-		if(item.children == null || item.children.length == 0) {
-			return
-		}
-		
-		console.log('Optimizing trajectories...')
-
-		GUI.startLoadingAnimation(()=> this.optimizeTrajectoriesLoaded(item))
-	}
-
-	plot(callback: ()=> void = null, goHomeOnceFinished = true) {
+	plot(callback: ()=> void = null, goHomeOnceFinished = true, gCode = false) {
 		this.plotting = true
 		console.log('Generating drawing commands...')
 		
@@ -594,19 +609,50 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		clone.applyMatrix = true
 		clone.transform(this.group.matrix)
 		clone.visible = true
-		if(Settings.plot.optimizeTrajectories) {
-			this.optimizeTrajectories(clone)
+		
+		GUI.startLoadingAnimation()
+
+		// sort by stroke colors
+		let colorToPaths = new Map<string, paper.Path[]>()
+
+		for(let p of clone.children) {
+			let color = p.strokeColor instanceof paper.Color ? (p.strokeColor as any).toCSS() : p.strokeColor
+			let ctp = colorToPaths.get(color)
+			if(ctp != null) {
+				ctp.push(p as paper.Path)
+			} else {
+				colorToPaths.set(color, [p as paper.Path])
+			}
 		}
+
+		for(let [color, paths] of colorToPaths) {
+			let colorGroup = new paper.Group()
+			colorGroup.addChildren(paths)
+			if(Settings.plot.optimizeTrajectories) {
+				this.optimizeTrajectories(colorGroup)
+			}
+			clone.addChildren(colorGroup.children)
+			colorGroup.remove()
+		}
+
+		GUI.stopLoadingAnimation()
 
 		this.currentPath = <paper.Path>clone.firstChild
 		
-		this.plotNext(()=> {
+		if(!gCode) {
+			this.plotNext(()=> {
+				if(goHomeOnceFinished) {
+					tipibot.goHome(()=> this.plotFinished(callback))
+				} else {
+					this.plotFinished(callback)
+				}
+			})
+		} else {
+			this.plotGCode()
 			if(goHomeOnceFinished) {
-				tipibot.goHome(()=> this.plotFinished(callback))
-			} else {
-				this.plotFinished(callback)
+				tipibot.goHome()
 			}
-		})
+		}
 
 		clone.remove()
 	}
@@ -824,13 +870,41 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 	}
 
+	getColorCSS(color: paper.Color | string) {
+		return color instanceof paper.Color ? (color as any).toCSS() : color
+	}
+
+	plotCurrentPath() {
+		this.plotPath(this.currentPath)
+		this.nSegments += this.currentPath.segments.length
+		let currentPath = <paper.Path>this.currentPath.nextSibling
+		if(currentPath != null) {
+			let currentColor = this.getColorCSS(this.currentPath.strokeColor)
+			let nextColor = this.getColorCSS(currentPath.strokeColor)
+			if(currentColor != null && nextColor != null && currentColor != nextColor) {
+				let wasPenUp = tipibot.pen.isUp
+				tipibot.penUp()
+				tipibot.sendChangePen(nextColor, this.currentColorIndex++)
+				if(!wasPenUp) {
+					tipibot.penDown()
+				} 
+			}
+		}
+		this.currentPath = currentPath
+	}
+
+	plotGCode() {
+		this.nSegments = 0
+		while(this.currentPath != null) {
+			this.plotCurrentPath()
+		}
+	}
+
 	plotNextLoaded(callback: ()=> void) {
 		this.nSegments = 0
 
 		while(this.currentPath != null && this.nSegments <= SVGPlot.nSegmentsPerBatch) {
-			this.plotPath(this.currentPath)
-			this.nSegments += this.currentPath.segments.length
-			this.currentPath = <paper.Path>this.currentPath.nextSibling
+			this.plotCurrentPath()
 		}
 		
 		console.log('Commands generated.')

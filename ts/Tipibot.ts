@@ -3,6 +3,7 @@ import { Settings, SettingsManager, settingsManager } from "./Settings"
 import { Pen, MoveType } from "./Pen"
 import { GUI, Controller } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
+import { calibration } from "./Calibration"
 
 export class Tipibot implements TipibotInterface {
 
@@ -210,6 +211,10 @@ export class Tipibot implements TipibotInterface {
 	getPosition() {
 		return this.pen.getPosition()
 	}
+
+	getHome() {
+		return new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY-Settings.tipibot.penOffset)
+	}
 	
 	getGondolaPosition() {
 		let position = this.getPosition()
@@ -241,6 +246,10 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendSetPosition(this.getGondolaPosition())
 	}
 
+	sendChangePen(penName: string, penIndex: number) {
+		communication.interpreter.sendChangePen(penName, penIndex)
+	}
+
 	setPosition(point: paper.Point, sendChange=true, updateSliders=false) {
 		this.pen.setPosition(point, updateSliders, false)
 		if(sendChange) {
@@ -270,15 +279,24 @@ export class Tipibot implements TipibotInterface {
 		}
 
 		this.lastSentPosition = point
+		
+		if(!this.motorsEnabled) {
+			this.enableMotors(true)
+		}
 
 		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
+			if(calibration.applyTransform) {
+				target = calibration.transform(target)
+			}
 			communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
+			if(calibration.applyTransform) {
+				target = calibration.transform(target)
+			}
 			communication.interpreter.sendMoveLinear(target, minSpeed, moveCallback)
 		}
 
-		this.enableMotors(false)
 		if(movePen) {
 			this.pen.setPosition(point, true, false)
 		}
@@ -397,8 +415,9 @@ export class Tipibot implements TipibotInterface {
 		let homePosition = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		this.home.position = homePosition
 		if(setPosition) {
-			this.setPosition(homePosition, updateSliders)
+			this.setPosition(homePosition, true, updateSliders)
 		}
+		communication.interpreter.sendSetHome(this.getGondolaPosition())
 	}
 
 	goHome(callback: ()=> any = null) {

@@ -1,16 +1,19 @@
 import { GUI, Controller } from "../GUI"
 import { Settings, settingsManager } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
-import { Interpreter } from "./Interpreter"
+import { Interpreter, SERIAL_COMMUNICATION_SPEED as ISERIAL_COMMUNICATION_SPEED } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
 import { PenPlotter } from "./PenPlotter"
 import { TipibotInterpreter } from "./TipibotInterpreter"
 import { FredBot } from "./FredBot"
+import { Makelangelo } from "./Makelangelo"
+
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 
 // export const 57600 = 57600
-export const SERIAL_COMMUNICATION_SPEED = 115200
+
+export const SERIAL_COMMUNICATION_SPEED = ISERIAL_COMMUNICATION_SPEED
 
 let PORT = window.localStorage.getItem('port') || 6842
 
@@ -105,6 +108,8 @@ export class Communication {
 			this.interpreter = new PenPlotter(this)
 		} else if(interpreterName == 'FredBot') {
 			this.interpreter = new FredBot(this)
+		} else if(interpreterName == 'Makelangelo') {
+			this.interpreter = new Makelangelo(this)
 		}
 		this.interpreter.setTipibot(tipibot)
 		console.log('initialize '+interpreterName)
@@ -125,7 +130,7 @@ export class Communication {
 
 			let options = ['Disconnected']
 			for(let port of data) {
-				options.push(port.comName)
+				options.push(port.path)
 			}
 			this.initializePortController(options)
 
@@ -160,7 +165,7 @@ export class Communication {
 	}
 
 	connectToSerial() {
-		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'FredBot'] ).name('Firmware')
+		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'Makelangelo', 'FredBot'] ).name('Firmware')
 		firmwareController.onFinishChange((value)=> {
 			settingsManager.save(false)
 			this.initializeInterpreter(value)

@@ -47,7 +47,7 @@ export class FileManager {
 	exportFile(baseName: string, i: number, project: paper.Project, images: any, group: paper.Group) {
 		let fileName = baseName + "_" + i + ".svg"
 		console.log("Exporting " + fileName + "...")
-		let imageData = project.exportSVG({asString: true})
+		let imageData: string = project.exportSVG({asString: true}) as any
 		let blob = new Blob([imageData], {type: 'image/svg+xml'})
 		console.log("Exported " + fileName + ".")
 		images.file(fileName, blob, {})

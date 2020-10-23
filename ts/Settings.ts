@@ -56,6 +56,10 @@ export let Settings = {
 		width: paperWidth,
 		height: paperHeight
 	},
+	transformMatrix: {
+		destinationPoints: new Array<number>(),
+		apply: false
+	},
 	plot: {
 		showPoints: false,
 		optimizeTrajectories: true,
@@ -72,7 +76,7 @@ export let Settings = {
 	}
 }
 
-const MAX_SPEED = 10000
+const MAX_SPEED = 20000
 
 declare let saveAs: any
 
@@ -392,7 +396,10 @@ export class SettingsManager {
 			return
 		}
 		for(let property in target) {
-			if(typeof(target[property]) === 'object') {
+			if(target[property] instanceof Array) {
+				target[property] = source[property].slice()
+			}
+			else if(typeof(target[property]) === 'object') {
 				this.copyObjectProperties(target[property], source[property])
 			} else if (source[property] != null) {
 				if(typeof target[property] == typeof source[property]) {

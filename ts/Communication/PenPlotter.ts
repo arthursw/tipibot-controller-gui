@@ -1,7 +1,33 @@
 import { Settings, SettingsManager, settingsManager } from "../Settings"
-import { Interpreter } from "./Interpreter"
+import { Interpreter, Communication } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {
+
+	name = 'penplotter'
+
+	constructor(communication: Communication) {
+		super(communication)
+		this.continueMessage = 'ok'
+	}
+	
+	initialize(initializeAtHome=true) {
+		// When initializing with PenPlotter on procesing:
+		// M4 X840 E0.5 S6400.0 P80.0
+		// Marlin1.0.2
+		// echo: Last Updated: May  1 2020 18:20:12 | Author: (none, default config)
+		// M1 Y250
+		// Compiled: May  1 2020
+		// echo: Free Memory: 5311  PlannerBufferBytes: 1232
+		// G0 F1010
+
+		// this.sendPenWidth(Settings.tipibot.penWidth)
+		this.sendSpecs()
+		// // Initialize at home position by default; it is always possible to set position afterward
+		// // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
+		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition())
+		this.sendMaxSpeed()
+		this.tipibot.initializedCommunication = true
+	}
 
 	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
 		super.sendSetPosition(point)
@@ -9,7 +35,9 @@ export class PenPlotter extends Interpreter {
 		let lengthsSteps = SettingsManager.mmToSteps(lengths)
 		// console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
-		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		// this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		// this.queue('M1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		this.queue('M1 Y' + point.y.toFixed(2) + '\n', message)
 	}
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
@@ -27,7 +55,8 @@ export class PenPlotter extends Interpreter {
 		let lengthsSteps = SettingsManager.mmToSteps(lengths)
 		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', min speed: ' + minSpeed.toFixed(2)
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
-		this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
+		// this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
+		this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed) {
@@ -84,7 +113,7 @@ export class PenPlotter extends Interpreter {
 		let millimetersPerStep = mmPerRev / stepsPerRevolution;
 		let message = 'Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev*microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep
 		console.log(message)
-		this.queue('M4 X' + tipibotWidth + ' S' + (stepsPerRev*microstepResolution) + ' P' + mmPerRev + '\n', message)
+		this.queue('M4 X' + tipibotWidth + ' E0.5 S' + (stepsPerRev*microstepResolution) + ' P' + mmPerRev + '\n', message)
 	}
 
 	sendPause(delay: number, callback: ()=> void = null) {

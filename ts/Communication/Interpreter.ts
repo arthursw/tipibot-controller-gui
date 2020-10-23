@@ -3,13 +3,20 @@ import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
 
+export enum SpecialCommandTypes {
+	Idle,
+    ChangePen
+}
+
 export declare type Command = {
 	data: string
 	message: string
 	callback: ()=> any
 	id: number
+	special?: SpecialCommandTypes
 }
 
+export const SERIAL_COMMUNICATION_SPEED = 115200// 250000
 export declare type Communication = { send: (type: string, data?: any)=> void }
 
 export class Interpreter {
@@ -23,7 +30,9 @@ export class Interpreter {
 	tempoNextCommand: boolean
 	serialInput: string
 	continueMessage = 'READY'
-	serialCommunicationSpeed = 115200
+	serialCommunicationSpeed = SERIAL_COMMUNICATION_SPEED
+	name = 'interpreter'
+	saveGCode = false
 
 	constructor(communication: Communication) {
 		this.commandQueue = []
@@ -58,11 +67,25 @@ export class Interpreter {
 		this.tipibot.initializedCommunication = true
 	}
 
+	getGCode(): string {
+		let gCode = ""
+		for(let command of this.commandQueue) {
+			gCode += command.data
+		}
+		return gCode
+	}
+
 	send(command: Command) {
 		if(this.pause) {
 			return
 		}
 		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
+		if(command.special == SpecialCommandTypes.ChangePen) {
+			this.pause = true
+			console.log('send: ' + command.message + ' - ' + command.data)
+			console.info(command.message + ' and then resume (uncheck pause)')
+			return
+		}
 		console.log('send: ' + command.message + ' - ' + command.data)
 		this.communication.send('data', command.data)
 	}
@@ -73,6 +96,12 @@ export class Interpreter {
 		}
 
 		this.serialInput += message
+		let continueIndex = this.serialInput.indexOf(this.continueMessage)
+
+		if(continueIndex > 0) {
+			var re = new RegExp(this.continueMessage, 'g')
+			this.serialInput = this.serialInput.replace(re, "\n" + this.continueMessage)
+		}
 
 		let messages = this.serialInput.split('\n')
 		
@@ -118,15 +147,18 @@ export class Interpreter {
 	}
 
 	setPause(pause: boolean) {
-		this.pause = pause;
+		this.pause = pause
 		if(!this.pause && this.commandQueue.length > 0) {
 			this.send(this.commandQueue[0])
 		}
 	}
 
-	queue(data: string, message: string, callback: () => any = null) {
-
-		let command = { id: this.commandID++, data: data, callback: callback, message: message }
+	queue(data: string, message: string, callback: () => any = null, specialCommand: SpecialCommandTypes = null) {
+		let command = { id: this.commandID++, data: data, callback: callback, message: message, special: specialCommand }
+		if(this.saveGCode) {
+			this.commandQueue.push(command)
+			return
+		}
 		document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }))
 
 		this.commandQueue.push(command)
@@ -160,6 +192,9 @@ export class Interpreter {
 		}
 	}
 
+    sendSetHome(point: paper.Point=this.tipibot.getPosition()) {
+	}
+	
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     }
 
@@ -191,6 +226,10 @@ export class Interpreter {
 	}
 
 	sendPenWidth(penWidth: number=Settings.tipibot.penWidth) {
+	}
+
+	sendChangePen(penName: string, penIndex: number) {
+		this.queue('Change pen ' + penIndex + '\n', 'Change pen to ' + penName + ', index ' + penIndex, null, SpecialCommandTypes.ChangePen)
 	}
 
 	sendServoSpeed(servoSpeed: number=Settings.servo.speed) {

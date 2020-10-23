@@ -4,9 +4,11 @@ export interface TipibotInterface {
 	tipibotArea: paper.Path
 	drawArea: paper.Path
 	initializedCommunication: boolean
+	motorsEnabled: boolean
 	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isUp: boolean }
 
 	getPosition(): paper.Point
+	getHome(): paper.Point
 	getGondolaPosition(): paper.Point
 	setX(x: number, sendChange?: boolean): void
 	setY(y: number, sendChange?: boolean): void

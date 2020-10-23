@@ -56,6 +56,7 @@ const commands = {
 export class Polargraph extends Interpreter {
 
 	keepTipibotAwakeInterval: number = null
+	name = 'polargraph'
 	
 	constructor(communication: Communication) {
 		super(communication)

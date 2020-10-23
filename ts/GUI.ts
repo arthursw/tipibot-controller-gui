@@ -211,7 +211,7 @@ export class GUI {
 		return button
 	}
 
-	addSlider(name: string, value: number, min: number, max: number, step: number=null): Controller {
+	addSlider(name: string, value: number, min: number=null, max: number=null, step: number=null): Controller {
 		let object:any = {}
 		object[name] = value
 		let slider:any = this.add(object, name, min, max)
