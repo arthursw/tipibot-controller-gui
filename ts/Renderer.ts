@@ -102,7 +102,7 @@ export class Renderer {
 			return
 		}
 		let cursorPosition = this.getWorldPosition(event)
-		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500))
+		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom - event.deltaY / 300))
 		document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		let newCursorPosition = this.getWorldPosition(event)
 		paper.view.translate(newCursorPosition.subtract(cursorPosition))

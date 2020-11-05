@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 22);
+/******/ 	return __webpack_require__(__webpack_require__.s = 23);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -891,11 +891,11 @@ exports.tipibot = new Tipibot();
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
 const Interpreter_1 = __webpack_require__(3);
-const Polargraph_1 = __webpack_require__(20);
+const Polargraph_1 = __webpack_require__(21);
 const PenPlotter_1 = __webpack_require__(7);
-const TipibotInterpreter_1 = __webpack_require__(21);
-const FredBot_1 = __webpack_require__(18);
-const Makelangelo_1 = __webpack_require__(19);
+const TipibotInterpreter_1 = __webpack_require__(22);
+const FredBot_1 = __webpack_require__(19);
+const Makelangelo_1 = __webpack_require__(20);
 // Connect to arduino-create-agent
 // https://github.com/arduino/arduino-create-agent
 // export const 57600 = 57600
@@ -1900,14 +1900,10 @@ class SVGPlot {
             return;
         }
         item = this.convertShapeToPath(item);
-        if (Number.isNaN(item.strokeWidth)) {
-            item.strokeWidth = parent.strokeWidth;
-        }
-        if (item.strokeColor == null) {
-            item.strokeColor = parent.strokeColor;
-        }
-        if ((item.strokeWidth == null || item.strokeWidth <= 0 || item.strokeColor == null) && item.fillColor == null) {
-            item.fillColor = parent.fillColor;
+        if (item.className == 'CompoundPath') {
+            for (let child of item.children) {
+                child.strokeColor = item.strokeColor;
+            }
         }
         item.remove();
         if (item.className == 'Path' && this.itemMustBeDrawn(item)) {
@@ -2149,6 +2145,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             }
         }
         for (let [color, paths] of colorToPaths) {
+            console.log('color', color, paths.length);
             let colorGroup = new paper.Group();
             colorGroup.addChildren(paths);
             if (Settings_1.Settings.plot.optimizeTrajectories) {
@@ -2159,6 +2156,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         }
         GUI_1.GUI.stopLoadingAnimation();
         this.currentPath = clone.firstChild;
+        let currentColor = this.getColorCSS(this.currentPath.strokeColor);
+        Tipibot_1.tipibot.sendChangePen(currentColor, this.currentColorIndex++);
         if (!gCode) {
             this.plotNext(() => {
                 if (goHomeOnceFinished) {
@@ -3722,6 +3721,152 @@ exports.FileManager = FileManager;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Settings_1 = __webpack_require__(0);
+const Tipibot_1 = __webpack_require__(1);
+class GCodeViewer {
+    constructor() {
+        this.fileName = null;
+        this.group = new paper.Group();
+    }
+    handleFileSelect(event) {
+        let files = event.dataTransfer != null ? event.dataTransfer.files : event.target.files;
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i] != null ? files[i] : files.item(i);
+            let reader = new FileReader();
+            reader.onload = (event) => this.onGCodeLoad(event.target.result, file.name);
+            reader.readAsText(file);
+            break;
+        }
+    }
+    convertFromMakelangeloCoordinates(point) {
+        let tipibotSize = new paper.Size(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
+        point.y *= -1;
+        return point.add(tipibotSize.multiply(0.5));
+    }
+    onGCodeLoad(gcode, name) {
+        this.fileName = name;
+        let lines = gcode.split('\n');
+        // find two first G0 Z--
+        let zMin = null;
+        let zMax = null;
+        for (let line of lines) {
+            if (line.indexOf('G0') == 0 && line.indexOf('Z') > 0) {
+                let commands = line.split(' ');
+                for (let command of commands) {
+                    if (command.indexOf('Z') == 0) {
+                        let z = parseFloat(command.substr(1));
+                        if (zMin == null && zMax == null) {
+                            zMin = z;
+                            zMax = z;
+                        }
+                        else {
+                            if (z > zMin) {
+                                zMax = z;
+                            }
+                            else {
+                                zMin = z;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        let currentPosition = Tipibot_1.tipibot.getHome();
+        let currentColor = new paper.Color(0, 0, 0);
+        let penUp = true;
+        let currentPen = null;
+        let path = null;
+        for (let line of lines) {
+            if (line.indexOf('G0') == 0) {
+                let commands = line.split(' ');
+                let xyz = {};
+                for (let command of commands) {
+                    xyz[command[0]] = parseFloat(command.substr(1));
+                }
+                if (xyz['Z'] != null) {
+                    if (xyz['Z'] != currentPen) {
+                        currentPen = xyz['Z'];
+                        penUp = !penUp;
+                    }
+                    if (!penUp) {
+                        path = new paper.Path();
+                        path.strokeColor = currentColor;
+                        path.strokeWidth = 1;
+                        path.add(currentPosition);
+                        this.group.addChild(path);
+                    }
+                    else {
+                        path = null;
+                    }
+                }
+                if (xyz['X'] != null || xyz['Y'] != null) {
+                    let x = xyz['X'] != null ? xyz['X'] + 0.5 * Settings_1.Settings.tipibot.width : currentPosition.x;
+                    let y = xyz['Y'] != null ? -xyz['Y'] + 0.5 * Settings_1.Settings.tipibot.height : currentPosition.y;
+                    currentPosition = new paper.Point(x, y);
+                    if (!penUp && path != null) {
+                        // if(Math.random()< 0.01) {
+                        //     console.log(currentPosition)
+                        // }
+                        path.add(currentPosition);
+                    }
+                }
+            }
+            if (line.indexOf('M117 Change pen to ') == 0) {
+                line = line.replace('M117 Change pen to ', '').replace('Click to continue', '');
+                currentColor = new paper.Color(line);
+            }
+        }
+    }
+    createGUI(gui) {
+        this.gui = gui.addFolder('GCode Viewer');
+        this.gui.addFileSelectorButton('Open GCode', 'text/*', false, (event) => this.handleFileSelect(event));
+        this.gui.addButton('Save to SVG', () => this.saveSVG());
+        this.gui.addButton('Clear', () => this.clear());
+    }
+    saveSVG() {
+        var container = document.createElement('div');
+        var params = { width: Settings_1.Settings.drawArea.width, height: Settings_1.Settings.drawArea.height };
+        let drawArea = Tipibot_1.tipibot.computeDrawArea();
+        var two = new Two(params).appendTo(container);
+        let blobs = [];
+        for (let child of this.group.children) {
+            let anchors = new Array();
+            for (let segment of child.segments) {
+                anchors.push(new Two.Anchor(segment.point.x - drawArea.left, segment.point.y - drawArea.top, segment.handleIn.x, segment.handleIn.y, segment.handleOut.x, segment.handleOut.y, 'M'));
+            }
+            let line = two.makePath(anchors, false);
+            line.linewidth = child.strokeWidth;
+            line.stroke = child.strokeColor.toCSS();
+        }
+        two.update();
+        // let svg = exportProject.exportSVG({ asString: true });
+        container.firstElementChild.setAttribute('xmlns', "http://www.w3.org/2000/svg");
+        var svgString = container.innerHTML;
+        // let svgString: any = this.group.exportSVG({ asString: true })
+        let blob = new Blob([svgString], { type: 'image/svg+xml' });
+        let url = URL.createObjectURL(blob);
+        let link = document.createElement("a");
+        document.body.appendChild(link);
+        link.download = this.fileName + '.svg';
+        link.href = url;
+        link.click();
+        document.body.removeChild(link);
+    }
+    clear() {
+        this.group.removeChildren();
+    }
+}
+exports.GCodeViewer = GCodeViewer;
+
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Settings_1 = __webpack_require__(0);
 const Communication_1 = __webpack_require__(2);
 const Tipibot_1 = __webpack_require__(1);
 class LiveDrawing {
@@ -4205,7 +4350,7 @@ exports.LiveDrawing = LiveDrawing;
 
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4325,7 +4470,7 @@ exports.SVGSplitter = SVGSplitter;
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4514,7 +4659,7 @@ exports.Telescreen = Telescreen;
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4598,7 +4743,7 @@ class Renderer {
             return;
         }
         let cursorPosition = this.getWorldPosition(event);
-        paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom + event.deltaY / 500));
+        paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom - event.deltaY / 300));
         document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: {} }));
         let newCursorPosition = this.getWorldPosition(event);
         paper.view.translate(newCursorPosition.subtract(cursorPosition));
@@ -4624,7 +4769,7 @@ exports.Renderer = Renderer;
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4659,7 +4804,7 @@ exports.FredBot = FredBot;
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4882,7 +5027,7 @@ class Makelangelo extends Interpreter_1.Interpreter {
                 break;
         }
         this.queue('M117\n', 'Clear message');
-        let changeString = 'Change pen to ' + name;
+        let changeString = 'Pen ' + name;
         let continueString = 'Click to continue';
         this.queue('M06 T' + penIndex + '\n', 'Change pen to ' + parseInt(penName));
         this.queue('M117 ' + changeString + ' ' + continueString + '\n', changeString + ' ' + continueString);
@@ -4904,7 +5049,7 @@ exports.Makelangelo = Makelangelo;
 
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5117,7 +5262,7 @@ exports.Polargraph = Polargraph;
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5178,7 +5323,7 @@ exports.TipibotInterpreter = TipibotInterpreter;
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5193,7 +5338,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { THREE } from "../node_modules/three/build/three"
 const Settings_1 = __webpack_require__(0);
 const Tipibot_1 = __webpack_require__(1);
-const Renderer_1 = __webpack_require__(17);
+const Renderer_1 = __webpack_require__(18);
 const Pen_1 = __webpack_require__(5);
 const Plot_1 = __webpack_require__(6);
 const Calibration_1 = __webpack_require__(8);
@@ -5203,11 +5348,11 @@ const GUI_1 = __webpack_require__(4);
 const Console_1 = __webpack_require__(11);
 const VisualFeedback_1 = __webpack_require__(9);
 const CommeUnDessein_1 = __webpack_require__(12);
-const Telescreen_1 = __webpack_require__(16);
-const SVGSplitter_1 = __webpack_require__(15);
+const Telescreen_1 = __webpack_require__(17);
+const SVGSplitter_1 = __webpack_require__(16);
 const FileManager_1 = __webpack_require__(13);
-const LiveDrawing_1 = __webpack_require__(14);
-const GCodeViewer_1 = __webpack_require__(23);
+const LiveDrawing_1 = __webpack_require__(15);
+const GCodeViewer_1 = __webpack_require__(14);
 let communication = null;
 let container = null;
 let renderer = null;
@@ -5325,152 +5470,6 @@ document.addEventListener("DOMContentLoaded", function (event) {
     document.body.addEventListener('keyup', keyUp);
     addWheelListener(document.body, mouseWheel);
 });
-
-
-/***/ }),
-/* 23 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const Settings_1 = __webpack_require__(0);
-const Tipibot_1 = __webpack_require__(1);
-class GCodeViewer {
-    constructor() {
-        this.fileName = null;
-        this.group = new paper.Group();
-    }
-    handleFileSelect(event) {
-        let files = event.dataTransfer != null ? event.dataTransfer.files : event.target.files;
-        for (let i = 0; i < files.length; i++) {
-            let file = files[i] != null ? files[i] : files.item(i);
-            let reader = new FileReader();
-            reader.onload = (event) => this.onGCodeLoad(event.target.result, file.name);
-            reader.readAsText(file);
-            break;
-        }
-    }
-    convertFromMakelangeloCoordinates(point) {
-        let tipibotSize = new paper.Size(Settings_1.Settings.tipibot.width, Settings_1.Settings.tipibot.height);
-        point.y *= -1;
-        return point.add(tipibotSize.multiply(0.5));
-    }
-    onGCodeLoad(gcode, name) {
-        this.fileName = name;
-        let lines = gcode.split('\n');
-        // find two first G0 Z--
-        let zMin = null;
-        let zMax = null;
-        for (let line of lines) {
-            if (line.indexOf('G0') == 0 && line.indexOf('Z') > 0) {
-                let commands = line.split(' ');
-                for (let command of commands) {
-                    if (command.indexOf('Z') == 0) {
-                        let z = parseFloat(command.substr(1));
-                        if (zMin == null && zMax == null) {
-                            zMin = z;
-                            zMax = z;
-                        }
-                        else {
-                            if (z > zMin) {
-                                zMax = z;
-                            }
-                            else {
-                                zMin = z;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        let currentPosition = Tipibot_1.tipibot.getHome();
-        let currentColor = new paper.Color(0, 0, 0);
-        let penUp = true;
-        let currentPen = null;
-        let path = null;
-        for (let line of lines) {
-            if (line.indexOf('G0') == 0) {
-                let commands = line.split(' ');
-                let xyz = {};
-                for (let command of commands) {
-                    xyz[command[0]] = parseFloat(command.substr(1));
-                }
-                if (xyz['Z'] != null) {
-                    if (xyz['Z'] != currentPen) {
-                        currentPen = xyz['Z'];
-                        penUp = !penUp;
-                    }
-                    if (!penUp) {
-                        path = new paper.Path();
-                        path.strokeColor = currentColor;
-                        path.strokeWidth = 1;
-                        path.add(currentPosition);
-                        this.group.addChild(path);
-                    }
-                    else {
-                        path = null;
-                    }
-                }
-                if (xyz['X'] != null || xyz['Y'] != null) {
-                    let x = xyz['X'] != null ? xyz['X'] + 0.5 * Settings_1.Settings.tipibot.width : currentPosition.x;
-                    let y = xyz['Y'] != null ? -xyz['Y'] + 0.5 * Settings_1.Settings.tipibot.height : currentPosition.y;
-                    currentPosition = new paper.Point(x, y);
-                    if (!penUp && path != null) {
-                        // if(Math.random()< 0.01) {
-                        //     console.log(currentPosition)
-                        // }
-                        path.add(currentPosition);
-                    }
-                }
-            }
-            if (line.indexOf('M117 Change pen to ') == 0) {
-                line = line.replace('M117 Change pen to ', '').replace('Click to continue', '');
-                currentColor = new paper.Color(line);
-            }
-        }
-    }
-    createGUI(gui) {
-        this.gui = gui.addFolder('GCode Viewer');
-        this.gui.addFileSelectorButton('Open GCode', 'text/*', false, (event) => this.handleFileSelect(event));
-        this.gui.addButton('Save to SVG', () => this.saveSVG());
-        this.gui.addButton('Clear', () => this.clear());
-    }
-    saveSVG() {
-        var container = document.createElement('div');
-        var params = { width: Settings_1.Settings.drawArea.width, height: Settings_1.Settings.drawArea.height };
-        let drawArea = Tipibot_1.tipibot.computeDrawArea();
-        var two = new Two(params).appendTo(container);
-        let blobs = [];
-        for (let child of this.group.children) {
-            let anchors = new Array();
-            for (let segment of child.segments) {
-                anchors.push(new Two.Anchor(segment.point.x - drawArea.left, segment.point.y - drawArea.top, segment.handleIn.x, segment.handleIn.y, segment.handleOut.x, segment.handleOut.y, 'M'));
-            }
-            let line = two.makePath(anchors);
-            line.linewidth = child.strokeWidth;
-            line.stroke = child.strokeColor.toCSS();
-        }
-        two.update();
-        // let svg = exportProject.exportSVG({ asString: true });
-        container.firstElementChild.setAttribute('xmlns', "http://www.w3.org/2000/svg");
-        var svgString = container.innerHTML;
-        // let svgString: any = this.group.exportSVG({ asString: true })
-        let blob = new Blob([svgString], { type: 'image/svg+xml' });
-        let url = URL.createObjectURL(blob);
-        let link = document.createElement("a");
-        document.body.appendChild(link);
-        link.download = this.fileName + '.svg';
-        link.href = url;
-        link.click();
-        document.body.removeChild(link);
-    }
-    clear() {
-        this.group.removeChildren();
-    }
-}
-exports.GCodeViewer = GCodeViewer;
 
 
 /***/ })

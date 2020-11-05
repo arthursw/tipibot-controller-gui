@@ -127,7 +127,7 @@ export class GCodeViewer {
             for(let segment of (child as paper.Path).segments) {
                 anchors.push(new Two.Anchor(segment.point.x - drawArea.left, segment.point.y - drawArea.top, segment.handleIn.x, segment.handleIn.y, segment.handleOut.x, segment.handleOut.y, 'M'))
             }
-            let line = two.makePath(anchors)
+            let line = two.makePath(anchors, false)
             line.linewidth = child.strokeWidth;
             line.stroke = (child as any).strokeColor.toCSS()
         }

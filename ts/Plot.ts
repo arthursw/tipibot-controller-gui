@@ -3,6 +3,7 @@ import { Settings, settingsManager, SettingsManager } from "./Settings"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
 import { Pen } from './Pen'
+import { Int8BufferAttribute } from "../libs/three"
 
 export class SVGPlot {
 
@@ -284,14 +285,10 @@ export class SVGPlot {
 
 		item = this.convertShapeToPath(<paper.Shape>item)
 
-		if(Number.isNaN(item.strokeWidth)) {
-			item.strokeWidth = parent.strokeWidth
-		}
-		if(item.strokeColor == null) {
-			item.strokeColor = parent.strokeColor
-		}
-		if((item.strokeWidth == null || item.strokeWidth <= 0 || item.strokeColor == null) && item.fillColor == null) {
-			item.fillColor = parent.fillColor
+		if(item.className == 'CompoundPath') {
+			for(let child of item.children) {
+				child.strokeColor = item.strokeColor
+			}
 		}
 
 		item.remove()
@@ -626,6 +623,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 
 		for(let [color, paths] of colorToPaths) {
+			console.log('color', color, paths.length)
 			let colorGroup = new paper.Group()
 			colorGroup.addChildren(paths)
 			if(Settings.plot.optimizeTrajectories) {
@@ -638,7 +636,9 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		GUI.stopLoadingAnimation()
 
 		this.currentPath = <paper.Path>clone.firstChild
-		
+		let currentColor = this.getColorCSS(this.currentPath.strokeColor)
+		tipibot.sendChangePen(currentColor, this.currentColorIndex++)
+
 		if(!gCode) {
 			this.plotNext(()=> {
 				if(goHomeOnceFinished) {

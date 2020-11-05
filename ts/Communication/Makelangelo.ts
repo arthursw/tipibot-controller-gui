@@ -234,10 +234,10 @@ export class Makelangelo extends Interpreter {
 		}
 		
 		this.queue('M117\n', 'Clear message')
-		let changeString = 'Change pen to ' + name
+		let changeString = 'Pen ' + name
 		let continueString = 'Click to continue'
 		this.queue('M06 T' + penIndex + '\n', 'Change pen to ' + parseInt(penName))
-		this.queue('M117 '+ changeString + ' ' + continueString + '\n', changeString + ' ' + continueString)
+		this.queue('M117 ' + changeString + ' ' + continueString + '\n', changeString + ' ' + continueString)
 		this.queue('M300 S60 P250\n', 'Beep')
 		this.queue('M226\n', 'Pause for user input')
 		this.queue('M117\n', 'Clear message')
