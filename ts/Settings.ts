@@ -63,6 +63,7 @@ export let Settings = {
 	plot: {
 		showPoints: false,
 		optimizeTrajectories: true,
+		disableMotorsOnceFinished: false,
 		flatten: true,
 		flattenPrecision: 0.25,
 		subdivide: false,

@@ -132,6 +132,7 @@ exports.Settings = {
     plot: {
         showPoints: false,
         optimizeTrajectories: true,
+        disableMotorsOnceFinished: false,
         flatten: true,
         flattenPrecision: 0.25,
         subdivide: false,
@@ -999,7 +1000,7 @@ class Communication {
             if (Settings_1.Settings.autoConnect) {
                 for (let port of data) {
                     if (port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
-                        this.portController.setValue(port.comName);
+                        this.portController.setValue(port.path);
                         break;
                     }
                 }
@@ -1745,6 +1746,9 @@ class SVGPlot {
                 if (callback != null) {
                     callback();
                 }
+                if (Settings_1.Settings.plot.disableMotorsOnceFinished) {
+                    Tipibot_1.tipibot.disableMotors(true);
+                }
             }
         }
     }
@@ -1804,6 +1808,7 @@ class SVGPlot {
         SVGPlot.gui.open();
         SVGPlot.gui.add(Settings_1.Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value) => Settings_1.settingsManager.save(false));
         SVGPlot.gui.add(Settings_1.Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event) => Settings_1.settingsManager.save(false));
+        SVGPlot.gui.add(Settings_1.Settings.plot, 'disableMotorsOnceFinished').name('Disable motors once finished').onFinishChange((event) => Settings_1.settingsManager.save(false));
         SVGPlot.gui.add(Settings_1.Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value) => Settings_1.settingsManager.save(false));
         SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', true, (event) => SVGPlot.handleFileSelect(event));
         let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked);
@@ -2173,6 +2178,9 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             if (goHomeOnceFinished) {
                 Tipibot_1.tipibot.goHome();
             }
+            if (Settings_1.Settings.plot.disableMotorsOnceFinished) {
+                Tipibot_1.tipibot.disableMotors(true);
+            }
         }
         clone.remove();
     }
@@ -2454,6 +2462,11 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.plotting = false;
         if (callback != null) {
             callback();
+        }
+        if (!SVGPlot.multipleFiles) {
+            if (Settings_1.Settings.plot.disableMotorsOnceFinished) {
+                Tipibot_1.tipibot.disableMotors(true);
+            }
         }
     }
     clearData(item) {

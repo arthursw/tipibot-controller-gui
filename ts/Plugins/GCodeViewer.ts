@@ -21,7 +21,7 @@ export class GCodeViewer {
 		for (let i = 0 ; i < files.length ; i++) {
 			let file = files[i] != null ? files[i] : files.item(i)
 			let reader = new FileReader()
-			reader.onload = (event)=> this.onGCodeLoad(event.target.result as string, file.name)
+			reader.onload = (event: any)=> this.onGCodeLoad(event.target.result as string, file.name)
 			reader.readAsText(file)
 			break
 		}

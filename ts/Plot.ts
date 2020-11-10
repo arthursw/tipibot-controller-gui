@@ -102,6 +102,9 @@ export class SVGPlot {
 				if(callback != null) {
 					callback()
 				}
+				if(Settings.plot.disableMotorsOnceFinished) {
+					tipibot.disableMotors(true)
+				}
 			}
 		}
 	}
@@ -167,6 +170,7 @@ export class SVGPlot {
 
 		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
 		SVGPlot.gui.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
+		SVGPlot.gui.add(Settings.plot, 'disableMotorsOnceFinished').name('Disable motors once finished').onFinishChange((event)=> settingsManager.save(false))
 		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', true, (event)=> SVGPlot.handleFileSelect(event))
@@ -652,6 +656,9 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			if(goHomeOnceFinished) {
 				tipibot.goHome()
 			}
+			if(Settings.plot.disableMotorsOnceFinished) {
+				tipibot.disableMotors(true)
+			}
 		}
 
 		clone.remove()
@@ -991,6 +998,11 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.plotting = false
 		if(callback != null) {
 			callback()
+		}
+		if(!SVGPlot.multipleFiles) {
+			if(Settings.plot.disableMotorsOnceFinished) {
+				tipibot.disableMotors(true)
+			}
 		}
 	}
 

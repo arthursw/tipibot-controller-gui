@@ -137,7 +137,7 @@ export class Communication {
 			if(Settings.autoConnect) {
 				for(let port of data) {
 					if(port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
-						this.portController.setValue(port.comName)
+						this.portController.setValue(port.path)
 						break
 					}
 				}
