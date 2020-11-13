@@ -201,7 +201,10 @@ export class Interpreter {
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 	}
 
-	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
+	}
+
+	sendDrawSpeed(speed: number=Settings.tipibot.drawSpeed, acceleration: number=Settings.tipibot.acceleration) {
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {

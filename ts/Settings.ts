@@ -24,7 +24,8 @@ export let Settings = {
 		homeY: paperHeight + homeY,
 		invertMotorLeft: false,
 		invertMotorRight: false,
-		maxSpeed: 500,
+		drawSpeed: 330,
+		maxSpeed: 4042,
 		acceleration: 200,
 		stepsPerRev: 200,
 		microstepResolution: 32,
@@ -183,6 +184,7 @@ export class SettingsManager {
 
 		this.motorsFolder.add(Settings.tipibot, 'invertMotorLeft').name('Invert left motor')
 		this.motorsFolder.add(Settings.tipibot, 'invertMotorRight').name('Invert right motor')
+		this.motorsFolder.add(Settings.tipibot, 'drawSpeed', 1, MAX_SPEED, 1).name('Draw speed steps/sec.')
 		this.motorsFolder.add(Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.')
 		this.motorsFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.')
 		this.motorsFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')
@@ -281,7 +283,9 @@ export class SettingsManager {
 				this.tipibot.setHome(false)
 			}
 		} else if(parentNames[0] == 'Motors') {
-			if(name == 'maxSpeed') {
+			if(name == 'drawSpeed') {
+				this.tipibot.drawSpeedChanged(changeFinished)
+			} else if(name == 'maxSpeed') {
 				let maxSpeedMm = value * SettingsManager.mmPerSteps()
 				this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm)
 				this.tipibot.maxSpeedChanged(changeFinished)
@@ -357,6 +361,7 @@ export class SettingsManager {
 			controller.updateDisplay()
 		}
 
+		this.tipibot.drawSpeedChanged(true)
 		this.tipibot.maxSpeedChanged(true)
 		this.tipibot.mmPerRevChanged(true)
 		this.tipibot.stepsPerRevChanged(true)

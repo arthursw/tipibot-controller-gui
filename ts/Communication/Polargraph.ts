@@ -143,7 +143,7 @@ export class Polargraph extends Interpreter {
 		this.sendMoveToNativePosition(true, point, callback);
 	}
 
-	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
 		// Just like in Polagraph controller:
 		// this.sendMoveToNativePosition(false, point, callback);
 		this.sendMoveToNativePosition(true, point, callback);

@@ -196,6 +196,12 @@ export class Tipibot implements TipibotInterface {
 		this.updateMoveToButtons()
 	}
 
+	drawSpeedChanged(sendChange: boolean) {
+		if(sendChange) {
+			communication.interpreter.sendDrawSpeed()
+		}
+	}
+
 	maxSpeedChanged(sendChange: boolean) {
 		if(sendChange) {
 			communication.interpreter.sendMaxSpeed()
@@ -268,7 +274,7 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.sendProgressiveMicrosteps()
 	}
 
-	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, callback: () => any = null, movePen=true) {
+	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null, movePen=true) {
 		this.checkInitialized()
 
 		let moveCallback = movePen ? callback : ()=> {
@@ -294,7 +300,7 @@ export class Tipibot implements TipibotInterface {
 			if(calibration.applyTransform) {
 				target = calibration.transform(target)
 			}
-			communication.interpreter.sendMoveLinear(target, minSpeed, moveCallback)
+			communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback)
 		}
 
 		if(movePen) {
@@ -303,11 +309,11 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	moveDirect(point: paper.Point, callback: () => any = null, movePen=true) {
-		this.move(MoveType.Direct, point, 0, callback, movePen)
+		this.move(MoveType.Direct, point, 0, Settings.tipibot.maxSpeed, callback, movePen)
 	}
 
-	moveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null, movePen=true) {
-		this.move(MoveType.Linear, point, minSpeed, callback, movePen)
+	moveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null, movePen=true) {
+		this.move(MoveType.Linear, point, minSpeed, maxSpeed, callback, movePen)
 	}
 
 	setSpeed(speed: number) {
@@ -435,6 +441,10 @@ export class Tipibot implements TipibotInterface {
 
 	keyDown(event:KeyboardEvent) {
 		if(this.ignoreKeyEvents) {
+			return
+		}
+		if($.contains($('#gui').get(0), document.activeElement)) {
+			console.log('Focus on the draw area to move the bot with arrows')
 			return
 		}
 		let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1

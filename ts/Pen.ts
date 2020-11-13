@@ -87,7 +87,7 @@ export class Pen {
 			if(moveType == MoveType.Direct) {
 				tipibot.moveDirect(point, callback)
 			} else {
-				tipibot.moveLinear(point, 0, callback)
+				tipibot.moveLinear(point, 0, Settings.tipibot.maxSpeed, callback)
 			}
 		}
 		let center = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)

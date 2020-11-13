@@ -71,10 +71,10 @@ export class Makelangelo extends Interpreter {
 		this.queue('G1' + speedCommand + ' X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
-	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
-		super.sendMoveLinear(point, minSpeed, callback)
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
+		super.sendMoveLinear(point, minSpeed, maxSpeed, callback)
 		point = this.convertToMakelangeloCoordinates(point)
-		let speed = Settings.tipibot.maxSpeed
+		let speed = maxSpeed
 		let speedInMMperSec = speed * SettingsManager.mmPerSteps()
 		// let lengths = this.tipibot.cartesianToLengths(point)
 		// let lengthsSteps = SettingsManager.mmToSteps(lengths)

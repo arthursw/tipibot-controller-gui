@@ -27,6 +27,7 @@ export interface TipibotInterface {
 
 	sendInvertXY(): void
 	sendProgressiveMicrosteps(): void
+	drawSpeedChanged(sendChange?: boolean): void
 	maxSpeedChanged(sendChange?: boolean): void
 	accelerationChanged(sendChange?: boolean): void
 	stepsPerRevChanged(sendChange?: boolean): void

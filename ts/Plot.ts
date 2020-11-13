@@ -850,7 +850,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			// let circle = paper.Path.Circle(point, 4)
 			// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
 		}
-		tipibot.moveLinear(point, minSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
+		tipibot.moveLinear(point, minSpeed, Settings.tipibot.drawSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
 	}
 
 	plotPath(path: paper.Path) {

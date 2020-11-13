@@ -93,7 +93,8 @@ exports.Settings = {
         homeY: paperHeight + homeY,
         invertMotorLeft: false,
         invertMotorRight: false,
-        maxSpeed: 500,
+        drawSpeed: 330,
+        maxSpeed: 4042,
         acceleration: 200,
         stepsPerRev: 200,
         microstepResolution: 32,
@@ -224,6 +225,7 @@ class SettingsManager {
         this.motorsFolder = settingsFolder.addFolder('Motors');
         this.motorsFolder.add(exports.Settings.tipibot, 'invertMotorLeft').name('Invert left motor');
         this.motorsFolder.add(exports.Settings.tipibot, 'invertMotorRight').name('Invert right motor');
+        this.motorsFolder.add(exports.Settings.tipibot, 'drawSpeed', 1, MAX_SPEED, 1).name('Draw speed steps/sec.');
         this.motorsFolder.add(exports.Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.');
         this.motorsFolder.add({ maxSpeedMm: exports.Settings.tipibot.maxSpeed * SettingsManager.mmPerSteps() }, 'maxSpeedMm', 0.1, MAX_SPEED * SettingsManager.mmPerSteps(), 0.01).name('Max speed mm/sec.');
         this.motorsFolder.add(exports.Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration');
@@ -323,7 +325,10 @@ class SettingsManager {
             }
         }
         else if (parentNames[0] == 'Motors') {
-            if (name == 'maxSpeed') {
+            if (name == 'drawSpeed') {
+                this.tipibot.drawSpeedChanged(changeFinished);
+            }
+            else if (name == 'maxSpeed') {
                 let maxSpeedMm = value * SettingsManager.mmPerSteps();
                 this.motorsFolder.getController('maxSpeedMm').setValueNoCallback(maxSpeedMm);
                 this.tipibot.maxSpeedChanged(changeFinished);
@@ -410,6 +415,7 @@ class SettingsManager {
         for (let controller of this.getControllers()) {
             controller.updateDisplay();
         }
+        this.tipibot.drawSpeedChanged(true);
         this.tipibot.maxSpeedChanged(true);
         this.tipibot.mmPerRevChanged(true);
         this.tipibot.stepsPerRevChanged(true);
@@ -648,6 +654,11 @@ class Tipibot {
         this.updateDrawArea();
         this.updateMoveToButtons();
     }
+    drawSpeedChanged(sendChange) {
+        if (sendChange) {
+            Communication_1.communication.interpreter.sendDrawSpeed();
+        }
+    }
     maxSpeedChanged(sendChange) {
         if (sendChange) {
             Communication_1.communication.interpreter.sendMaxSpeed();
@@ -706,7 +717,7 @@ class Tipibot {
     sendProgressiveMicrosteps() {
         Communication_1.communication.interpreter.sendProgressiveMicrosteps();
     }
-    move(moveType, point, minSpeed = 0, callback = null, movePen = true) {
+    move(moveType, point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null, movePen = true) {
         this.checkInitialized();
         let moveCallback = movePen ? callback : () => {
             this.pen.setPosition(point, true, false);
@@ -729,17 +740,17 @@ class Tipibot {
             if (Calibration_1.calibration.applyTransform) {
                 target = Calibration_1.calibration.transform(target);
             }
-            Communication_1.communication.interpreter.sendMoveLinear(target, minSpeed, moveCallback);
+            Communication_1.communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback);
         }
         if (movePen) {
             this.pen.setPosition(point, true, false);
         }
     }
     moveDirect(point, callback = null, movePen = true) {
-        this.move(Pen_1.MoveType.Direct, point, 0, callback, movePen);
+        this.move(Pen_1.MoveType.Direct, point, 0, Settings_1.Settings.tipibot.maxSpeed, callback, movePen);
     }
-    moveLinear(point, minSpeed = 0, callback = null, movePen = true) {
-        this.move(Pen_1.MoveType.Linear, point, minSpeed, callback, movePen);
+    moveLinear(point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null, movePen = true) {
+        this.move(Pen_1.MoveType.Linear, point, minSpeed, maxSpeed, callback, movePen);
     }
     setSpeed(speed) {
         Communication_1.communication.interpreter.sendMaxSpeed(speed);
@@ -851,6 +862,10 @@ class Tipibot {
     }
     keyDown(event) {
         if (this.ignoreKeyEvents) {
+            return;
+        }
+        if ($.contains($('#gui').get(0), document.activeElement)) {
+            console.log('Focus on the draw area to move the bot with arrows');
             return;
         }
         let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;
@@ -1271,7 +1286,9 @@ class Interpreter {
     }
     sendMoveDirect(point, callback = null) {
     }
-    sendMoveLinear(point, minSpeed = 0, callback = null) {
+    sendMoveLinear(point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null) {
+    }
+    sendDrawSpeed(speed = Settings_1.Settings.tipibot.drawSpeed, acceleration = Settings_1.Settings.tipibot.acceleration) {
     }
     sendMaxSpeed(speed = Settings_1.Settings.tipibot.maxSpeed, acceleration = Settings_1.Settings.tipibot.acceleration) {
     }
@@ -1597,7 +1614,7 @@ class Pen {
                 Tipibot_1.tipibot.moveDirect(point, callback);
             }
             else {
-                Tipibot_1.tipibot.moveLinear(point, 0, callback);
+                Tipibot_1.tipibot.moveLinear(point, 0, Settings_1.Settings.tipibot.maxSpeed, callback);
             }
         }
         let center = new paper.Point(point.x, point.y - Settings_1.Settings.tipibot.penOffset);
@@ -2336,7 +2353,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             // let circle = paper.Path.Circle(point, 4)
             // circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
         }
-        Tipibot_1.tipibot.moveLinear(point, minSpeed, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
+        Tipibot_1.tipibot.moveLinear(point, minSpeed, Settings_1.Settings.tipibot.drawSpeed, () => Tipibot_1.tipibot.pen.setPosition(point, true, false), false);
     }
     plotPath(path) {
         if (path.className != 'Path' || !SVGPlot.itemMustBeDrawn(path) || path.segments == null) {
@@ -2569,8 +2586,8 @@ class PenPlotter extends Interpreter_1.Interpreter {
         // console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
         this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
-    sendMoveLinear(point, minSpeed = 0, callback = null) {
-        super.sendMoveLinear(point, minSpeed, callback);
+    sendMoveLinear(point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null) {
+        super.sendMoveLinear(point, minSpeed, maxSpeed, callback);
         let lengths = this.tipibot.cartesianToLengths(point);
         let lengthsSteps = Settings_1.SettingsManager.mmToSteps(lengths);
         let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', min speed: ' + minSpeed.toFixed(2);
@@ -4886,10 +4903,10 @@ class Makelangelo extends Interpreter_1.Interpreter {
         this.lastCommandWasMove = true;
         this.queue('G1' + speedCommand + ' X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback);
     }
-    sendMoveLinear(point, minSpeed = 0, callback = null) {
-        super.sendMoveLinear(point, minSpeed, callback);
+    sendMoveLinear(point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null) {
+        super.sendMoveLinear(point, minSpeed, maxSpeed, callback);
         point = this.convertToMakelangeloCoordinates(point);
-        let speed = Settings_1.Settings.tipibot.maxSpeed;
+        let speed = maxSpeed;
         let speedInMMperSec = speed * Settings_1.SettingsManager.mmPerSteps();
         // let lengths = this.tipibot.cartesianToLengths(point)
         // let lengthsSteps = SettingsManager.mmToSteps(lengths)
@@ -5196,7 +5213,7 @@ class Polargraph extends Interpreter_1.Interpreter {
     sendMoveDirect(point, callback = null) {
         this.sendMoveToNativePosition(true, point, callback);
     }
-    sendMoveLinear(point, minSpeed = 0, callback = null) {
+    sendMoveLinear(point, minSpeed = 0, maxSpeed = Settings_1.Settings.tipibot.maxSpeed, callback = null) {
         // Just like in Polagraph controller:
         // this.sendMoveToNativePosition(false, point, callback);
         this.sendMoveToNativePosition(true, point, callback);

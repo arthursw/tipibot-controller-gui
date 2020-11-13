@@ -49,8 +49,8 @@ export class PenPlotter extends Interpreter {
 		this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
-	sendMoveLinear(point: paper.Point, minSpeed: number=0, callback: () => any = null) {
-		super.sendMoveLinear(point, minSpeed, callback)
+	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
+		super.sendMoveLinear(point, minSpeed, maxSpeed, callback)
 		let lengths = this.tipibot.cartesianToLengths(point)
 		let lengthsSteps = SettingsManager.mmToSteps(lengths)
 		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', min speed: ' + minSpeed.toFixed(2)
