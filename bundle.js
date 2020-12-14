@@ -1433,7 +1433,7 @@ class Controller {
 }
 exports.Controller = Controller;
 class GUI {
-    constructor(options = null, name = null, parent = null) {
+    constructor(options = undefined, name = undefined, parent = undefined) {
         this.gui = parent != null && name != null ? parent.gui.addFolder(name) : new dat.GUI(options);
         this.name = name;
         this.parent = parent;
@@ -1468,7 +1468,7 @@ class GUI {
     getDomElement() {
         return this.gui.domElement;
     }
-    add(object, propertyName, min = null, max = null, step = null) {
+    add(object, propertyName, min = undefined, max = undefined, step = undefined) {
         let controller = new Controller(this.gui.add(object, propertyName, min, max, step), this);
         this.nameToController.set(propertyName, controller);
         return controller;
@@ -1493,7 +1493,7 @@ class GUI {
         });
         return button;
     }
-    addSlider(name, value, min = null, max = null, step = null) {
+    addSlider(name, value, min = undefined, max = undefined, step = undefined) {
         let object = {};
         object[name] = value;
         let slider = this.add(object, name, min, max);
@@ -1845,8 +1845,8 @@ class SVGPlot {
         let transformFolder = SVGPlot.gui.addFolder('Transform');
         SVGPlot.transformFolder = transformFolder;
         transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center));
-        transformFolder.addSlider('X', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true));
-        transformFolder.addSlider('Y', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true));
+        transformFolder.addSlider('X', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true));
+        transformFolder.addSlider('Y', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true));
         transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX));
         transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY));
         transformFolder.addButton('Rotate', SVGPlot.createCallback(SVGPlot.prototype.rotate));
@@ -2018,7 +2018,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.updatePositionGUI();
     }
     updatePositionGUI() {
-        SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - Tipibot_1.tipibot.drawArea.bounds.left);
+        // SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
         SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot_1.tipibot.drawArea.bounds.top);
     }
     saveItem() {
@@ -2260,19 +2260,17 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.updateShape();
         this.storeMatrix();
     }
-    setX() {
+    setX(x) {
         if (this.checkPlotting()) {
             return;
         }
-        let x = SVGPlot.transformFolder.getController('X').getValue();
         this.group.position.x = Tipibot_1.tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2;
         this.storeMatrix();
     }
-    setY() {
+    setY(y) {
         if (this.checkPlotting()) {
             return;
         }
-        let y = SVGPlot.transformFolder.getController('Y').getValue();
         this.group.position.y = Tipibot_1.tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2;
         this.storeMatrix();
     }

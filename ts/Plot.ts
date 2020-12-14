@@ -191,8 +191,8 @@ export class SVGPlot {
 		let transformFolder = SVGPlot.gui.addFolder('Transform')
 		SVGPlot.transformFolder = transformFolder
 		transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center))
-		transformFolder.addSlider('X', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
-		transformFolder.addSlider('Y', 0).onChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
+		transformFolder.addSlider('X', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
+		transformFolder.addSlider('Y', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
 		
 		transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX))
 		transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY))
@@ -452,7 +452,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	updatePositionGUI() {
-		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
+		// SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
 		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
 	}
 
@@ -735,20 +735,18 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.storeMatrix()
 	}
 	
-	setX() {
+	setX(x: number) {
 		if(this.checkPlotting()) {
 			return
 		}
-		let x = SVGPlot.transformFolder.getController('X').getValue()
 		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
 		this.storeMatrix()
 	}
 	
-	setY() {
+	setY(y: number) {
 		if(this.checkPlotting()) {
 			return
 		}
-		let y = SVGPlot.transformFolder.getController('Y').getValue()
 		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
 		this.storeMatrix()
 	}

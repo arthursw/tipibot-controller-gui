@@ -167,7 +167,7 @@ export class GUI {
 		GUI.loadingTimeoutID = setTimeout(()=>$('#loading').addClass('hidden'), 1000)
 	}
 
-	constructor(options: any = null, name: string = null, parent: GUI = null) {
+	constructor(options: any = undefined, name: string = undefined, parent: GUI = undefined) {
 		this.gui = parent != null && name != null ? parent.gui.addFolder(name) : new dat.GUI(options)
 		this.name = name
 		this.parent = parent
@@ -179,7 +179,7 @@ export class GUI {
 		return this.gui.domElement
 	}
 	
-	add(object: any, propertyName: string, min: number | string[] = null, max: number = null, step: number = null): Controller {
+	add(object: any, propertyName: string, min: number | string[] = undefined, max: number = undefined, step: number = undefined): Controller {
 		let controller = new Controller( this.gui.add(object, propertyName, min, max, step), this )
 		this.nameToController.set(propertyName, controller)
 		return controller
@@ -211,7 +211,7 @@ export class GUI {
 		return button
 	}
 
-	addSlider(name: string, value: number, min: number=null, max: number=null, step: number=null): Controller {
+	addSlider(name: string, value: number, min: number=undefined, max: number=undefined, step: number=undefined): Controller {
 		let object:any = {}
 		object[name] = value
 		let slider:any = this.add(object, name, min, max)
