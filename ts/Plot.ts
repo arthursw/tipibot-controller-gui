@@ -29,7 +29,7 @@ export class SVGPlot {
 		let svg = paper.project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
-		svgPlot.center()
+		// svgPlot.center()
 
 		SVGPlot.gui.getController('Draw').show()
 		SVGPlot.gui.getController('Save GCode').show()
@@ -391,7 +391,7 @@ export class SVGPlot {
 		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 
-
+		this.center()
 		console.log("Collapsing SVG...")
 		SVGPlot.collapse(this.item, this.group, this.item.strokeBounds)
 		this.setBackground()
@@ -735,20 +735,20 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.storeMatrix()
 	}
 	
-	setX(x: number) {
+	setX() {
 		if(this.checkPlotting()) {
 			return
 		}
-
+		let x = SVGPlot.transformFolder.getController('X').getValue()
 		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
 		this.storeMatrix()
 	}
 	
-	setY(y: number) {
+	setY() {
 		if(this.checkPlotting()) {
 			return
 		}
-
+		let y = SVGPlot.transformFolder.getController('Y').getValue()
 		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
 		this.storeMatrix()
 	}

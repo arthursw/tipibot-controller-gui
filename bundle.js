@@ -864,12 +864,13 @@ class Tipibot {
         if (this.ignoreKeyEvents) {
             return;
         }
-        if ($.contains($('#gui').get(0), document.activeElement)) {
+        let code = event.keyCode || event.code;
+        if ($.contains($('#gui').get(0), document.activeElement) && (code == 37 || code == 38 || code == 39 || code == 40)) {
             console.log('Focus on the draw area to move the bot with arrows');
             return;
         }
         let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1;
-        switch (event.keyCode) {
+        switch (code) {
             case 37:
                 this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)));
                 break;
@@ -1696,6 +1697,7 @@ class SVGPlot {
         this.group.addChild(this.item);
         // this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
         this.originalItem = null;
+        this.center();
         console.log("Collapsing SVG...");
         SVGPlot.collapse(this.item, this.group, this.item.strokeBounds);
         this.setBackground();
@@ -1707,7 +1709,7 @@ class SVGPlot {
     static loadImage(event, callback = null) {
         let svg = paper.project.importSVG(event.target.result);
         let svgPlot = new SVGPlot(svg);
-        svgPlot.center();
+        // svgPlot.center()
         SVGPlot.gui.getController('Draw').show();
         SVGPlot.gui.getController('Save GCode').show();
         console.log('SVG imported.');
@@ -2258,17 +2260,19 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.updateShape();
         this.storeMatrix();
     }
-    setX(x) {
+    setX() {
         if (this.checkPlotting()) {
             return;
         }
+        let x = SVGPlot.transformFolder.getController('X').getValue();
         this.group.position.x = Tipibot_1.tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2;
         this.storeMatrix();
     }
-    setY(y) {
+    setY() {
         if (this.checkPlotting()) {
             return;
         }
+        let y = SVGPlot.transformFolder.getController('Y').getValue();
         this.group.position.y = Tipibot_1.tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2;
         this.storeMatrix();
     }

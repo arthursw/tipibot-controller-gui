@@ -443,12 +443,13 @@ export class Tipibot implements TipibotInterface {
 		if(this.ignoreKeyEvents) {
 			return
 		}
-		if($.contains($('#gui').get(0), document.activeElement)) {
+		let code = event.keyCode || event.code
+		if($.contains($('#gui').get(0), document.activeElement) && (code == 37 || code == 38 || code == 39 || code == 40)) {
 			console.log('Focus on the draw area to move the bot with arrows')
 			return
 		}
 		let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1
-		switch (event.keyCode) {
+		switch (code) {
 			case 37: 			// left arrow
 				this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
 				break;
