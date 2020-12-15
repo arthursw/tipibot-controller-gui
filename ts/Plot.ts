@@ -262,30 +262,30 @@ export class SVGPlot {
 	// 	}
 	// }
 
-	public static checkBackground(item: paper.Path, parent: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
-		let isPathOrShape = item.className == 'Shape' || item.className == 'Path'
-		let hasChildren = item.children != null && item.children.length > 0
-		let isAsBigAsParent = item.strokeBounds.contains(parentStrokeBounds)
-		let hasFourSegments = item.segments != null && item.segments.length == 4
-		if( isPathOrShape && hasFourSegments && item.closed && isAsBigAsParent && !hasChildren ) {
-			// We found the background: add it as a sibling of parent, it will be used to correctly position the svg
-			item.remove()
-			group.addChild(item)
-			item.sendToBack()
-			item.name = 'background'
-			item.strokeColor = null
-			item.strokeWidth = 0
-			return true
-		}
-		return false
-	}
+	// public static checkBackground(item: paper.Path, parent: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
+	// 	let isPathOrShape = item.className == 'Shape' || item.className == 'Path'
+	// 	let hasChildren = item.children != null && item.children.length > 0
+	// 	let isAsBigAsParent = item.strokeBounds.contains(parentStrokeBounds)
+	// 	let hasFourSegments = item.segments != null && item.segments.length == 4
+	// 	if( isPathOrShape && hasFourSegments && item.closed && isAsBigAsParent && !hasChildren ) {
+	// 		// We found the background: add it as a sibling of parent, it will be used to correctly position the svg
+	// 		item.remove()
+	// 		group.addChild(item)
+	// 		item.sendToBack()
+	// 		item.name = 'background'
+	// 		item.strokeColor = null
+	// 		item.strokeWidth = 0
+	// 		return true
+	// 	}
+	// 	return false
+	// }
 
 	public static collapseItem(item: paper.Item, parent: paper.Item, group: paper.Group = null, parentStrokeBounds: paper.Rectangle = null) {
 		item.applyMatrix = true
 
-		if(group != null && this.checkBackground(<paper.Path>item, parent, group, parentStrokeBounds)) {
-			return
-		}
+		// if(group != null && this.checkBackground(<paper.Path>item, parent, group, parentStrokeBounds)) {
+		// 	return
+		// }
 
 		item = this.convertShapeToPath(<paper.Shape>item)
 
@@ -368,6 +368,12 @@ export class SVGPlot {
 
 		SVGPlot.svgPlot = this
 
+		if(this.background != null) {
+			this.background.remove()
+		}
+		if(this.group != null) {
+			this.group.remove()
+		}
 		this.group = new paper.Group()
 		this.group.sendToBack()
 
@@ -390,11 +396,11 @@ export class SVGPlot {
 
 		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
-
+		this.setBackground()
 		this.center()
 		console.log("Collapsing SVG...")
 		SVGPlot.collapse(this.item, this.group, this.item.strokeBounds)
-		this.setBackground()
+		
 		console.log("SVG collapsed.")
 
 		this.filter()
@@ -405,12 +411,16 @@ export class SVGPlot {
 	}
 
 	setBackground() {
-		if(this.group.firstChild.name == 'background') {
-			if(this.background != null) {
-				this.background.remove()
-			}
-			this.background = this.group.firstChild
+		if(this.background != null) {
+			this.background.remove()
 		}
+		this.background = paper.Path.Rectangle(this.item.bounds)
+		this.background.fillColor = 'white'
+		this.background.strokeColor = null
+		this.background.strokeWidth = 0
+		this.background.sendToBack()
+		this.background.name = 'background'
+		this.group.addChild(this.background)
 	}
 	
 	countSegments() {
