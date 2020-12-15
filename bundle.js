@@ -1715,7 +1715,6 @@ class SVGPlot {
     static loadImage(event, callback = null) {
         let svg = paper.project.importSVG(event.target.result);
         let svgPlot = new SVGPlot(svg);
-        // svgPlot.center()
         SVGPlot.gui.getController('Draw').show();
         SVGPlot.gui.getController('Save GCode').show();
         console.log('SVG imported.');
@@ -2028,7 +2027,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
         this.updatePositionGUI();
     }
     updatePositionGUI() {
-        // SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
+        SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - Tipibot_1.tipibot.drawArea.bounds.left);
         SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot_1.tipibot.drawArea.bounds.top);
     }
     saveItem() {

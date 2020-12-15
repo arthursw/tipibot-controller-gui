@@ -29,7 +29,6 @@ export class SVGPlot {
 		let svg = paper.project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
-		// svgPlot.center()
 
 		SVGPlot.gui.getController('Draw').show()
 		SVGPlot.gui.getController('Save GCode').show()
@@ -462,7 +461,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	updatePositionGUI() {
-		// SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
+		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
 		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
 	}
 
