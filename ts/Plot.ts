@@ -669,6 +669,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			if(Settings.plot.disableMotorsOnceFinished) {
 				tipibot.disableMotors(true)
 			}
+			this.plotting = false
 		}
 
 		clone.remove()

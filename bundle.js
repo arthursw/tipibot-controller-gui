@@ -2210,6 +2210,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
             if (Settings_1.Settings.plot.disableMotorsOnceFinished) {
                 Tipibot_1.tipibot.disableMotors(true);
             }
+            this.plotting = false;
         }
         clone.remove();
     }
