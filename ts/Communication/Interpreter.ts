@@ -16,7 +16,7 @@ export declare type Command = {
 	special?: SpecialCommandTypes
 }
 
-export const SERIAL_COMMUNICATION_SPEED = 115200// 250000
+export const SERIAL_COMMUNICATION_SPEED = 115200 // 57600 // 115200 // 250000
 export declare type Communication = { send: (type: string, data?: any)=> void }
 
 export class Interpreter {
