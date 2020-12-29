@@ -16,7 +16,8 @@ export let Settings = {
 	forceLinearMoves: true,
 	forceInitialization: true,
 	// disableMouseInteractions: false,
-	disableCommandList: false,
+	// disableCommandList: false,
+	enableTouchKeyboard: false,
 	tipibot: {
 		width: tipibotWidth,
 		height: tipibotHeight,
@@ -69,8 +70,8 @@ export let Settings = {
 		flattenPrecision: 0.25,
 		subdivide: false,
 		maxSegmentLength: 10,
-		fullSpeed: true,
-		maxCurvatureFullspeed: 45
+		// fullSpeed: true,
+		// maxCurvatureFullspeed: 45
 	},
 	feedback: {
 		enable: true,
@@ -91,6 +92,7 @@ export class SettingsManager {
 	motorsFolder: GUI = null
 	homeFolder: GUI = null
 	tipibot: TipibotInterface
+	virtualKeyboard: any = null
 	debug = false
 
 	static mmPerSteps() {
@@ -125,8 +127,9 @@ export class SettingsManager {
 		return this.gui.getFolder('Settings').getAllControllers()
 	}
 
-	createGUI(gui: GUI) {
+	createGUI(gui: GUI, virtualKeyboard: any) {
 		this.gui = gui
+		this.virtualKeyboard = virtualKeyboard
 		let settingsFolder = gui.addFolder('Settings')
 		this.settingsFolder = settingsFolder
 		settingsFolder.open()
@@ -197,12 +200,12 @@ export class SettingsManager {
 		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
 		feedbackFolder.add(Settings.feedback, 'rate', 1, 100, 1).name('Feedback rate (info/sec.)')
 		feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(new CustomEvent('ClearFeedback')))
-
+		
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
 		// settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
-		settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
-		
+		// settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
+		settingsFolder.add(Settings, 'enableTouchKeyboard').name('Touch Keyboard')
 
 		let controllers = this.getControllers()
 
@@ -213,7 +216,30 @@ export class SettingsManager {
 			controller.onFinishChange( (value: any) => this.settingChanged(parentNames, name, value, true) )
 		}
 
-		
+		// Add settings which should not call this.settingsChanged (to save settings): touch move and fullscreen 
+		virtualKeyboard.createGUI(settingsFolder)
+
+		settingsFolder.add({ 'fullscreen': false }, 'fullscreen').onChange((value) => {
+			if (value) {
+				let elem: any = document.body;
+				if (elem.requestFullscreen) {
+					elem.requestFullscreen();
+				} else if (elem.webkitRequestFullscreen) { /* Safari */
+					elem.webkitRequestFullscreen();
+				} else if (elem.msRequestFullscreen) { /* IE11 */
+					elem.msRequestFullscreen();
+				}
+			} else {
+				let doc: any = document;
+				if (doc.exitFullscreen) {
+					doc.exitFullscreen();
+				} else if (doc.webkitExitFullscreen) { /* Safari */
+					doc.webkitExitFullscreen();
+				} else if (doc.msExitFullscreen) { /* IE11 */
+					doc.msExitFullscreen();
+				}
+			}
+		}).name('Fullscreen')
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
@@ -338,6 +364,12 @@ export class SettingsManager {
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		} else if(parentNames[0] == 'Feedback') {
 			this.tipibot.feedbackChanged(changeFinished)
+		} else if(name == 'enableTouchKeyboard') {
+			if(!value) {
+				this.virtualKeyboard.enableArrowsController.hide()
+			} else {
+				this.virtualKeyboard.enableArrowsController.show()
+			}
 		}
 		document.dispatchEvent(new CustomEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
 		this.save(false)

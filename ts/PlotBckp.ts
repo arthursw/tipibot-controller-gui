@@ -593,7 +593,8 @@ export class SVGPlot {
 		while(currentSegment != null && n<10000) {
 
 			let pseudoCurvature = this.getPseudoCurvature(currentSegment)
-			let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+			// let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+			let speedRatio = 1
 			let minSpeed = speedRatio * Settings.tipibot.maxSpeed
 			
 			let recomputeBrakingDistance = true
@@ -635,12 +636,12 @@ export class SVGPlot {
 	moveTipibotLinear(segment: paper.Segment, speeds: number[]) {
 		let point = segment.point
 		let minSpeed = 0
-		if(Settings.plot.fullSpeed) {
-			minSpeed = speeds[segment.index]
-			// let speedRatio = minSpeed / Settings.tipibot.maxSpeed
-			// let circle = paper.Path.Circle(point, 4)
-			// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
-		}
+		// if(Settings.plot.fullSpeed) {
+		// 	minSpeed = speeds[segment.index]
+		// 	// let speedRatio = minSpeed / Settings.tipibot.maxSpeed
+		// 	// let circle = paper.Path.Circle(point, 4)
+		// 	// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
+		// }
 		tipibot.moveLinear(point, minSpeed, Settings.tipibot.maxSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
 	}
 
@@ -653,7 +654,8 @@ export class SVGPlot {
 			let path: paper.Path = <paper.Path>item
 			if(path.segments != null) {
 
-				let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
+				// let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
+				let speeds = null
 
 				for(let segment of path.segments) {
 					let point = segment.point

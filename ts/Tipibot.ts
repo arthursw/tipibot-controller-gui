@@ -448,7 +448,7 @@ export class Tipibot implements TipibotInterface {
 			console.log('Focus on the draw area to move the bot with arrows')
 			return
 		}
-		let amount = event.shiftKey ? 25 : event.ctrlKey ? 10 : event.altKey ? 5 : 1
+		let amount = event.shiftKey ? 25 : event.ctrlKey ? 5 : event.altKey ? 1 : 0.25
 		switch (code) {
 			case 37: 			// left arrow
 				this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))

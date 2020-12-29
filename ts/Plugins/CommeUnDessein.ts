@@ -87,7 +87,7 @@ export class CommeUnDessein {
 	testMode: boolean
 	startButton: Controller
 	started: boolean = false
-	timeoutID = -1
+	timeoutID: NodeJS.Timeout = null
 
 	constructor(testMode=false) {
 		this.testMode = testMode

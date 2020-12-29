@@ -1,3 +1,5 @@
+import { keyboard } from './Keyboard'
+
 declare var dat: any
 
 declare type DatController = {
@@ -138,7 +140,7 @@ export class GUI {
 	nameToController: Map<string, Controller>
 	nameToFolder: Map<string, GUI>
 
-	static loadingTimeoutID: number = null
+	static loadingTimeoutID: NodeJS.Timeout = null
 	
 	public static startLoadingAnimation(callback: ()=> any = null) {
 		$('#loading').removeClass('hidden')
@@ -182,6 +184,10 @@ export class GUI {
 	add(object: any, propertyName: string, min: number | string[] = undefined, max: number = undefined, step: number = undefined): Controller {
 		let controller = new Controller( this.gui.add(object, propertyName, min, max, step), this )
 		this.nameToController.set(propertyName, controller)
+		let jInput = $(controller.getDomElement()).find('input[type="text"]').first()
+		if(jInput.length > 0) {
+			jInput.on('focus', (event: JQueryMouseEventObject)=> keyboard.onInputFocus(controller))
+		}
 		return controller
 	}
 

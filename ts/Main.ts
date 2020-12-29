@@ -3,9 +3,6 @@
 /// <reference path="../node_modules/@types/paper/index.d.ts"/>
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
-import Keyboard from 'simple-keyboard';
-import 'simple-keyboard/build/css/index.css';
-
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
@@ -18,7 +15,7 @@ import { SVGPlot } from "./Plot"
 import { Calibration } from "./Calibration"
 import { Communication } from "./Communication/Communication"
 import { CommandDisplay } from "./Communication/CommandDisplay"
-import { VirtualKeyboard } from "./Keyboard"
+import { initializeKeyboard } from "./Keyboard"
 import { GUI } from "./GUI"
 import { Console } from "./Console"
 import { VisualFeedback, visualFeedback } from "./VisualFeedback"
@@ -39,7 +36,6 @@ let container = null
 let renderer: Renderer = null
 
 let gui: GUI
-let virtualKeyboard: VirtualKeyboard
 
 let positionPreview: paper.Path = null
 
@@ -56,34 +52,11 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 		dat.GUI.DEFAULT_WIDTH = 325
 
-		virtualKeyboard = new VirtualKeyboard()
-		w.virtualKeyboard = virtualKeyboard
+		w.virtualKeyboard = initializeKeyboard()
 
 		gui = new GUI({ autoPlace: false })
 
 		let controllerConsole = new Console()
-
-		controllerConsole.gui.add({ 'fullscreen': false }, 'fullscreen').onChange((value) => {
-			if (value) {
-				let elem: any = document.body;
-				if (elem.requestFullscreen) {
-					elem.requestFullscreen();
-				} else if (elem.webkitRequestFullscreen) { /* Safari */
-					elem.webkitRequestFullscreen();
-				} else if (elem.msRequestFullscreen) { /* IE11 */
-					elem.msRequestFullscreen();
-				}
-			} else {
-				let doc: any = document;
-				if (doc.exitFullscreen) {
-					doc.exitFullscreen();
-				} else if (doc.webkitExitFullscreen) { /* Safari */
-					doc.webkitExitFullscreen();
-				} else if (doc.msExitFullscreen) { /* IE11 */
-					doc.msExitFullscreen();
-				}
-			}
-		}).name('Fullscreen')
 
 		let commandDisplay = new CommandDisplay()
 		commandDisplay.createGUI(controllerConsole.gui)
@@ -94,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 		communication = new Communication(gui)
 
-		settingsManager.createGUI(gui)
+		settingsManager.createGUI(gui, w.virtualKeyboard)
 
 		SVGPlot.createGUI(gui)
 

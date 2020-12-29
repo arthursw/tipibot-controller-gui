@@ -32,7 +32,7 @@ export class Interpreter {
 	continueMessage = 'READY'
 	serialCommunicationSpeed = SERIAL_COMMUNICATION_SPEED
 	name = 'interpreter'
-	saveGCode = false
+	justQueueCommands = false
 
 	constructor(communication: Communication) {
 		this.commandQueue = []
@@ -133,29 +133,21 @@ export class Interpreter {
 					command.callback()
 				}
 				document.dispatchEvent(new CustomEvent('CommandExecuted', { detail: command }))
-				if(this.commandQueue.length > 0) {
-					this.send(this.commandQueue[0])
-				} else {
-					this.queueEmpty()
-				}
+				this.startQueue()
 			}
 		}
 	}
 
-	queueEmpty() {
-
-	}
-
 	setPause(pause: boolean) {
 		this.pause = pause
-		if(!this.pause && this.commandQueue.length > 0) {
-			this.send(this.commandQueue[0])
+		if(!this.pause) {
+			this.startQueue()
 		}
 	}
 
 	queue(data: string, message: string, callback: () => any = null, specialCommand: SpecialCommandTypes = null) {
 		let command = { id: this.commandID++, data: data, callback: callback, message: message, special: specialCommand }
-		if(this.saveGCode) {
+		if(this.justQueueCommands) {
 			this.commandQueue.push(command)
 			return
 		}
@@ -165,6 +157,12 @@ export class Interpreter {
 
 		if(this.commandQueue.length == 1) {
 			this.send(command)
+		}
+	}
+
+	startQueue() {
+		if(this.commandQueue.length > 0) {
+			this.send(this.commandQueue[0])
 		}
 	}
 

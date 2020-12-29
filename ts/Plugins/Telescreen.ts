@@ -7,7 +7,7 @@ import { tipibot } from "../Tipibot"
 class Move {
 	
 	telescreen: Telescreen
-	timeoutID = -1
+	timeoutID: NodeJS.Timeout = null
 	
 	constructor(telescreen: Telescreen) {
 		this.telescreen = telescreen

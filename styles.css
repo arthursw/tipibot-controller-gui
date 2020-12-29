@@ -310,3 +310,109 @@ icon.simulator {
     opacity: 0;
   }
 }
+
+#keyboard {
+  position: absolute;
+  bottom: 0;
+  z-index: 10;
+
+  max-width: 800px;
+  margin: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#keyboard .input {
+  padding: 10px;
+  margin: auto;
+  margin-bottom: 15px;
+  display: block;
+  font-family: "HelveticaNeue-Light","Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif;
+  font-size: 16px;
+  border-style: solid;
+  border-radius: 5px;
+  border-color: #ebebeb;
+  border-width: 3px;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+#keyboard .close-button {
+  position: absolute;
+  cursor: pointer;
+  margin-top: 10px;
+  margin-left: 7px;
+}
+
+#keyboard .close-button .svg-icon {
+  background-color: white;
+  border-radius: 1.5em;
+}
+
+/* -----
+SVG Icons - svgicons.sparkk.fr
+----- */
+
+.svg-icon {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.svg-icon path,
+.svg-icon polygon,
+.svg-icon rect {
+  /* fill: #4691f6; */
+  fill: #818181;
+}
+
+.svg-icon circle {
+  stroke: #4691f6;
+  stroke-width: 1;
+}
+
+
+
+.simple-keyboard-arrows.simple-keyboard {
+  align-self: flex-end;
+  background: none;
+}
+.simple-keyboard-arrows .hg-row {
+  justify-content: center;
+}
+
+.simple-keyboard-arrows .hg-button {
+  width: 50px;
+  flex-grow: 0;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.controlArrows {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-flow: column;
+}
+
+.simple-keyboard-arrows.simple-keyboard.hg-theme-default {
+  width: auto;
+  background-color: #ececec;
+}
+
+.simple-keyboard-arrows.simple-keyboard.hg-theme-default .hg-button.hg-button-arrowup {
+  margin: 0 72px 0 72px;
+}
+
+.simple-keyboard-arrows.hg-theme-default .hg-button.pressed {
+  background: #2196F3;
+  color: white;
+}

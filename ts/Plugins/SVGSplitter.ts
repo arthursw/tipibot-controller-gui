@@ -58,7 +58,7 @@ export class SVGSplitter {
 	exportFile(baseName: string, i: number, project: paper.Project, images: any, group: paper.Group) {
 		let fileName = baseName + "_" + i + ".svg"
 		console.log("Exporting " + fileName + "...")
-		let imageData = project.exportSVG({asString: true})
+		let imageData: any = project.exportSVG({asString: true})
 		let blob = new Blob([imageData], {type: 'image/svg+xml'})
 		console.log("Exported " + fileName + ".")
 		images.file(fileName, blob, {})

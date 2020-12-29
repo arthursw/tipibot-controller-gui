@@ -12,7 +12,7 @@ export class SVGPlot {
 	static transformFolder: GUI = null
 	
 	static files: File[] = null
-	static multipleFiles = false
+	// static multipleFiles = false
 	static fileIndex = 0
 	static currentMatrix: paper.Matrix = null
 
@@ -67,16 +67,16 @@ export class SVGPlot {
 			this.files.push(file)
 		}
 
-		this.multipleFiles = this.files.length > 1
+		// this.multipleFiles = this.files.length > 1
 		this.fileIndex = 0
 
 		if(this.files.length < files.length) {
 			console.info('Warning: some of the selected files are not SVG images, there will not be imported.')
 		}
 
-		if(this.multipleFiles) {
-			console.info('Only the first file will be imported for now, the other files will be imported one by one while drawing.')
-		}
+		// if(this.multipleFiles) {
+		// 	console.info('Only the first file will be imported for now, the other files will be imported one by one while drawing.')
+		// }
 
 		this.loadNextFile()
 	}
@@ -91,35 +91,37 @@ export class SVGPlot {
 		reader.readAsText(file)
 	}
 
-	public static plotFinished(callback:()=> void = null) {
-		if(this.multipleFiles) {
-			this.fileIndex++
-			if(this.fileIndex < this.files.length) {
-				this.loadNextFile(()=> this.plotAndLoadLoop(callback))
-			} else {
-				tipibot.goHome()
-				if(callback != null) {
-					callback()
-				}
-				if(Settings.plot.disableMotorsOnceFinished) {
-					tipibot.disableMotors(true)
-				}
-			}
-		}
-	}
+	// public static plotFinished(callback:()=> void = null) {
+	// 	if(this.multipleFiles) {
+	// 		this.fileIndex++
+	// 		if(this.fileIndex < this.files.length) {
+	// 			this.loadNextFile(()=> this.plotAndLoadLoop(callback))
+	// 		} else {
+	// 			tipibot.goHome()
+	// 			if(callback != null) {
+	// 				callback()
+	// 			}
+	// 			if(Settings.plot.disableMotorsOnceFinished) {
+	// 				tipibot.disableMotors(true)
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	public static plotAndLoadLoop(callback:()=> void = null) {
 		if(this.svgPlot == null) {
 			return
 		}
-		this.svgPlot.plot(()=> SVGPlot.plotFinished(callback), !this.multipleFiles)
+		// this.svgPlot.plot(()=> SVGPlot.plotFinished(callback), !this.multipleFiles)
+		this.svgPlot.plot()
 	}
 
 	public static saveGCode() {
 		if(this.svgPlot == null) {
 			return
 		}
-		this.svgPlot.plot(null, !this.multipleFiles, true)
+		// this.svgPlot.plot(null, !this.multipleFiles, true)
+		this.svgPlot.plot(null, true, true)
 	}
 
 	public static clearClicked(event: any) {
@@ -153,13 +155,13 @@ export class SVGPlot {
 		if(SVGPlot.svgPlot != null) {
 			communication.interpreter.sendStop(true)
 			communication.interpreter.clearQueue()
-			communication.interpreter.saveGCode = true
+			communication.interpreter.justQueueCommands = true
 			SVGPlot.saveGCode()
 			let gCode = communication.interpreter.getGCode()
 			let blob = new Blob([gCode], {type: "text/plain;charset=utf-8"})
 			saveAs(blob, "gcode.txt")
 			communication.interpreter.clearQueue()
-			communication.interpreter.saveGCode = false
+			communication.interpreter.justQueueCommands = false
 		}
 	}
 
@@ -167,10 +169,10 @@ export class SVGPlot {
 		SVGPlot.gui = gui.addFolder('Plot')
 		SVGPlot.gui.open()
 
-		SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
+		// SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
 		SVGPlot.gui.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
 		SVGPlot.gui.add(Settings.plot, 'disableMotorsOnceFinished').name('Disable motors once finished').onFinishChange((event)=> settingsManager.save(false))
-		SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
+		// SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
 
 		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', true, (event)=> SVGPlot.handleFileSelect(event))
 		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
@@ -653,13 +655,19 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		tipibot.sendChangePen(currentColor, this.currentColorIndex++)
 
 		if(!gCode) {
-			this.plotNext(()=> {
-				if(goHomeOnceFinished) {
-					tipibot.goHome(()=> this.plotFinished(callback))
-				} else {
-					this.plotFinished(callback)
-				}
-			})
+			// this.plotNext(()=> {
+			// 	if(goHomeOnceFinished) {
+			// 		tipibot.goHome(()=> this.plotFinished(callback))
+			// 	} else {
+			// 		this.plotFinished(callback)
+			// 	}
+			// })
+			this.plotAll()
+			if(goHomeOnceFinished) {
+				tipibot.goHome(()=> this.plotFinished(callback))
+			} else {
+				this.plotFinished(callback)
+			}
 		} else {
 			this.plotGCode()
 			if(goHomeOnceFinished) {
@@ -795,69 +803,70 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		return Math.max(angle, 180)
 	}
 
-	computeSpeeds(path: paper.Path) {
-		if(Settings.plot.maxCurvatureFullspeed >= 180) {
-			return new Array(path.segments.length).fill(Settings.tipibot.maxSpeed)
-		}
-		let maxSpeed = Settings.tipibot.maxSpeed
-		let acceleration = Settings.tipibot.acceleration
-		let mmPerSteps = SettingsManager.mmPerSteps()
+	// computeSpeeds(path: paper.Path) {
+	// 	if(Settings.plot.maxCurvatureFullspeed >= 180) {
+	// 		return new Array(path.segments.length).fill(Settings.tipibot.maxSpeed)
+	// 	}
+	// 	let maxSpeed = Settings.tipibot.maxSpeed
+	// 	let acceleration = Settings.tipibot.acceleration
+	// 	let mmPerSteps = SettingsManager.mmPerSteps()
 
-		let brakingDistanceSteps = maxSpeed * maxSpeed / (2.0 * acceleration)
-		let brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+	// 	let brakingDistanceSteps = maxSpeed * maxSpeed / (2.0 * acceleration)
+	// 	let brakingDistanceMm = brakingDistanceSteps * mmPerSteps
 
-		let reversedSpeeds: number[] = []
-		let currentSegment = path.lastSegment
-		let previousMinSpeed = null
-		let distanceToLastMinSpeed = 0
+	// 	let reversedSpeeds: number[] = []
+	// 	let currentSegment = path.lastSegment
+	// 	let previousMinSpeed = null
+	// 	let distanceToLastMinSpeed = 0
 
-		while(currentSegment != null) {
+	// 	while(currentSegment != null) {
 
-			let pseudoCurvature = this.getPseudoCurvature(currentSegment)
-			let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
-			let minSpeed = speedRatio * Settings.tipibot.maxSpeed
+	// 		let pseudoCurvature = this.getPseudoCurvature(currentSegment)
+	// 		let speedRatio = 1 - Math.min(pseudoCurvature / Settings.plot.maxCurvatureFullspeed, 1)
+	// 		let minSpeed = speedRatio * Settings.tipibot.maxSpeed
 			
-			let recomputeBrakingDistance = true
+	// 		let recomputeBrakingDistance = true
 
-			if(distanceToLastMinSpeed < brakingDistanceMm && previousMinSpeed != null) {
-				let ratio = distanceToLastMinSpeed / brakingDistanceMm
-				let resultingSpeed = previousMinSpeed + (maxSpeed - previousMinSpeed) * ratio
-				if(resultingSpeed < minSpeed) {
-					minSpeed = resultingSpeed
-					recomputeBrakingDistance = false
-				}
-			}
+	// 		if(distanceToLastMinSpeed < brakingDistanceMm && previousMinSpeed != null) {
+	// 			let ratio = distanceToLastMinSpeed / brakingDistanceMm
+	// 			let resultingSpeed = previousMinSpeed + (maxSpeed - previousMinSpeed) * ratio
+	// 			if(resultingSpeed < minSpeed) {
+	// 				minSpeed = resultingSpeed
+	// 				recomputeBrakingDistance = false
+	// 			}
+	// 		}
 
-			reversedSpeeds.push(minSpeed)
+	// 		reversedSpeeds.push(minSpeed)
 
-			if(recomputeBrakingDistance) {
+	// 		if(recomputeBrakingDistance) {
 
-				previousMinSpeed = minSpeed
-				distanceToLastMinSpeed = 0
-				brakingDistanceSteps = ( (maxSpeed - minSpeed) / acceleration ) * ( (minSpeed + maxSpeed) / 2 )
-				brakingDistanceMm = brakingDistanceSteps * mmPerSteps
-			}
+	// 			previousMinSpeed = minSpeed
+	// 			distanceToLastMinSpeed = 0
+	// 			brakingDistanceSteps = ( (maxSpeed - minSpeed) / acceleration ) * ( (minSpeed + maxSpeed) / 2 )
+	// 			brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+	// 		}
 
-			currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous
-			distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0
-		}
+	// 		currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous
+	// 		distanceToLastMinSpeed += currentSegment != null ? currentSegment.curve.length : 0
+	// 	}
 
-		let speeds = []
-		for(let i=reversedSpeeds.length-1 ; i>=0 ; i--) {
-			speeds.push(reversedSpeeds[i])
-		}
-		return speeds
-	}
+	// 	let speeds = []
+	// 	for(let i=reversedSpeeds.length-1 ; i>=0 ; i--) {
+	// 		speeds.push(reversedSpeeds[i])
+	// 	}
+	// 	return speeds
+	// }
 
-	moveTipibotLinear(segment: paper.Segment, speeds: number[]) {
+	// moveTipibotLinear(segment: paper.Segment, speeds: number[]) {
+	moveTipibotLinear(segment: paper.Segment) {
 		let point = segment.point
 		let minSpeed = 0
-		if(Settings.plot.fullSpeed) {
-			minSpeed = speeds[segment.index]
-			// let speedRatio = minSpeed / Settings.tipibot.maxSpeed
-			// let circle = paper.Path.Circle(point, 4)
-			// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
-		}
+		// if(Settings.plot.fullSpeed) {
+		// 	minSpeed = speeds[segment.index]
+		// 	// let speedRatio = minSpeed / Settings.tipibot.maxSpeed
+		// 	// let circle = paper.Path.Circle(point, 4)
+		// 	// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
+		// }
 		tipibot.moveLinear(point, minSpeed, Settings.tipibot.drawSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
 	}
 
@@ -865,7 +874,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(path.className != 'Path' || !SVGPlot.itemMustBeDrawn(path) || path.segments == null) {
 			return
 		}
-		let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
+		// let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
 
 		for(let segment of path.segments) {
 			let point = segment.point
@@ -877,11 +886,13 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 				}
 				tipibot.penDown()
 			} else {
-				this.moveTipibotLinear(segment, speeds)
+				// this.moveTipibotLinear(segment, speeds)
+				this.moveTipibotLinear(segment)
 			}
 		}
 		if(path.closed) {
-			this.moveTipibotLinear(path.firstSegment, speeds)
+			// this.moveTipibotLinear(path.firstSegment, speeds)
+			this.moveTipibotLinear(path.firstSegment)
 		}
 	}
 
@@ -915,33 +926,49 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 	}
 
-	plotNextLoaded(callback: ()=> void) {
+	plotAll() {
+		let nCommands = communication.interpreter.commandQueue.length
+		communication.interpreter.justQueueCommands = true
 		this.nSegments = 0
-
-		while(this.currentPath != null && this.nSegments <= SVGPlot.nSegmentsPerBatch) {
+		while(this.currentPath != null) {
 			this.plotCurrentPath()
 		}
-		
-		console.log('Commands generated.')
-		GUI.stopLoadingAnimation()
-		
-		if(this.currentPath != null) {
-
-			while(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
-				this.currentPath.splitAt(this.currentPath.segments[SVGPlot.nSegmentsPerBatch-1].location)
-			}
-
-			tipibot.executeOnceFinished(()=> this.plotNext(callback))
-		} else {
-			callback()
+		communication.interpreter.justQueueCommands = false
+		communication.interpreter.startQueue()
+		let commandsIDs = []
+		for(let i=nCommands ; i< communication.interpreter.commandQueue.length ; i++) {
+			commandsIDs.push(communication.interpreter.commandQueue[i].id)
 		}
+		document.dispatchEvent(new CustomEvent('QueueCommands', { detail: commandsIDs }))
 	}
 
-	plotNext(callback: ()=> void) {
-		console.log('Generating commands...')
+	// plotNextLoaded(callback: ()=> void) {
+	// 	this.nSegments = 0
 
-		GUI.startLoadingAnimation(()=> this.plotNextLoaded(callback))
-	}
+	// 	while(this.currentPath != null && this.nSegments <= SVGPlot.nSegmentsPerBatch) {
+	// 		this.plotCurrentPath()
+	// 	}
+		
+	// 	console.log('Commands generated.')
+	// 	GUI.stopLoadingAnimation()
+		
+	// 	if(this.currentPath != null) {
+
+	// 		while(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
+	// 			this.currentPath.splitAt(this.currentPath.segments[SVGPlot.nSegmentsPerBatch-1].location)
+	// 		}
+
+	// 		tipibot.executeOnceFinished(()=> this.plotNext(callback))
+	// 	} else {
+	// 		callback()
+	// 	}
+	// }
+
+	// plotNext(callback: ()=> void) {
+	// 	console.log('Generating commands...')
+
+	// 	GUI.startLoadingAnimation(()=> this.plotNextLoaded(callback))
+	// }
 
 	// plotItemStep(): any {
 	// 	let item = this.currentItem
@@ -1007,11 +1034,14 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(callback != null) {
 			callback()
 		}
-		if(!SVGPlot.multipleFiles) {
-			if(Settings.plot.disableMotorsOnceFinished) {
-				tipibot.disableMotors(true)
-			}
+		if(Settings.plot.disableMotorsOnceFinished) {
+			tipibot.disableMotors(true)
 		}
+		// if(!SVGPlot.multipleFiles) {
+		// 	if(Settings.plot.disableMotorsOnceFinished) {
+		// 		tipibot.disableMotors(true)
+		// 	}
+		// }
 	}
 
 	clearData(item: paper.Item) {

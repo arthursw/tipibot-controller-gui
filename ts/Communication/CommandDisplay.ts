@@ -16,6 +16,7 @@ export class CommandDisplay {
 		// $('#commands-content').click((event)=> this.click(event))
 
 		document.addEventListener('QueueCommand', (event: CustomEvent)=> this.queueCommand(event.detail), false)
+		document.addEventListener('QueueCommands', (event: CustomEvent)=> this.queueCommands(event.detail), false)
 		document.addEventListener('SendCommand', (event: CustomEvent)=> this.sendCommand(event.detail), false)
 		document.addEventListener('CommandExecuted', (event: CustomEvent)=> this.commandExecuted(event.detail), false)
 		document.addEventListener('ClearQueue', (event: CustomEvent)=> this.clearQueue(), false)
@@ -44,6 +45,7 @@ export class CommandDisplay {
 			this.pauseButton.setValue(true)
 			communication.interpreter.sendStop(true)
 		})
+		this.gui.addButton('Save commands', () => this.saveCommands() )
 		this.gui.addButton('Clear commands', () => communication.interpreter.clearQueue() )
 
 		let commandList = this.gui.addFolder('Command list')
@@ -51,6 +53,12 @@ export class CommandDisplay {
 		this.listJ = $('<ul id="command-list" class="c-list">')
 		commandList.open()
 		this.listJ.insertAfter($(commandList.gui.domElement).find('li'))
+	}
+
+	saveCommands() {
+		let gCode = communication.interpreter.getGCode()
+		let blob = new Blob([gCode], {type: "text/plain;charset=utf-8"})
+		saveAs(blob, "gcode.txt")
 	}
 
 	click(event: any) {
@@ -68,13 +76,40 @@ export class CommandDisplay {
 		liJ.append(messageJ)
 		liJ.append(dataJ)
 		let closeButtonJ = $('<button>x</button>')
-		closeButtonJ.click((event)=> this.removeCommand(command.id))
+		closeButtonJ.click((event)=> {
+			communication.interpreter.removeCommand(command.id)
+			this.removeCommand(command.id)
+		})
 		liJ.append(closeButtonJ)
 		return liJ
 	}
 
-	removeCommand(id: number) {
-		this.listJ.find('#' + id).remove()
+	queueCommands(commandIDs: number[]): any {
+		let id = (''+Math.random()).replace('.','')
+		let liJ = $('<li id="'+id+'" class="commands">')
+		let nCommands = commandIDs.length
+		let messageJ = $('<div>').text('' + nCommands + '/' + nCommands + ' commands').addClass('message').attr('data-n-commands', nCommands).attr('data-total-commands', nCommands)
+		liJ.append(messageJ)
+		
+		let closeButtonJ = $('<button>x</button>')
+		closeButtonJ.click((event)=> {
+			for(let commandID of commandIDs) {
+				communication.interpreter.removeCommand(commandID)
+			}
+			this.removeCommand(id)
+		})
+		liJ.append(closeButtonJ)
+
+		this.listJ.append(liJ)
+		return
+	}
+
+	removeCommand(id: number | string) {
+		let itemJ = this.listJ.find('#' + id)
+		if(itemJ.length == 0) {
+			return
+		}
+		itemJ.remove()
 		this.updateName()
 		document.dispatchEvent(new CustomEvent('CommandListChanged'))
 	}
@@ -84,9 +119,9 @@ export class CommandDisplay {
 	}
 
 	queueCommand(command: Command) {
-		if(Settings.disableCommandList) {
-			return
-		}
+		// if(Settings.disableCommandList) {
+		// 	return
+		// }
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
 		document.dispatchEvent(new CustomEvent('CommandListChanged'))
@@ -97,23 +132,30 @@ export class CommandDisplay {
 			this.pauseButton.setValue(true)
 			return
 		}
-		if(Settings.disableCommandList) {
-			return
-		}
+		// if(Settings.disableCommandList) {
+		// 	return
+		// }
 		this.listJ.find('#'+command.id).addClass('sent')
 	}
 
 	commandExecuted(command: Command) {
-		if(Settings.disableCommandList) {
-			return
+		let commandsJ = this.listJ.firstChild()
+		if(commandsJ.hasClass('commands')) {
+			let messageJ = commandsJ.find('.message')
+			let nCommands = messageJ.attr('data-n-commands')
+			let totalCommands = messageJ.attr('data-total-commands')
+			messageJ.text('' + nCommands + '/' + totalCommands + ' commands')
 		}
+		// if(Settings.disableCommandList) {
+		// 	return
+		// }
 		this.removeCommand(command.id)
 	}
 
 	clearQueue() {
-		if(Settings.disableCommandList) {
-			return
-		}
+		// if(Settings.disableCommandList) {
+		// 	return
+		// }
 		this.listJ.children().remove()
 		this.updateName()
 		document.dispatchEvent(new CustomEvent('CommandListChanged'))

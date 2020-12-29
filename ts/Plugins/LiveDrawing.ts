@@ -86,7 +86,7 @@ export class LiveDrawing {
 	}
 
 	exportSVG() {
-        let svg = this.project.exportSVG( { asString: true })
+        let svg: any = this.project.exportSVG( { asString: true })
 
         // create an svg image, create a link to download the image, and click it
         let blob = new Blob([svg], {type: 'image/svg+xml'})

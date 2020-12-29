@@ -26,7 +26,7 @@ export class Communication {
 	portController: any
 	interpreter: Interpreter
 	autoConnectController: Controller
-	autoConnectIntervalID = -1
+	autoConnectIntervalID: NodeJS.Timeout = null
 	serialPortConnectionOpened = false
 	folderTitle: any
 
