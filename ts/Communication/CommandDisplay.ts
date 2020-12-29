@@ -139,16 +139,18 @@ export class CommandDisplay {
 	}
 
 	commandExecuted(command: Command) {
-		let commandsJ = this.listJ.firstChild()
+		let commandsJ = this.listJ.children().first()
 		if(commandsJ.hasClass('commands')) {
 			let messageJ = commandsJ.find('.message')
-			let nCommands = messageJ.attr('data-n-commands')
+			let nCommands = parseInt(messageJ.attr('data-n-commands')) - 1
+			messageJ.attr('data-n-commands', nCommands)
 			let totalCommands = messageJ.attr('data-total-commands')
 			messageJ.text('' + nCommands + '/' + totalCommands + ' commands')
+			if(nCommands == 0) {
+				this.removeCommand(commandsJ.attr('id'))
+			}
+			return
 		}
-		// if(Settings.disableCommandList) {
-		// 	return
-		// }
 		this.removeCommand(command.id)
 	}
 
