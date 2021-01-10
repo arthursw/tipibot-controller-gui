@@ -163,7 +163,9 @@ export class VirtualKeyboard {
             let input = this.keyboard.getInput()
             let value = isNaN(this.activeController.getValue()) ? input : parseFloat(input)
             this.activeController.setValue(value)
-            this.activeController.controller.__onFinishChange(value)
+            if(this.activeController.controller.__onFinishChange) {
+                this.activeController.controller.__onFinishChange(value)
+            }
             $('#keyboard .input').val(value)
             this.activeController = null
         }
