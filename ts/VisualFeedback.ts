@@ -102,8 +102,6 @@ export class VisualFeedback {
 			this.setSubTarget(data)
 		} else if(data.indexOf(this.penPrefix) == 0) {
 			this.updatePen(data)
-		} else {
-			console.log(data)
 		}
 	}
 

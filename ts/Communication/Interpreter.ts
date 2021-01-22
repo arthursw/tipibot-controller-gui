@@ -11,8 +11,9 @@ export enum SpecialCommandTypes {
 export declare type Command = {
 	data: string
 	message: string
-	callback: ()=> any
-	id: number
+	time?: number
+	callback?: ()=> any
+	id?: number
 	special?: SpecialCommandTypes
 }
 
@@ -33,6 +34,8 @@ export class Interpreter {
 	serialCommunicationSpeed = SERIAL_COMMUNICATION_SPEED
 	name = 'interpreter'
 	justQueueCommands = false
+	lastCommandSendTime: number = null
+	logNextMessage = true
 
 	constructor(communication: Communication) {
 		this.commandQueue = []
@@ -87,46 +90,58 @@ export class Interpreter {
 			return
 		}
 		console.log('send: ' + command.message + ' - ' + command.data)
+		this.lastCommandSendTime = null
+		this.logNextMessage = true
 		this.communication.send('data', command.data)
 	}
 
-	messageReceived(message: string) {
-		if(message == null) {
-			return
-		}
-
-		this.serialInput += message
+	isolateContinueMessage() {
 		let continueIndex = this.serialInput.indexOf(this.continueMessage)
 
 		if(continueIndex > 0) {
 			var re = new RegExp(this.continueMessage, 'g')
 			this.serialInput = this.serialInput.replace(re, "\n" + this.continueMessage)
 		}
+	}
 
-		let messages = this.serialInput.split('\n')
-		
-		// process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
-		for(let i=0 ; i<messages.length-1 ; i++) {
-			this.processMessage(messages[i])
+	messageSent(messageObject: {data: any, time: number}) {
+		this.lastCommandSendTime = messageObject.time
+	}
+
+	messageReceived(messageObject: {data: any, time: number}) {
+		let data = messageObject.data
+		let time = messageObject.time
+		if(messageObject == null || data == null) {
+			return
 		}
 
-		// Clear any old message
-		if(this.serialInput.endsWith('\n')) {
-			this.serialInput = ''
-		} else {
-			this.serialInput = messages[messages.length-1]
+		this.serialInput += data
+		this.isolateContinueMessage()
+		
+		let messages = this.serialInput.split('\n')
+		this.serialInput = this.serialInput.endsWith('\n') ? '' : messages[messages.length-1]
+
+		// process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
+		for(let i=0 ; i<messages.length-1 ; i++) {
+			this.processMessage(messages[i], messageObject.time)
 		}
 	}
 
-	processMessage(message: string) {
-		
-		// if(message.indexOf('++')==0) {
-		// 	console.log(message)
-		// }
-		
-		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
+	processMessage(message: string, time: number) {
+		if(message=='') {
+			return
+		}
 
-		if(message.indexOf(this.continueMessage) == 0) {
+		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
+		
+		let isContinueMessage = message.indexOf(this.continueMessage) == 0
+		
+		if(!isContinueMessage || this.logNextMessage) {
+			console.log(message)
+			this.logNextMessage = false
+		}
+
+		if(isContinueMessage && this.lastCommandSendTime != null && time > this.lastCommandSendTime) {
 			if(this.commandQueue.length > 0) {
 				let command = this.commandQueue.shift()
 				if(command.callback != null) {

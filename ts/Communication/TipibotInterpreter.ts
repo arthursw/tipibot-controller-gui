@@ -51,8 +51,8 @@ export class TipibotInterpreter extends PenPlotter {
 		this.queue('M85\n', message)
 	}
 
-	processMessage(message: string) {
-		super.processMessage(message)
+	processMessage(message: string, time: number) {
+		super.processMessage(message, time)
 		if(message.indexOf(this.initializationMessage) == 0) {
 			this.initialize()
 		}

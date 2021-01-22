@@ -116,11 +116,11 @@ export class Communication {
 	}
 
 	onMessage(event: any) {
-		let json = JSON.parse(event.data);
-		let type = json.type;
-		let data = json.data;
+		let messageObject = JSON.parse(event.data)
+		let type = messageObject.type
+		let data = messageObject.data
 
-		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: json }))
+		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: messageObject }))
 
 		if(type == 'opened') {
 			this.onSerialPortConnectionOpened()
@@ -152,7 +152,9 @@ export class Communication {
 		} else if(type == 'connected-to-simulator') {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
 		} else if(type == 'data') {
-			this.interpreter.messageReceived(data)
+			this.interpreter.messageReceived(messageObject)
+		} else if(type == 'sent') {
+			this.interpreter.messageSent(messageObject)
 		} else if(type == 'info') {
 			console.info(data)
 		} else if(type == 'warning') {

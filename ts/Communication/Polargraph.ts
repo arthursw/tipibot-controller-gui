@@ -107,11 +107,6 @@ export class Polargraph extends Interpreter {
 	queueEmpty() {
 		// this.startKeepingTipibotAwake()
 	}
-	
-	messageReceived(message: string) {
-		// super.messageReceived(message + '\n')
-		super.messageReceived(message)
-	}
 
 	getMaxSegmentLength() {
 		return 2;
