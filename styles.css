@@ -13,13 +13,92 @@ body {
 	right: 2px;
 	display: grid;
 	/*grid-template-columns: auto 325px;*/
-	grid-template-columns: auto 325px 325px;
+	grid-template-columns: auto 0 325px;
 	grid-template-rows: 100%;
 /*	display: flex;
 	flex-direction: row;
 	align-items: stretch;
 	align-content: stretch;*/
 }
+
+body.advancedLayout {
+  grid-template-columns: auto 325px 325px;
+}
+#gui{
+  display: none;
+}
+#info .cr {
+  padding: 8px;
+}
+
+.cr span.property-name {
+  user-select: none;
+}
+
+#info ul.closed li.cr, #info ul.closed #controls {
+  display: none;
+}
+
+#info .cr > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+#info .cr > div > span.property-name {
+  margin-left: 5px;
+}
+
+#info .cr > div > svg {
+  order: -1;
+}
+
+#info .cr > div > svg {
+  width: 45px;
+  height: 25px;
+  padding: 3px;
+}
+
+#info .cr > div > svg path {
+  fill: white;
+}
+
+#info .cr > div > svg path.blue {
+  fill: #4691f6;
+  stroke: #4691f6;
+  color: #4691f6;
+}
+
+#info .cr > div > svg path.red {
+  stroke: #f44336;
+  color: #f44336;
+  fill: #f44336;
+}
+
+#info .cr > div > svg path.yellow {
+  stroke: #ffeb3b;
+  fill: #ffeb3b;
+  color: #ffeb3b;
+}
+
+#info .cr > div > svg path.green {
+  stroke: #3cba00;
+  fill: #3cba00;
+  color: #3cba00;
+}
+
+
+body.advancedLayout #info .cr {
+  padding: inherit;
+}
+
+body.advancedLayout #info .cr > div > svg {
+  display: none;
+}
+
+body.advancedLayout #gui{
+  display: flex;
+}
+
 .noselect {
   -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
@@ -74,11 +153,6 @@ body {
   background-position: 0 0, 10px 10px;
   background-image: linear-gradient(45deg, var(--main-bg-color) 25%, transparent 25%, transparent 75%, var(--main-bg-color) 75%, var(--main-bg-color)),
                     linear-gradient(45deg, var(--main-bg-color) 25%, transparent 25%, transparent 75%, var(--main-bg-color) 75%, var(--main-bg-color));  
-}
-
-#gui {
-	/*display: flex;*/
-
 }
 
 #command-list {
@@ -415,4 +489,125 @@ SVG Icons - svgicons.sparkk.fr
 .simple-keyboard-arrows.hg-theme-default .hg-button.pressed {
   background: #2196F3;
   color: white;
+}
+
+#controls .svg-icon path, #controls .svg-icon polygon, #controls .svg-icon rect {
+  color: white;
+  fill: white;
+}
+
+#controls {
+  /* background-color: rgb(239 239 239); */
+  /* background-color: rgb(9 9 9); */
+  background-color: #1a1a1a;
+  border-bottom: solid 1px #363636;
+  padding-bottom: 10px;
+  display: block;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+#controls button {
+  border: 0;
+  cursor: pointer;
+  border-radius: 50px;
+  color: white;
+  background-color: #1a1a1a;
+}
+
+#controls button:hover {
+  /* background-color: #a4d6ff; */
+  /* background-color: #2fa1d6; */
+  background-color: #2196F3;
+}
+
+#controls button.selected {
+  background: #2196F3;
+}
+
+#controls button:focus {
+  outline: none;
+}
+
+#move-controls {
+  display: grid;
+  grid-template-columns: 33.33% 33.33% 33.33%;
+  grid-template-rows: 33.33% 33.33% 33.33%;
+
+  width: 150px;
+  height: 150px;
+  margin: auto;
+}
+
+#move-speed {
+  margin-top: 10px;
+}
+
+#move-controls .button {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#move-controls .up-arrow {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#move-controls .left-arrow {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#move-controls .home {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#move-controls .home img {
+  width: 30px;
+  margin: auto;
+  display: none;
+}
+
+#move-controls .home.tipi img {
+  display: block;
+}
+#move-controls .home.tipi svg {
+  display: none;
+}
+
+#move-controls .right-arrow {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+#move-controls .down-arrow {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+ul.speed {
+  display: flex;
+  color: white;
+  flex-direction: row;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+  font-family: 'Lucia Grande', monospace;
+}
+
+ul.speed li {
+  margin: 0 5px 0 5px;
+  justify-self: start;
+}
+
+ul.speed li button {
+  padding: 10px;
+}
+
+#pen-controls {
+  margin-bottom: 10px;
 }

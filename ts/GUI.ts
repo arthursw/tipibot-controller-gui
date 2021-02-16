@@ -124,6 +124,10 @@ export class Controller {
 		return this
 	}
 
+	click(): void {
+		this.getDomElement().click()
+	}
+
 	hide(): void {
 		$(this.getParentDomElement()).hide()
 	}

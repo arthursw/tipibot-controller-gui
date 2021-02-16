@@ -462,7 +462,8 @@ export class Tipibot implements TipibotInterface {
 			case 40: 			// down arrow
 				this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
 				break;
-			
+			case 13: 			// Enter key
+				this.togglePenState()
 			default:
 				break;
 		}

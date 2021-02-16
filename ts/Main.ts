@@ -59,7 +59,8 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		let controllerConsole = new Console()
 
 		let commandDisplay = new CommandDisplay()
-		commandDisplay.createGUI(controllerConsole.gui)
+
+		commandDisplay.createGUI(controllerConsole)
 		controllerConsole.createGUI()
 
 		let customContainer = document.getElementById('gui')
@@ -72,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		SVGPlot.createGUI(gui)
 
 		Calibration.initialize(gui)
-
+		
 		renderer = new Renderer()
 
 		communication.setTipibot(tipibot)

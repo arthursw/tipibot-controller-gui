@@ -1,0 +1,62 @@
+#gui .dg.main.taller-than-window .close-button {
+    border-top: 1px solid #ddd;
+}
+
+#gui .dg.main .close-button {
+    background-color: #e8e8e8;
+}
+ 
+#gui .dg.main .close-button:hover {
+    background-color: #ddd;
+}
+
+#gui .dg {
+    color: #555;
+    text-shadow: none !important;
+}
+
+#gui .dg.main::-webkit-scrollbar {
+    background: #fafafa;
+}
+
+#gui .dg.main::-webkit-scrollbar-thumb {
+    background: #bbb;
+}
+ 
+#gui .dg li:not(.folder) {
+    background: #fafafa;
+    border-bottom: 1px solid #ddd;
+}
+ 
+#gui .dg li.save-row .button {
+    text-shadow: none !important;
+}
+
+#gui .dg li.title {
+    background: #e8e8e8 url(data:image/gif;base64,R0lGODlhBQAFAJEAAP////Pz8////////yH5BAEAAAIALAAAAAAFAAUAAAIIlI+hKgFxoCgAOw==) 6px 10px no-repeat;
+}
+
+#gui .dg .cr.function:hover,#gui .dg .cr.boolean:hover {
+    background: #fff;
+}
+ 
+#gui .dg .c input[type=text] {
+    background: #e9e9e9;
+}
+ 
+#gui .dg .c input[type=text]:hover {
+    background: #eee;
+}
+ 
+#gui .dg .c input[type=text]:focus {
+    background: #eee;
+    color: #555;
+}
+ 
+#gui .dg .c .slider {
+    background: #e9e9e9;
+}
+
+#gui .dg .c .slider:hover {
+    background: #eee;
+}

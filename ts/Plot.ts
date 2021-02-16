@@ -48,6 +48,8 @@ export class SVGPlot {
 	}
 
 	public static handleFileSelect(event: any) {
+		document.dispatchEvent(new CustomEvent('Load SVG'))
+
 		this.gui.getController('Load SVG').hide()
 		this.gui.getController('Clear SVG').show()
 
@@ -125,6 +127,7 @@ export class SVGPlot {
 	}
 
 	public static clearClicked(event: any) {
+		document.dispatchEvent(new CustomEvent('Clear SVG'))
 		this.fileIndex = 0
 		communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
@@ -140,9 +143,11 @@ export class SVGPlot {
 		if(SVGPlot.svgPlot != null) {
 			if(!SVGPlot.svgPlot.plotting) {
 				SVGPlot.gui.getController('Draw').name('Stop, clear commands & go home')
+				document.dispatchEvent(new CustomEvent('Draw'))
 				SVGPlot.plotAndLoadLoop()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
+				document.dispatchEvent(new CustomEvent('Stop drawing'))
 				communication.interpreter.sendStop(true)
 				communication.interpreter.clearQueue()
 				SVGPlot.svgPlot.plotting = false
