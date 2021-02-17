@@ -138,7 +138,7 @@ export class CommandDisplay {
 		this.commandList = this.gui.addFolder('Command list')
 
 		this.listJ = $('<ul id="command-list" class="c-list">')
-		this.commandList.open()
+		// this.commandList.open()
 		this.listJ.insertAfter($(this.commandList.gui.domElement).find('li'))
 		
 		this.goHomeButton.hide()
