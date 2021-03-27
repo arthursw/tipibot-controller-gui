@@ -81,6 +81,10 @@ export class CommandDisplay {
 		controlsJ.insertAfter($(this.gui.getDomElement()).find('li.title'))
 		this.gui.open()
 
+		$('#fullscreen').click(()=> {
+			let controller = settingsManager.gui.getFolder('Settings').getController('fullscreen')
+			controller.setValue(!controller.getValue())
+		})
 		tipibot.gui = this.gui
 		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
 		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(value, tipibot.getPosition().y)))
@@ -184,6 +188,7 @@ export class CommandDisplay {
 			$('body').removeClass('advancedLayout')
 			$('#gui').hide()
 		}
+		window.dispatchEvent(new Event('resize'))
 	}
 
 	saveCommands() {

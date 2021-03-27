@@ -1,7 +1,11 @@
 var userAgent = navigator.userAgent.toLowerCase();
 
 if (userAgent.indexOf(' electron/') > -1) {
-   
+	let meta = document.createElement('meta');
+	meta.httpEquiv = "Content-Security-Policy";
+	meta.content = "script-src 'self'";
+	document.getElementsByTagName('head')[0].appendChild(meta);
+
 	// Fix to make jQuery work in electron, see https://stackoverflow.com/questions/32621988/electron-jquery-is-not-defined
 	if (typeof module === 'object') {
 		window.module = module;
