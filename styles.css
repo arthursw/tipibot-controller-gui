@@ -616,10 +616,13 @@ ul.speed li button {
   border-radius: 0px;
 }
 
+#screen-controls {
+  position: relative;
+}
 #controls #fullscreen {
   position: absolute;
-  top: 30px;
-  right: 0;
+  top: 5px;
+  right: 10px;
   width: 35px;
   height: 35px;
   padding: 0;
