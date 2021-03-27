@@ -90,7 +90,13 @@ export class CommandDisplay {
 		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(value, tipibot.getPosition().y)))
 		this.gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(tipibot.getPosition().x, value)))
 
-		this.connectButton = this.gui.addButton(communication && communication.serialPortConnectionOpened ? 'Disconnect' : 'Connect', ()=> communication.serialPortConnectionOpened ? communication.disconnectSerialPort() : communication.tryConnectSerialPort() )
+		this.connectButton = this.gui.addButton(communication && communication.serialPortConnectionOpened ? 'Disconnect' : 'Connect', ()=> {
+			if(communication.serialPortConnectionOpened) {
+				communication.disconnectSerialPort()
+			} else {
+				communication.autoConnectController.setValue(true)
+			}
+		})
 		document.addEventListener('Connect', ()=> this.connectButton.setName('Disconnect'))
 		document.addEventListener('Disconnect', ()=> this.connectButton.setName('Connect'))
 		this.addIcon(this.connectButton, 'connect')
