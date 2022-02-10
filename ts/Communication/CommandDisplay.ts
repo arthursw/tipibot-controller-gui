@@ -70,6 +70,42 @@ export class CommandDisplay {
 		})
 	}
 
+	initializeServoControls() {
+
+		$('#servo-controls button.plus').mousedown(()=> {
+			tipibot.servoPlus()
+		})
+		$('#servo-controls button.minus').mousedown(()=> {
+			tipibot.servoMinus()
+		})
+
+		$('#servo-controls button.go-pen-up').mousedown(()=> {
+			tipibot.servoChanged(true, 'up', false)
+		})
+		$('#servo-controls button.go-pen-down').mousedown(()=> {
+			tipibot.servoChanged(true, 'down', false)
+		})
+		$('#servo-controls button.go-pen-close').mousedown(()=> {
+			tipibot.servoChanged(true, 'close', false)
+		})
+		$('#servo-controls button.go-pen-drop').mousedown(()=> {
+			tipibot.servoChanged(true, 'drop', false)
+		})
+
+		$('#servo-controls button.set-pen-up').mousedown(()=> {
+			tipibot.servoChanged(true, 'up', true)
+		})
+		$('#servo-controls button.set-pen-down').mousedown(()=> {
+			tipibot.servoChanged(true, 'down', true)
+		})
+		$('#servo-controls button.set-pen-close').mousedown(()=> {
+			tipibot.servoChanged(true, 'close', true)
+		})
+		$('#servo-controls button.set-pen-drop').mousedown(()=> {
+			tipibot.servoChanged(true, 'drop', true)
+		})
+	}
+
 	createGUI(tipibotConsole: Console) {
 		this.console = tipibotConsole
 		let gui = tipibotConsole.gui

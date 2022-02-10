@@ -529,6 +529,24 @@ SVG Icons - svgicons.sparkk.fr
   outline: none;
 }
 
+#move-servo-controls, #servo-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+#servo-controls span {
+  font-size: 13.3333px;
+}
+
+.servo-steps button {
+  text-align: left;
+}
+
+button.center {
+  text-align: center;
+}
+
 #move-controls {
   display: grid;
   grid-template-columns: 33.33% 33.33% 33.33%;
@@ -536,7 +554,6 @@ SVG Icons - svgicons.sparkk.fr
 
   width: 150px;
   height: 150px;
-  margin: auto;
 }
 
 #move-speed {

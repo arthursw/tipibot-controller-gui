@@ -157,9 +157,9 @@ export class Calibration {
             this.previewRectangleItem.addChild(bottomRight)
             this.previewRectangleItem.addChild(bottomLeft)
         } else {
-            this.previewRectangleItem = paper.Path.Rectangle(rectangle)
+            this.previewRectangleItem = new paper.Path.Rectangle(rectangle)
         }
-        this.previewRectangleItem.strokeColor = 'green'
+        this.previewRectangleItem.strokeColor = new paper.Color('green')
         this.previewRectangleItem.strokeWidth = 1
     }
 
@@ -192,7 +192,7 @@ export class Calibration {
         this.previewTransformItem.add(bottomLeft)
         this.previewTransformItem.add(topLeft)
 
-        this.previewTransformItem.strokeColor = 'orange'
+        this.previewTransformItem.strokeColor = new paper.Color('orange')
         this.previewTransformItem.strokeWidth = 1
     }
 

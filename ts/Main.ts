@@ -1,13 +1,11 @@
 /// <reference path="../node_modules/@types/three/index.d.ts"/>
-/// <reference path="../node_modules/@types/jquery/index.d.ts"/>
-/// <reference path="../node_modules/@types/paper/index.d.ts"/>
 /// <reference path="../node_modules/@types/file-saver/index.d.ts"/>
 
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
-
-import { Settings, settingsManager } from "./Settings"
+import * as $ from "jquery"
+import { Settings, settingsManager, paper } from "./Settings"
 import { Tipibot, tipibot } from "./Tipibot"
 import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
@@ -25,6 +23,7 @@ import { SVGSplitter } from "./Plugins/SVGSplitter"
 import { FileManager } from "./Plugins/FileManager"
 import { LiveDrawing } from "./Plugins/LiveDrawing"
 import { GCodeViewer } from "./Plugins/GCodeViewer"
+
 
 declare var addWheelListener: any
 declare var dat: any
@@ -149,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		if (tipibot.settingPosition) {
 			let position = renderer.getWorldPosition(event)
 			if (positionPreview == null) {
-				positionPreview = paper.Path.Circle(position, Pen.HOME_RADIUS)
+				positionPreview = new paper.Path.Circle(position, Pen.HOME_RADIUS)
 			}
 			positionPreview.position = position
 			tipibot.setPositionSliders(position)

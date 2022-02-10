@@ -1,6 +1,7 @@
 import { Settings, SettingsManager } from "./Settings"
 import { Pen } from "./Pen"
 import { tipibot } from "./Tipibot"
+import { view } from "paper/dist/paper-core"
 
 export let visualFeedback: VisualFeedback = null
 
@@ -32,9 +33,9 @@ export class VisualFeedback {
 
 		let positon = tipibot.getPosition()
 		let gondolaPosition = tipibot.getGondolaPosition()
-		this.circle = paper.Path.Circle(positon, Pen.HOME_RADIUS)
-		this.circle.fillColor = 'rgba(255, 193, 7, 0.25)'
-		this.circle.strokeColor = 'black'
+		this.circle = new paper.Path.Circle(positon, Pen.HOME_RADIUS)
+		this.circle.fillColor = new paper.Color('rgba(255, 193, 7, 0.25)')
+		this.circle.strokeColor = new paper.Color('black')
 		this.circle.strokeWidth = 1
 		this.group.addChild(this.circle)
 
@@ -44,7 +45,7 @@ export class VisualFeedback {
 		this.lines.add(new paper.Point(Settings.tipibot.width, 0))
 
 		this.lines.strokeWidth = 0.5
-		this.lines.strokeColor = 'rgba(0, 0, 0, 0.5)'
+		this.lines.strokeColor = new paper.Color('rgba(0, 0, 0, 0.5)')
 		this.lines.dashArray = [2, 2]
 		this.lines.strokeScaling = false
 		this.group.addChild(this.lines)
@@ -70,7 +71,7 @@ export class VisualFeedback {
 
 	onZoomChanged() {
 		this.circle.applyMatrix = false
-		this.circle.scaling = new paper.Point(1 / paper.view.zoom, 1 / paper.view.zoom)
+		this.circle.scaling = new paper.Point(1 / view.zoom, 1 / view.zoom)
 	}
 
 	setVisible(visible: boolean) {
@@ -116,7 +117,7 @@ export class VisualFeedback {
 			if(!this.drawing && this.paths) {
 				let path = new paper.Path()
 				path.strokeWidth = Settings.tipibot.penWidth
-				path.strokeColor = 'black'
+				path.strokeColor = new paper.Color('black')
 				path.strokeScaling = true
 				path.add(point)
 				this.paths.addChild(path)
@@ -139,7 +140,7 @@ export class VisualFeedback {
 		if(Settings.servo.position.invert) {
 			this.isPenUp = !this.isPenUp
 		}
-		this.circle.fillColor = this.isPenUp ? 'rgba(255, 193, 7, 0.25)' : this.circle.fillColor = 'rgba(255, 193, 7, 0.9)'
+		this.circle.fillColor = new paper.Color( this.isPenUp ? 'rgba(255, 193, 7, 0.25)' : 'rgba(255, 193, 7, 0.9)' )
 	}
 
 	setSubTarget(data: string) {
@@ -148,7 +149,7 @@ export class VisualFeedback {
 		if(!this.isPenUp) {
 			let path = new paper.Path()
 			path.strokeWidth = 0.1
-			path.strokeColor = 'red'
+			path.strokeColor = new paper.Color('red')
 			path.strokeScaling = true
 			this.subTargets.addChild(path)
 

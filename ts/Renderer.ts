@@ -1,4 +1,5 @@
-import { Settings } from "./Settings"
+import { project } from "paper/dist/paper-core"
+import { Settings, paper } from "./Settings"
 
 export class Renderer {
 	
@@ -16,10 +17,11 @@ export class Renderer {
 		this.canvas.height = containerJ.height()
 		containerJ.get(0).appendChild(this.canvas)
 
+		
 		paper.setup(<any>this.canvas)
-		paper.project.currentStyle.strokeColor = 'black'
-		paper.project.currentStyle.strokeWidth = 0.5
-		paper.project.currentStyle.strokeScaling = false
+		project.currentStyle.strokeColor = new paper.Color('black')
+		project.currentStyle.strokeWidth = 0.5
+		project.currentStyle.strokeScaling = false
 
 		let mainLayer = new paper.Layer()
 
@@ -43,7 +45,7 @@ export class Renderer {
 			document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		}
 
-		paper.view.setCenter(new paper.Point(tipibot.width / 2, tipibot.height / 2))
+		paper.view.center = new paper.Point(tipibot.width / 2, tipibot.height / 2)
 	}
 
 	getDomElement(): any {
@@ -83,7 +85,7 @@ export class Renderer {
 		if(event.buttons == 4 || this.spacePressed && this.dragging) { 											// wheel button
 			let position = this.getMousePosition(event)
 			paper.view.translate(position.subtract(this.previousPosition).divide(paper.view.zoom))
-			paper.view.draw()
+			paper.view.update()
 			this.previousPosition.x = position.x
 			this.previousPosition.y = position.y
 		}

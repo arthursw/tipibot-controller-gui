@@ -3,6 +3,7 @@ import { GUI, Controller } from "../GUI"
 import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
 import { SVGPlot } from "../Plot"
+import { project } from "paper/dist/paper-core"
 
 declare let JSZip: any
 
@@ -15,7 +16,7 @@ export class SVGSplitter {
 	}
 
 	loadImage(event: any, name: string) {
-		let svg = paper.project.importSVG(event.target.result)
+		let svg = project.importSVG(event.target.result)
 
 		console.log('SVG imported.')
 
@@ -84,17 +85,17 @@ export class SVGSplitter {
 		console.log("Paths split.")
 		console.log("There are " + svg.children.length + " paths.")
 
-		let mainProject = paper.project
+		let mainProject = project
 
 		let canvas = document.createElement('canvas')
 		canvas.width = svg.strokeBounds.width
 		canvas.height = svg.strokeBounds.height
 
-		let project = new paper.Project(canvas)
+		let newProject = new paper.Project(canvas)
 
-		let background = paper.Path.Rectangle(svg.bounds)
+		let background = new paper.Path.Rectangle(svg.bounds)
 		background.matrix = svg.matrix
-		background.fillColor = 'white'
+		background.fillColor = new paper.Color('white')
 		background.sendToBack()
 
 		let group = new paper.Group()
@@ -103,7 +104,7 @@ export class SVGSplitter {
 		group.fillColor = svg.fillColor
 		group.strokeColor = svg.strokeColor
 
-		project.view.setCenter(svg.bounds.center)
+		newProject.view.center = svg.bounds.center
 
 		let nSegments = 0
 		let svgs = []
@@ -119,14 +120,14 @@ export class SVGSplitter {
 			group.addChild(p)
 			nSegments += p.segments.length
 			if(nSegments > SVGPlot.nSegmentsMax) {
-				this.exportFile(baseName, i, project, images, group)
+				this.exportFile(baseName, i, newProject, images, group)
 				nSegments = 0
 				i++
 			}
 		}
 
 		if(group.children.length > 0) {
-			this.exportFile(baseName, i, project, images, group)
+			this.exportFile(baseName, i, newProject, images, group)
 			i++
 		}
 
@@ -143,7 +144,7 @@ export class SVGSplitter {
 		}
 
 		group.remove()
-		project.remove()
+		newProject.remove()
 		canvas.remove()
 		svg.remove()
 

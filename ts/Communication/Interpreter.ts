@@ -278,6 +278,12 @@ export class Interpreter {
 	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
+	sendPenClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null) {
+	}
+
+	sendPenDrop(servoDropValue: number = Settings.servo.position.drop, callback: ()=> void = null) {
+	}
+
 	sendStop(force = true) {
 	}
 

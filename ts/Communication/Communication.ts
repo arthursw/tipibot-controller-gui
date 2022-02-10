@@ -1,5 +1,5 @@
 import { GUI, Controller } from "../GUI"
-import { Settings, settingsManager } from "../Settings"
+import { Settings, SettingsManager, settingsManager } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter, SERIAL_COMMUNICATION_SPEED as ISERIAL_COMMUNICATION_SPEED } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
@@ -15,7 +15,7 @@ import { Makelangelo } from "./Makelangelo"
 
 export const SERIAL_COMMUNICATION_SPEED = ISERIAL_COMMUNICATION_SPEED
 
-let PORT = window.localStorage.getItem('port') || 6842
+// let PORT = window.localStorage.getItem('port') || 6842
 
 declare var io: any
 
@@ -37,6 +37,11 @@ export class Communication {
 		this.portController = null
 		this.initializeInterpreter(Settings.firmware)
 		this.connectToSerial()
+		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
+	}
+
+	onSettingChanged(event: CustomEvent) {
+		this.send('save-settings', JSON.stringify(Settings, null, '\t'))
 	}
 
 	createGUI(gui: GUI) {
@@ -163,10 +168,16 @@ export class Communication {
 			this.onSerialPortConnectionOpened(data)
 		} else if(type == 'error') {
 			console.error(data)
+		} else if(type == 'load-settings') {
+			settingsManager.loadJSONandOverwriteLocalStorage(data)
 		}
 	}
 
 	connectToSerial() {
+		let serverController = this.gui.add(Settings, 'websocketServerURL')
+		serverController.onFinishChange((value)=> {
+			settingsManager.save(false)
+		})
 		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'Makelangelo', 'FredBot'] ).name('Firmware')
 		firmwareController.onFinishChange((value)=> {
 			settingsManager.save(false)
@@ -192,7 +203,7 @@ export class Communication {
 
 		this.initializePortController(['Disconnected'])
 
-		this.socket = new WebSocket('ws://localhost:' + PORT)
+		this.socket = new WebSocket(`ws://${Settings.websocketServerURL}`)
 
 		this.socket.addEventListener('message',  (event:any)=> this.onMessage(event))
 		this.socket.addEventListener('open',  (event:any)=> this.onWebSocketOpen(event))

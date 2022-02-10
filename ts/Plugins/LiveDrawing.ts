@@ -5,6 +5,7 @@ import { SVGPlot } from "../Plot"
 import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
 import { tipibot } from "../Tipibot"
 import { Interpreter, Command } from "../Communication/Interpreter"
+import { projects, view } from "paper/dist/paper-core"
 
 export class LiveDrawing {
 	
@@ -107,7 +108,7 @@ export class LiveDrawing {
 
 		} else if(mode == '2 Symmetries' || mode == '4 Symmetries') {
 			let v = new paper.Path()
-			v.strokeColor = 'black'
+			v.strokeColor = new paper.Color('black')
 			v.strokeWidth = 1
 			v.dashArray = [5, 5]
 			v.add(bounds.topCenter)
@@ -131,7 +132,7 @@ export class LiveDrawing {
 		} else if(mode == 'N. Repetitions') {
 			for(let i=0 ; i<this.nRepetitions ; i++) {
 				let v = new paper.Path()
-				v.strokeColor = 'black'
+				v.strokeColor = new paper.Color('black')
 				v.strokeWidth = 1
 				v.dashArray = [5, 5]
 				let center = bounds.center
@@ -152,9 +153,9 @@ export class LiveDrawing {
 		let height = window.innerHeight
 		this.canvasJ.width(width)
 		this.canvasJ.height(height)
-		paper.view.viewSize = new paper.Size(width, height)
+		view.viewSize = new paper.Size(width, height)
 		this.renderer.centerOnTipibot(this.drawArea.bounds, true, this.canvasJ.get(0))
-		this.project.view.setCenter(this.drawArea.bounds.center)
+		this.project.view.center = this.drawArea.bounds.center
 	}
 
 	startLiveDrawing() {
@@ -192,8 +193,8 @@ export class LiveDrawing {
 			this.drawing = new paper.Group()
 			this.currentDrawing = new paper.Group()
 
-			this.drawArea = paper.Path.Rectangle(tipibot.drawArea.bounds)
-			this.drawArea.strokeColor = 'black'
+			this.drawArea = new paper.Path.Rectangle(tipibot.drawArea.bounds)
+			this.drawArea.strokeColor = new paper.Color('black')
 			this.drawArea.strokeWidth = 1
 
 			if(!this.undoRedoButtons) {
@@ -224,7 +225,7 @@ export class LiveDrawing {
 
 	stopLiveDrawing() {
 		this.divJ.hide()
-		paper.projects[0].activate()
+		projects[0].activate()
 		this.axes.removeChildren()
 
 		tipibot.ignoreKeyEvents = false
@@ -270,7 +271,7 @@ export class LiveDrawing {
 
 		this.currentLine = new paper.Path()
 		this.currentLine.strokeWidth = Settings.tipibot.penWidth
-		this.currentLine.strokeColor = 'green'
+		this.currentLine.strokeColor = new paper.Color('green')
 		this.currentLine.add(point)
 
 		if(this.undoRedo) {
@@ -318,7 +319,7 @@ export class LiveDrawing {
 	}
 
 	pathDrawn(lines: paper.Path) {
-		lines.strokeColor = 'black'
+		lines.strokeColor = new paper.Color('black')
 	}
 	
 	penUp(lines: paper.Path) {
@@ -426,7 +427,7 @@ export class LiveDrawing {
 		if(this.mustClearCommandQueueOnMouseUp && this.commandQueues.length == 1) {
 			this.mustClearCommandQueueOnMouseUp = false
 			for(let path of this.commandQueues[0].paths) {
-				path.strokeColor = 'blue'
+				path.strokeColor = new paper.Color('blue')
 			}
 			this.commandQueues = []
 			this.createNewCommandQueue()
@@ -516,7 +517,7 @@ export class LiveDrawing {
 			this.redo()
 		} else {
 			for(let child of this.currentDrawing.children.slice()) {
-				child.strokeColor = 'black'
+				child.strokeColor = new paper.Color('black')
 				this.drawing.addChild(child)
 				this.drawLines(<paper.Path>child)
 			}
@@ -569,7 +570,7 @@ export class LiveDrawing {
 					}
 
 					for(let path of commandQueue.paths) {
-						path.strokeColor = 'blue'
+						path.strokeColor = new paper.Color('blue')
 					}
 
 					return

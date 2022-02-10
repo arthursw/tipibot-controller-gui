@@ -23,6 +23,7 @@ export class Makelangelo extends Interpreter {
 
 		// this.sendPenWidth(Settings.tipibot.penWidth)
 		this.sendSpecs()
+		this.sendInvertXY()
 		// // Initialize at home position by default; it is always possible to set position afterward
 		// // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition())
@@ -32,7 +33,7 @@ export class Makelangelo extends Interpreter {
 
 	convertToMakelangeloCoordinates(point: paper.Point) {
 		let tipibotSize = new paper.Size(Settings.tipibot.width, Settings.tipibot.height)
-		let makelangeloPoint = point.subtract(tipibotSize.multiply(0.5))
+		let makelangeloPoint = point.subtract(tipibotSize.multiply(0.5) as any)
 		makelangeloPoint.y *= -1
 		return makelangeloPoint
 	}
@@ -105,9 +106,9 @@ export class Makelangelo extends Interpreter {
 
 	sendInvertXY(invertMotorLeft: boolean=Settings.tipibot.invertMotorLeft, invertMotorRight: boolean=Settings.tipibot.invertMotorRight) {
 		// console.log('invertMotorLeft: ' + invertMotorLeft + ', invertMotorRight: ' + invertMotorRight)
-		// let message = 'Invert motors: left: ' + invertMotorLeft + ', right: ' + invertMotorRight
-		// this.queue('M12 X' + (invertMotorLeft ? -1 : 1) + ' Y' + (invertMotorRight ? -1 : 1) + '\n', message)
-		console.log('error: command not implemented')
+		let message = 'Invert motors: left: ' + invertMotorLeft + ', right: ' + invertMotorRight
+		this.queue('M170 N0 I' + (invertMotorLeft ? 1 : 0) + '\n', message)
+		this.queue('M170 N1 I' + (invertMotorRight ? 1 : 0) + '\n', message)
 	}
 
 	sendProgressiveMicrosteps(progressiveMicrosteps: boolean = Settings.tipibot.progressiveMicrosteps) {
@@ -216,6 +217,14 @@ export class Makelangelo extends Interpreter {
 
 	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		this.sendPenState(servoDownValue, delayBefore, delayAfter, callback)
+	}
+
+	sendPenClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null) {
+		this.sendPenState(servoCloseValue, 0, 0, callback)
+	}
+
+	sendPenDrop(servoDropValue: number = Settings.servo.position.drop, callback: ()=> void = null) {
+		this.sendPenState(servoDropValue, 0, 0, callback)
 	}
 
 	sendChangePen(penName: string, penIndex: number) {

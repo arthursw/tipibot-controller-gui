@@ -1,10 +1,14 @@
 import { Tipibot, tipibot } from "./Tipibot"
-import { Settings, settingsManager, SettingsManager } from "./Settings"
+import { Settings, settingsManager, SettingsManager, isServer } from "./Settings"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
-import { Pen } from './Pen'
+import { Pen, PenState } from './Pen'
 import { Int8BufferAttribute } from "../libs/three"
+import { project } from "paper/dist/paper-core"
 
+if (isServer) {
+	var saveAs = (blob: any, filename: string)=> console.log('save', filename)
+}
 export class SVGPlot {
 
 	static svgPlot: SVGPlot = null
@@ -26,7 +30,7 @@ export class SVGPlot {
 	currentPath: paper.Path = null
 
 	public static loadImage(event: any, callback: ()=>void = null) {
-		let svg = paper.project.importSVG(event.target.result)
+		let svg = project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
 
@@ -411,7 +415,7 @@ export class SVGPlot {
 
 		this.filter()
 
-		this.group.onMouseDrag = (event)=> this.onMouseDrag(event)
+		this.group.onMouseDrag = (event: Event)=> this.onMouseDrag(event)
 
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
@@ -420,8 +424,8 @@ export class SVGPlot {
 		if(this.background != null) {
 			this.background.remove()
 		}
-		this.background = paper.Path.Rectangle(this.item.bounds)
-		this.background.fillColor = 'white'
+		this.background = new paper.Path.Rectangle(this.item.bounds)
+		this.background.fillColor = new paper.Color('white')
 		this.background.strokeColor = null
 		this.background.strokeWidth = 0
 		this.background.sendToBack()
@@ -481,7 +485,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 				p.splitAt(p.segments[nSegmentsMax-1].location)
 			}
 		}
-		this.originalItem = this.item.clone(false)
+		this.originalItem = this.item.clone({insert: false})
 	}
 
 	loadItem() {
@@ -489,7 +493,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.originalItem.applyMatrix = false
 		this.originalItem.scaling = this.item.scaling
 		this.item.remove()
-		this.item = this.originalItem.clone(false)
+		this.item = this.originalItem.clone({insert: false})
 		this.group.addChild(this.item)
 	}
 
@@ -508,7 +512,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.item.visible = true
 
 		// this.item.strokeColor = 'black'
-		this.raster = this.item.rasterize(paper.project.view.resolution)
+		this.raster = this.item.rasterize({resolution: project.view.resolution})
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
 		if(this.background != null) {
@@ -913,7 +917,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			let currentColor = this.getColorCSS(this.currentPath.strokeColor)
 			let nextColor = this.getColorCSS(currentPath.strokeColor)
 			if(currentColor != null && nextColor != null && currentColor != nextColor) {
-				let wasPenUp = tipibot.pen.isUp
+				let wasPenUp = tipibot.pen.state == PenState.Up
 				tipibot.penUp()
 				tipibot.sendChangePen(nextColor, this.currentColorIndex++)
 				if(!wasPenUp) {

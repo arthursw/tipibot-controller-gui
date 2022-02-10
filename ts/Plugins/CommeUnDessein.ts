@@ -1,4 +1,4 @@
-import { Settings, settingsManager } from "../Settings"
+import { Settings, settingsManager, paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { SVGPlot } from "../Plot"
 import { communication } from "../Communication/Communication"
@@ -8,7 +8,7 @@ import { visualFeedback } from "../VisualFeedback"
 
 const RequestTimeout = 2000
 
-let scale = 1000
+// let scale = 1000
 
 let CommeUnDesseinSize = new paper.Size(4000, 3000)
 
@@ -16,30 +16,31 @@ let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 	let drawArea = tipibot.drawArea.bounds
 	let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
 	const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
-	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size).multiply(drawArea.size).add(drawArea.topLeft)
+	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size as any).multiply(drawArea.size as any).add(drawArea.topLeft)
 }
 
-let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point): paper.Point {
-	if (point.x == null && point.y == null) {
-		point = new paper.Point(point)
-	}
-	let x = planet.x * 180 + point.x
-	let y = planet.y * 90 + point.y
-	x *= scale
-	y *= scale
-	return new paper.Point(x, y)
-}
+// let posOnPlanetToProject = function(point: paper.Point, planet: paper.Point): paper.Point {
+// 	if (point.x == null && point.y == null) {
+// 		point = new paper.Point(point)
+// 	}
+// 	let x = planet.x * 180 + point.x
+// 	let y = planet.y * 90 + point.y
+// 	x *= scale
+// 	y *= scale
+// 	return new paper.Point(x, y)
+// }
 
-let posOnPlanetToDrawArea = function(point: paper.Point, planet: paper.Point) {
-	let posOnProject = posOnPlanetToProject(point, planet)
-	return commeUnDesseinToDrawArea(posOnProject)
-}
+// let posOnPlanetToDrawArea = function(point: paper.Point, planet: paper.Point) {
+// 	let posOnProject = posOnPlanetToProject(point, planet)
+// 	return commeUnDesseinToDrawArea(posOnProject)
+// }
 
 let commeundesseinAjaxURL = '/ajaxCallNoCSRF/'
 
 const ModeKey = 'Mode'
 const OriginKey = 'Origin'
 const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret'
+const CommeUnDesseinServerModeKey = 'CommeUnDesseinServerMode'
 
 
 // $.ajaxSetup({
@@ -87,7 +88,19 @@ export class CommeUnDessein {
 	testMode: boolean
 	startButton: Controller
 	started: boolean = false
+	serverMode: boolean = true
 	timeoutID: NodeJS.Timeout = null
+
+	settings = {
+		mode: '',
+		origin: '',
+		secret: '',		
+	}
+
+	static startCommeUnDessein() {
+		let commeUnDessein = new CommeUnDessein(false)
+		commeUnDessein.requestNextDrawing()
+	}
 
 	constructor(testMode=false) {
 		this.testMode = testMode
@@ -109,7 +122,8 @@ export class CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => localStorage.setItem(OriginKey, value))
 		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
-		
+		commeUnDesseinGUI.add(this, 'serverMode').onFinishChange((value)=> localStorage.setItem(CommeUnDesseinServerModeKey, value))
+
 		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.bounds.width
 		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.bounds.height
 
@@ -175,7 +189,7 @@ export class CommeUnDessein {
 			}
 			if (results.message == 'no path') {
 				this.state = State.NextDrawing
-				console.log('There are no path to draw. Request next drawing in two seconds...')
+				console.log('There are no path to draw. Request next drawing in a few seconds...')
 				if(this.started) {
 					clearTimeout(this.timeoutID)
 					this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
@@ -222,7 +236,7 @@ export class CommeUnDessein {
 
 				// Ignore anything that humans can't see to avoid hacks
 				let strokeColor: any = path.strokeColor
-				if(path.strokeWidth <= 0.2 || path.strokeColor == 'white' || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
+				if(path.strokeWidth <= 0.2 || path.strokeColor.equals(new paper.Color('white')) || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
 					continue
 				}
 
@@ -245,51 +259,51 @@ export class CommeUnDessein {
 		})
 	}
 
-	draw(results: any) {
-		if (results.state == 'error') {
-			console.log(results)
-			return
-		}
-		this.state = State.Drawing
-		this.currentDrawing = results
+	// draw(results: any) {
+	// 	if (results.state == 'error') {
+	// 		console.log(results)
+	// 		return
+	// 	}
+	// 	this.state = State.Drawing
+	// 	this.currentDrawing = results
 
-		let drawing = new paper.Group()
+	// 	let drawing = new paper.Group()
 
-		for (let itemJson of results.items) {
-			let item = JSON.parse(itemJson)
+	// 	for (let itemJson of results.items) {
+	// 		let item = JSON.parse(itemJson)
 
-			let pk = item._id.$oid
-			let id = item.clientId
-			let date = item.date != null ? item.date.$date : null
-			let data = item.data != null && item.data.length > 0 ? JSON.parse(item.data) : null
+	// 		let pk = item._id.$oid
+	// 		let id = item.clientId
+	// 		let date = item.date != null ? item.date.$date : null
+	// 		let data = item.data != null && item.data.length > 0 ? JSON.parse(item.data) : null
 
-			let points = data.points
-			let planet = data.planet
+	// 		let points = data.points
+	// 		let planet = data.planet
 
-			let controlPath = new paper.Path()
+	// 		let controlPath = new paper.Path()
 
-			for (let i = 0; i < points.length; i += 4) {
-				let point = points[i]
-				// points and handles in project coordinates
-				// do not convert in draw area cooredinates before flattening (to keep handle proportions)
-				controlPath.add(posOnPlanetToProject(point, planet))
-				controlPath.lastSegment.handleIn = new paper.Point(points[i + 1])
-				controlPath.lastSegment.handleOut = new paper.Point(points[i + 2])
-				// controlPath.lastSegment.rtype = points[i+3]
-			}
-			controlPath.flatten(Settings.plot.flattenPrecision)
-			// now that controlPath is flattened: convert in draw area coordinates
-			for(let segment of controlPath.segments) {
-				segment.point = commeUnDesseinToDrawArea(segment.point)
-			}
-			drawing.addChild(controlPath)
-		}
-		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.destroy()
-		}
-		SVGPlot.svgPlot = new SVGPlot(drawing)
-		SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
-	}
+	// 		for (let i = 0; i < points.length; i += 4) {
+	// 			let point = points[i]
+	// 			// points and handles in project coordinates
+	// 			// do not convert in draw area cooredinates before flattening (to keep handle proportions)
+	// 			controlPath.add(posOnPlanetToProject(point, planet))
+	// 			controlPath.lastSegment.handleIn = new paper.Point(points[i + 1])
+	// 			controlPath.lastSegment.handleOut = new paper.Point(points[i + 2])
+	// 			// controlPath.lastSegment.rtype = points[i+3]
+	// 		}
+	// 		controlPath.flatten(Settings.plot.flattenPrecision)
+	// 		// now that controlPath is flattened: convert in draw area coordinates
+	// 		for(let segment of controlPath.segments) {
+	// 			segment.point = commeUnDesseinToDrawArea(segment.point)
+	// 		}
+	// 		drawing.addChild(controlPath)
+	// 	}
+	// 	if(SVGPlot.svgPlot != null) {
+	// 		SVGPlot.svgPlot.destroy()
+	// 	}
+	// 	SVGPlot.svgPlot = new SVGPlot(drawing)
+	// 	SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
+	// }
 
 	setDrawingStatusDrawn(pk: string) {
 		if(visualFeedback.paths.children.length > 0) {

@@ -1,5 +1,24 @@
 import { GUI, Controller } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
+// import * as paperjs from 'paper';
+
+export let paper = require('paper');
+
+export let isServer = (typeof process !== 'undefined') && (typeof process.versions.node !== 'undefined')
+
+if(isServer) {
+	// paper = require('paper');
+	var size = new paper.Size(1000, 1000);
+	paper.setup(size);
+
+	let circle = new paper.Path.Circle(new paper.Point(0, 0), 30)
+	circle.fillColor = new paper.Color(0.1, 0.3, 0.2);
+	circle.flatten(3)
+	console.log(circle.fillColor.red, circle.fillColor.green, circle.fillColor.blue)
+	for(let s of circle.segments) {
+		console.log(s.point.x)
+	}
+}
 
 let tipibotHeight = 2020
 let tipibotWidth = 1780
@@ -11,6 +30,7 @@ let homeX = 0
 let homeY = 388
 
 export let Settings = {
+	websocketServerURL: 'localhost:6842',
 	autoConnect: true,
 	firmware: 'Tipibot',
 	forceLinearMoves: true,
@@ -39,8 +59,10 @@ export let Settings = {
 		speed: 100,
 		position: {
 			invert: false,
-			up: 90,
-			down: 180,
+			up: 10,
+			down: 30,
+			close: 100,
+			drop: 170,
 		},
 		delay: {
 			up: {
@@ -120,7 +142,9 @@ export class SettingsManager {
 	}
 
 	constructor() {
-		this.loadLocalStorage()
+		if(!isServer) {
+			this.loadLocalStorage()
+		}
 	}
 
 	getControllers() {
@@ -173,6 +197,8 @@ export class SettingsManager {
 		anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
 		anglesFolder.add(Settings.servo.position, 'up', 0, 3180).name('Up')
 		anglesFolder.add(Settings.servo.position, 'down', 0, 3180).name('Down')
+		anglesFolder.add(Settings.servo.position, 'close', 0, 3180).name('Close')
+		anglesFolder.add(Settings.servo.position, 'drop', 0, 3180).name('Drop')
 
 		let delaysFolder = penFolder.addFolder('Delays')
 		let delaysUpFolder = delaysFolder.addFolder('Up')
@@ -345,9 +371,9 @@ export class SettingsManager {
 			} else if(name == 'y') {
 				this.tipibot.setY(value, changeFinished)
 			}
-		} else if(parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down') ) {
+		} else if(parentNames[0] == 'Angles' && parentNames[1] == 'Pen' && (name == 'up' || name == 'down' || name == 'close' || name == 'drop') ) {
 			if(changeFinished) {
-				this.tipibot.servoChanged(changeFinished, name == 'up' ? true : name == 'down' ? false : null, false)
+				this.tipibot.servoChanged(changeFinished, name, false)
 			}
 		} else if(parentNames[0] == 'Pen') {
 			if(name == 'penWidth') {
@@ -476,6 +502,11 @@ export class SettingsManager {
 
 	loadLocalStorage() {
 		this.copyObjectPropertiesFromJSON(Settings, localStorage.getItem('settings'))
+	}
+
+	loadJSONandOverwriteLocalStorage(settingsJsonString: string) {
+		this.copyObjectPropertiesFromJSON(Settings, settingsJsonString)
+		this.save(false)
 	}
 }
 

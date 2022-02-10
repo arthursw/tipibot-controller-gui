@@ -30,7 +30,7 @@ export class GCodeViewer {
     convertFromMakelangeloCoordinates(point: paper.Point) {
         let tipibotSize = new paper.Size(Settings.tipibot.width, Settings.tipibot.height)
         point.y *= -1
-        return point.add(tipibotSize.multiply(0.5))
+        return point.add(tipibotSize.multiply(0.5) as any)
     }
     
     onGCodeLoad(gcode: string, name: string) {

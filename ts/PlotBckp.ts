@@ -3,6 +3,7 @@ import { Settings, settingsManager, SettingsManager } from "./Settings"
 import { Communication, communication } from "./Communication/Communication"
 import { GUI, Controller } from "./GUI"
 import { Pen } from './Pen'
+import { project } from "paper/dist/paper-core"
 
 export class SVGPlot {
 
@@ -12,7 +13,7 @@ export class SVGPlot {
 	readonly pseudoCurvatureDistance = 10 		// in mm
 
 	public static loadImage(event: any) {
-		let svg = paper.project.importSVG(event.target.result)
+		let svg = project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
 		svgPlot.center()
@@ -157,7 +158,7 @@ export class SVGPlot {
 		this.originalItem = null
 		this.filter()
 
-		this.group.onMouseDrag = (event)=> this.onMouseDrag(event)
+		this.group.onMouseDrag = (event:Event)=> this.onMouseDrag(event)
 
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
@@ -185,7 +186,7 @@ export class SVGPlot {
 	}
 
 	saveItem() {
-		this.originalItem = this.item.clone(false)
+		this.originalItem = this.item.clone({insert:false})
 	}
 
 	loadItem() {
@@ -193,7 +194,7 @@ export class SVGPlot {
 		this.originalItem.applyMatrix = false
 		this.originalItem.scaling = this.item.scaling
 		this.item.remove()
-		this.item = this.originalItem.clone(false)
+		this.item = this.originalItem.clone({insert:false})
 		this.group.addChild(this.item)
 	}
 
@@ -220,7 +221,7 @@ export class SVGPlot {
 		this.item.visible = true
 
 		// this.item.strokeColor = 'black'
-		this.raster = this.item.rasterize(paper.project.view.resolution)
+		this.raster = this.item.rasterize({resolution: project.view.resolution})
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
 		this.item.selected = Settings.plot.showPoints

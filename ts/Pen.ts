@@ -1,5 +1,5 @@
 import { Communication, communication } from "./Communication/Communication"
-import { Settings, SettingsManager, settingsManager } from "./Settings"
+import { Settings, SettingsManager, settingsManager, isServer, paper } from "./Settings"
 import { tipibot } from "./Tipibot"
 
 export enum MoveType {
@@ -7,13 +7,22 @@ export enum MoveType {
     Linear,
 }
 
+export enum PenState {
+	Up,
+	Down,
+	Dropped,
+	Closed,
+}
+
 export class Pen {
 	public static HOME_RADIUS = 6
 	public static RADIUS = 6
-	public static UP_COLOR = 'rgba(0, 20, 210, 0.25)'
-	public static DOWN_COLOR = 'rgba(0, 20, 210, 0.8)'
+	public static UP_COLOR = new paper.Color('rgba(0, 20, 210, 0.25)')
+	public static DOWN_COLOR = new paper.Color('rgba(0, 20, 210, 0.8)')
+	public static CLOSED_COLOR = new paper.Color('rgba(20, 0, 210, 0.8)')
+	public static DROP_COLOR = new paper.Color('rgba(210, 0, 20, 0.8)')
 
-	isUp: boolean 						// TODO: this variable is used to store the gui state, not the actual robot state
+	state: PenState
 	dragging: boolean
 
 	group: paper.Group
@@ -22,13 +31,15 @@ export class Pen {
 	lines: paper.Path
 
 	previousPosition: paper.Point
+	angle: number
 
 	static moveTypeFromMouseEvent(event: MouseEvent) {
 		return 	event.altKey ? MoveType.Linear : MoveType.Direct
 	}
 
 	constructor(x: number, y:number, offset: number, tipibotWidth: number) {
-		this.isUp = true
+		this.state = PenState.Up
+		this.angle = Settings.servo.position.up
 		this.dragging = false
 		this.initialize(x, y, offset, tipibotWidth)
 	}
@@ -39,7 +50,7 @@ export class Pen {
 		let penPosition = new paper.Point(x, y)
 		let gondolaPosition = new paper.Point(x, y - offset)
 
-		this.circle = paper.Path.Circle(penPosition, Pen.RADIUS)
+		this.circle = new paper.Path.Circle(penPosition, Pen.RADIUS)
 		this.circle.fillColor = Pen.UP_COLOR
 		this.group.addChild(this.circle)
 
@@ -103,25 +114,57 @@ export class Pen {
 
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		let penUpCallback = ()=> {
-			this.isUp = true
+			this.state = PenState.Up
+			this.angle = Settings.servo.position.up
 			if(callback != null) {
 				callback()
 			}
 		}
 		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.circle.fillColor = Pen.UP_COLOR
-		this.isUp = true
+		this.state = PenState.Up
+		this.angle = Settings.servo.position.up
 	}
 	
 	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		let penDownCallback = ()=> {
-			this.isUp = false
+			this.state = PenState.Down
+			this.angle = Settings.servo.position.down
 			if(callback != null) {
 				callback()
 			}
 		}
 		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.circle.fillColor = Pen.DOWN_COLOR
-		this.isUp = false
+		this.state = PenState.Down
+		this.angle = Settings.servo.position.down
+	}
+
+	penClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null) {
+		let penCloseCallback = ()=> {
+			this.state = PenState.Closed
+			this.angle = Settings.servo.position.close
+			if(callback != null) {
+				callback()
+			}
+		}
+		communication.interpreter.sendPenClose(servoCloseValue, penCloseCallback)
+		this.circle.fillColor = Pen.CLOSED_COLOR
+		this.state = PenState.Closed
+		this.angle = Settings.servo.position.close
+	}
+	
+	penDrop(servoDropValue: number = Settings.servo.position.drop, callback: ()=> void = null) {
+		let penDropCallback = ()=> {
+			this.state = PenState.Dropped
+			this.angle = Settings.servo.position.drop
+			if(callback != null) {
+				callback()
+			}
+		}
+		communication.interpreter.sendPenDrop(servoDropValue, penDropCallback)
+		this.circle.fillColor = Pen.DROP_COLOR
+		this.state = PenState.Dropped
+		this.angle = Settings.servo.position.drop
 	}
 }

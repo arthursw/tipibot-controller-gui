@@ -5,7 +5,7 @@ export interface TipibotInterface {
 	drawArea: paper.Path
 	initializedCommunication: boolean
 	motorsEnabled: boolean
-	pen: { tipibotWidthChanged: (sendChange: boolean)=>void, isUp: boolean }
+	pen: { tipibotWidthChanged: (sendChange: boolean)=>void } //, isUp: boolean }
 
 	getPosition(): paper.Point
 	getHome(): paper.Point
@@ -34,7 +34,7 @@ export interface TipibotInterface {
 	mmPerRevChanged(sendChange?: boolean): void
 	microstepResolutionChanged(sendChange?: boolean): void
 	penWidthChanged(sendChange?: boolean): void
-	servoChanged(sendChange: boolean, up: boolean, specs: boolean): void
+	servoChanged(sendChange: boolean, penState: string, specs: boolean): void
 
 	windowResize(): void
 	feedbackChanged(sendChange: boolean): void

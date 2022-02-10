@@ -1,9 +1,10 @@
 import { Communication, communication } from "./Communication/Communication"
-import { Settings, SettingsManager, settingsManager } from "./Settings"
-import { Pen, MoveType } from "./Pen"
+import { Settings, SettingsManager, settingsManager, paper } from "./Settings"
+import { Pen, MoveType, PenState } from "./Pen"
 import { GUI, Controller } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
 import { calibration } from "./Calibration"
+import { view } from "paper/dist/paper-core"
 
 export class Tipibot implements TipibotInterface {
 
@@ -72,7 +73,7 @@ export class Tipibot implements TipibotInterface {
 	
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
-		if(this.pen.isUp) {
+		if(this.pen.state == PenState.Up) {
 			this.penDown(SettingsManager.servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
 		} else {
 			this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
@@ -91,7 +92,7 @@ export class Tipibot implements TipibotInterface {
 		let group = new paper.Group()
 
 		let position = new paper.Point(x, y)
-		let circle = paper.Path.Circle(position, radius)
+		let circle = new paper.Path.Circle(position, radius)
 		circle.strokeWidth = 1 
 		group.addChild(circle)
 
@@ -110,18 +111,18 @@ export class Tipibot implements TipibotInterface {
 
 	createMoveToButton(position: paper.Point): paper.Path {
 		let size = 6
-		let rectangle = paper.Path.Rectangle(position.subtract(size), position.add(size))
-		rectangle.fillColor = 'rgba(0, 0, 0, 0.05)'
-		rectangle.onMouseUp = (event)=> this.moveToButtonClicked(event, rectangle.position)
+		let rectangle = new paper.Path.Rectangle(position.subtract(size), position.add(size))
+		rectangle.fillColor = new paper.Color('rgba(0, 0, 0, 0.05)')
+		rectangle.onMouseUp = (event: MouseEvent)=> this.moveToButtonClicked(event, rectangle.position)
 		return rectangle
 	}
 
 
 	initialize() {
-		this.tipibotArea = paper.Path.Rectangle(this.computeTipibotArea())
-		this.drawArea = paper.Path.Rectangle(this.computeDrawArea())
-		this.motorLeft = paper.Path.Circle(new paper.Point(0, 0), 50)
-		this.motorRight = paper.Path.Circle(new paper.Point(Settings.tipibot.width, 0), 50)
+		this.tipibotArea = new paper.Path.Rectangle(this.computeTipibotArea())
+		this.drawArea = new paper.Path.Rectangle(this.computeDrawArea())
+		this.motorLeft = new paper.Path.Circle(new paper.Point(0, 0), 50)
+		this.motorRight = new paper.Path.Circle(new paper.Point(Settings.tipibot.width, 0), 50)
 		this.pen = new Pen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.penOffset, Settings.tipibot.width)
 
 		this.home = this.createTarget(Settings.tipibot.homeX, Settings.tipibot.homeY, Pen.HOME_RADIUS)
@@ -150,7 +151,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	onZoomChanged() {
-		let scaling = new paper.Point(1 / paper.view.zoom, 1 / paper.view.zoom)
+		let scaling = new paper.Point(1 / view.zoom, 1 / view.zoom)
 		for(let moveToButtons of this.moveToButtons) {
 			moveToButtons.applyMatrix = false
 			moveToButtons.scaling = scaling
@@ -172,12 +173,12 @@ export class Tipibot implements TipibotInterface {
 
 	updateTipibotArea() {
 		this.tipibotArea.remove()
-		this.tipibotArea = paper.Path.Rectangle(this.computeTipibotArea())
+		this.tipibotArea = new paper.Path.Rectangle(this.computeTipibotArea())
 	}
 
 	updateDrawArea() {
 		this.drawArea.remove()
-		this.drawArea = paper.Path.Rectangle(this.computeDrawArea())
+		this.drawArea = new paper.Path.Rectangle(this.computeDrawArea())
 	}
 
 	sizeChanged(sendChange: boolean) {
@@ -350,18 +351,22 @@ export class Tipibot implements TipibotInterface {
 		}
 	}
 
-	servoChanged(sendChange: boolean, up: boolean, specs: boolean) {
+	servoChanged(sendChange: boolean, penState: string, specs: boolean) {
 		if(sendChange) {
 			if(specs) {
 				communication.interpreter.sendPenLiftRange()
 				communication.interpreter.sendPenDelays()
 				communication.interpreter.sendServoSpeed()
 			}
-			if(up != null) {
-				if(up) {
+			if(penState != null) {
+				if(penState == 'up') {
 					communication.interpreter.sendPenUp()
-				} else {
+				} else if(penState == 'down') {
 					communication.interpreter.sendPenDown()
+				} else if(penState == 'close') {
+					communication.interpreter.sendPenClose()
+				} else if(penState == 'drop') {
+					communication.interpreter.sendPenDrop()
 				}
 			}
 		}
@@ -403,15 +408,23 @@ export class Tipibot implements TipibotInterface {
 		communication.interpreter.executeOnceFinished(callback)
 	}
 
+	servoPlus() {
+		
+	}
+
+	servoMinus() {
+		
+	}
+
 	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
-		if(!this.pen.isUp || force) {
+		if(this.pen.state != PenState.Up || force) {
 			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
 			this.penStateButton.setName('Pen down')
 		}
 	}
 
 	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
-		if(this.pen.isUp || force) {
+		if(this.pen.state == PenState.Up || force) {
 			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
 			this.penStateButton.setName('Pen up')
 		}
