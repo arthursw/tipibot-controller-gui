@@ -157,6 +157,7 @@ export class Calibration {
             this.previewRectangleItem.addChild(bottomRight)
             this.previewRectangleItem.addChild(bottomLeft)
         } else {
+            console.log('h')
             this.previewRectangleItem = new paper.Path.Rectangle(rectangle)
         }
         this.previewRectangleItem.strokeColor = new paper.Color('green')
