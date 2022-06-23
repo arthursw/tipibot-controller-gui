@@ -1,16 +1,14 @@
-import { Settings, settingsManager, paper } from "../Settings"
-import { GUI, Controller } from "../GUI"
-import { SVGPlot } from "../Plot"
-import { communication } from "../Communication/Communication"
-import { tipibot } from "../Tipibot"
+import { Settings, paper } from "../Settings"
+import { SVGPlotStatic } from "../PlotStatic"
+import { Communication } from "../Communication/CommunicationStatic"
+import { tipibot } from "../TipibotInteractive"
 import { visualFeedback } from "../VisualFeedback"
-
 
 const RequestTimeout = 2000
 
 // let scale = 1000
 
-let CommeUnDesseinSize = new paper.Size(4000, 3000)
+export let CommeUnDesseinSize = new paper.Size(4000, 3000)
 
 let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 	let drawArea = tipibot.drawArea.bounds
@@ -37,11 +35,12 @@ let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 
 let commeundesseinAjaxURL = '/ajaxCallNoCSRF/'
 
-const ModeKey = 'Mode'
-const OriginKey = 'Origin'
-const CommeUnDesseinSecretKey = 'CommeUnDesseinSecret'
-const CommeUnDesseinServerModeKey = 'CommeUnDesseinServerMode'
-
+export const StorageKeys = {
+	Mode: 'Mode',
+	Origin: 'Origin',
+	CommeUnDesseinSecret: 'CommeUnDesseinSecret',
+	CommeUnDesseinServerMode: 'CommeUnDesseinServerMode'
+}
 
 // $.ajaxSetup({
 // 	beforeSend: function(xhr, settings) {
@@ -86,7 +85,6 @@ export class CommeUnDessein {
 	currentDrawing: { items: any[], pk: string }
 	state: State = State.NextDrawing
 	testMode: boolean
-	startButton: Controller
 	started: boolean = false
 	serverMode: boolean = true
 	timeoutID: NodeJS.Timeout = null
@@ -104,38 +102,13 @@ export class CommeUnDessein {
 
 	constructor(testMode=false) {
 		this.testMode = testMode
-		this.mode = localStorage.getItem(ModeKey) || 'CommeUnDessein'
-		this.origin = localStorage.getItem(OriginKey) || ''
+		this.mode = localStorage.getItem(StorageKeys.Mode) || 'CommeUnDessein'
+		this.origin = localStorage.getItem(StorageKeys.Origin) || ''
 
-		let secret = localStorage.getItem(CommeUnDesseinSecretKey)
+		let secret = localStorage.getItem(StorageKeys.CommeUnDesseinSecret)
 		if (secret != null) {
 			this.secret = secret
 		}
-	}
-
-	createGUI(gui: GUI) {
-		let folderName = 'Comme un dessein'
-		if(this.testMode) {
-			folderName += ' (Test mode)'
-		}
-		let commeUnDesseinGUI = gui.addFolder(folderName)
-		commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => localStorage.setItem(OriginKey, value))
-		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(ModeKey, value))
-		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(CommeUnDesseinSecretKey, value))
-		commeUnDesseinGUI.add(this, 'serverMode').onFinishChange((value)=> localStorage.setItem(CommeUnDesseinServerModeKey, value))
-
-		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.bounds.width
-		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.bounds.height
-
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
-			window.localStorage.setItem('commeUnDesseinWidth', value)
-		})
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, 5000, 1).name('Height').onFinishChange((value)=> {
-			window.localStorage.setItem('commeUnDesseinHeight', value)
-		})
-
-		this.startButton = commeUnDesseinGUI.addButton('Start', ()=> this.toggleStart())
-		// commeUnDesseinGUI.open()
 	}
 
 	toggleStart() {
@@ -143,21 +116,19 @@ export class CommeUnDessein {
 			if(document.cookie.indexOf('csrftoken') < 0) {
 				console.log('Old Warning (which you can ignore safely): the Comme un dessein csrf token cookie is not present, please visit http://commeundessein.co/ before starting Comme un Dessein')
 			}
-			this.startButton.setName('Stop, clear queue & go home')
 			this.requestNextDrawing()
 		} else {
-			this.startButton.setName('Start')
 			this.stopAndClear()
 		}
 		this.started = !this.started
 	}
 
 	stopAndClear() {
-		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.destroy()
+		if(SVGPlotStatic.svgPlot != null) {
+			SVGPlotStatic.svgPlot.destroy()
 		}
-		communication.interpreter.sendStop(true)
-		communication.interpreter.clearQueue()
+		Communication.interpreter.sendStop(true)
+		Communication.interpreter.clearQueue()
 		tipibot.goHome()
 		this.state = State.NextDrawing
 		clearTimeout(this.timeoutID)
@@ -251,11 +222,11 @@ export class CommeUnDessein {
 				drawing.addChild(controlPath)
 			}
 			item.remove()
-			if(SVGPlot.svgPlot != null) {
-				SVGPlot.svgPlot.destroy()
+			if(SVGPlotStatic.svgPlot != null) {
+				SVGPlotStatic.svgPlot.destroy()
 			}
-			SVGPlot.svgPlot = new SVGPlot(drawing)
-			SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
+			SVGPlotStatic.svgPlot = new SVGPlotStatic(drawing)
+			SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
 		})
 	}
 
@@ -298,11 +269,11 @@ export class CommeUnDessein {
 	// 		}
 	// 		drawing.addChild(controlPath)
 	// 	}
-	// 	if(SVGPlot.svgPlot != null) {
-	// 		SVGPlot.svgPlot.destroy()
+	// 	if(SVGPlotStatic.svgPlot != null) {
+	// 		SVGPlotStatic.svgPlot.destroy()
 	// 	}
-	// 	SVGPlot.svgPlot = new SVGPlot(drawing)
-	// 	SVGPlot.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
+	// 	SVGPlotStatic.svgPlot = new SVGPlot(drawing)
+	// 	SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
 	// }
 
 	setDrawingStatusDrawn(pk: string) {

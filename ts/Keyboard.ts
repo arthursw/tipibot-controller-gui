@@ -1,8 +1,8 @@
 import * as $ from "jquery"
 import Keyboard from 'simple-keyboard';
 import 'simple-keyboard/build/css/index.css';
-import { Settings, isServer } from './Settings'
-import { tipibot } from './Tipibot'
+import { Settings, isServer, paper } from './Settings'
+import { tipibot } from './TipibotInteractive'
 
 const nameToSpeed: any = {
     "{x0.25}": 0.25,

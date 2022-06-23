@@ -1,6 +1,6 @@
-import { Communication, communication } from "./Communication/Communication"
-import { Settings, SettingsManager, settingsManager, isServer, paper } from "./Settings"
-import { tipibot } from "./Tipibot"
+import { Communication } from "./Communication/CommunicationStatic"
+import { Settings, SettingsManager, paper } from "./Settings"
+import { tipibot } from "./TipibotInteractive"
 
 export enum MoveType {
     Direct,
@@ -67,8 +67,8 @@ export class Pen {
 
 		this.previousPosition = new paper.Point(0, 0)
 
-		this.group.onMouseDrag = (event:MouseEvent) => this.onMouseDrag(event)
-		this.group.onMouseUp = (event:MouseEvent) => this.onMouseUp(event)
+		this.group.onMouseDrag = (event:paper.MouseEvent) => this.onMouseDrag(event as any)
+		this.group.onMouseUp = (event:paper.MouseEvent) => this.onMouseUp(event as any)
 	}
 
 	onMouseDrag(event:any) {
@@ -120,7 +120,7 @@ export class Pen {
 				callback()
 			}
 		}
-		communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
+		Communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.circle.fillColor = Pen.UP_COLOR
 		this.state = PenState.Up
 		this.angle = Settings.servo.position.up
@@ -134,7 +134,7 @@ export class Pen {
 				callback()
 			}
 		}
-		communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
+		Communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.circle.fillColor = Pen.DOWN_COLOR
 		this.state = PenState.Down
 		this.angle = Settings.servo.position.down
@@ -148,7 +148,7 @@ export class Pen {
 				callback()
 			}
 		}
-		communication.interpreter.sendPenClose(servoCloseValue, penCloseCallback)
+		Communication.interpreter.sendPenClose(servoCloseValue, penCloseCallback)
 		this.circle.fillColor = Pen.CLOSED_COLOR
 		this.state = PenState.Closed
 		this.angle = Settings.servo.position.close
@@ -162,7 +162,7 @@ export class Pen {
 				callback()
 			}
 		}
-		communication.interpreter.sendPenDrop(servoDropValue, penDropCallback)
+		Communication.interpreter.sendPenDrop(servoDropValue, penDropCallback)
 		this.circle.fillColor = Pen.DROP_COLOR
 		this.state = PenState.Dropped
 		this.angle = Settings.servo.position.drop

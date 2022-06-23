@@ -1,9 +1,8 @@
-import { Settings, settingsManager } from "../Settings"
+import { Settings, settingsManager, paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
-import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
-import { tipibot } from "../Tipibot"
+import { Communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/CommunicationInteractive"
+import { tipibot } from "../TipibotInteractive"
 import { SVGPlot } from "../Plot"
-import { project } from "paper/dist/paper-core"
 
 declare let JSZip: any
 
@@ -16,7 +15,7 @@ export class SVGSplitter {
 	}
 
 	loadImage(event: any, name: string) {
-		let svg = project.importSVG(event.target.result)
+		let svg = paper.project.importSVG(event.target.result)
 
 		console.log('SVG imported.')
 
@@ -59,7 +58,7 @@ export class SVGSplitter {
 	exportFile(baseName: string, i: number, project: paper.Project, images: any, group: paper.Group) {
 		let fileName = baseName + "_" + i + ".svg"
 		console.log("Exporting " + fileName + "...")
-		let imageData: any = project.exportSVG({asString: true})
+		let imageData: any = paper.project.exportSVG({asString: true})
 		let blob = new Blob([imageData], {type: 'image/svg+xml'})
 		console.log("Exported " + fileName + ".")
 		images.file(fileName, blob, {})
@@ -85,7 +84,7 @@ export class SVGSplitter {
 		console.log("Paths split.")
 		console.log("There are " + svg.children.length + " paths.")
 
-		let mainProject = project
+		let mainProject = paper.project
 
 		let canvas = document.createElement('canvas')
 		canvas.width = svg.strokeBounds.width

@@ -1,19 +1,14 @@
-import $ = require("jquery");
 import { tipibot } from "./TipibotInteractive"
-import { Settings, settingsManager, SettingsManager, isServer, paper } from "./Settings"
+import { Settings, isServer, paper } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
-import { GUI, Controller } from "./GUI"
-import { Pen, PenState } from './Pen'
-import { Int8BufferAttribute } from "../libs/three"
+import { PenState } from './Pen'
 
 if (isServer) {
 	var saveAs = (blob: any, filename: string)=> console.log('save', filename)
 }
-export class SVGPlot {
+export class SVGPlotStatic {
 
-	static svgPlot: SVGPlot = null
-	static gui: GUI = null
-	static transformFolder: GUI = null
+	static svgPlot: SVGPlotStatic = null
 	
 	static files: File[] = null
 	// static multipleFiles = false
@@ -23,102 +18,17 @@ export class SVGPlot {
 	readonly pseudoCurvatureDistance = 10 		// in mm
 	
 	public static readonly nSegmentsPerBatch = 1000
-	public static readonly nSegmentsMax = SVGPlot.nSegmentsPerBatch * 3
+	public static readonly nSegmentsMax = SVGPlotStatic.nSegmentsPerBatch * 3
 
 	currentColorIndex = 0
 	nSegments = 0
 	currentPath: paper.Path = null
 
-	public static loadImage(event: any, callback: ()=>void = null) {
-		let svg = paper.project.importSVG(event.target.result)
-
-		let svgPlot = new SVGPlot(svg)
-
-		SVGPlot.gui.getController('Draw').show()
-		SVGPlot.gui.getController('Save GCode').show()
-		console.log('SVG imported.')
-
-		GUI.stopLoadingAnimation()
-
-		if(callback != null) {
-			callback()
-		}
-	}
-
-	public static onImageLoad(event: any, callback: ()=>void = null) {
-		console.log('Importing SVG...')
-
-		GUI.startLoadingAnimation(()=>SVGPlot.loadImage(event, callback))
-	}
-
-	public static handleFileSelect(event: any) {
-		document.dispatchEvent(new CustomEvent('Load SVG'))
-
-		this.gui.getController('Load SVG').hide()
-		this.gui.getController('Clear SVG').show()
-
-		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
-
-		this.files = []
-
-		for (let i = 0; i < files.length; i++) {
-			let file = files[i] != null ? files[i] : files.item(i)
-			
-			let imageType = /^image\//
-
-			if (!imageType.test(file.type)) {
-				continue
-			}
-
-			this.files.push(file)
-		}
-
-		// this.multipleFiles = this.files.length > 1
-		this.fileIndex = 0
-
-		if(this.files.length < files.length) {
-			console.info('Warning: some of the selected files are not SVG images, there will not be imported.')
-		}
-
-		// if(this.multipleFiles) {
-		// 	console.info('Only the first file will be imported for now, the other files will be imported one by one while drawing.')
-		// }
-
-		this.loadNextFile()
-	}
-
-	public static loadNextFile(callback: ()=>void = null) {
-		if(this.fileIndex >= this.files.length) {
-			return
-		}
-		let file = this.files[this.fileIndex]
-		let reader = new FileReader()
-		reader.onload = (event)=> this.onImageLoad(event, callback)
-		reader.readAsText(file)
-	}
-
-	// public static plotFinished(callback:()=> void = null) {
-	// 	if(this.multipleFiles) {
-	// 		this.fileIndex++
-	// 		if(this.fileIndex < this.files.length) {
-	// 			this.loadNextFile(()=> this.plotAndLoadLoop(callback))
-	// 		} else {
-	// 			tipibot.goHome()
-	// 			if(callback != null) {
-	// 				callback()
-	// 			}
-	// 			if(Settings.plot.disableMotorsOnceFinished) {
-	// 				tipibot.disableMotors(true)
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 	public static plotAndLoadLoop(callback:()=> void = null) {
 		if(this.svgPlot == null) {
 			return
 		}
-		// this.svgPlot.plot(()=> SVGPlot.plotFinished(callback), !this.multipleFiles)
+		// this.svgPlot.plot(()=> SVGPlotStatic.plotFinished(callback), !this.multipleFiles)
 		this.svgPlot.plot()
 	}
 
@@ -128,100 +38,6 @@ export class SVGPlot {
 		}
 		// this.svgPlot.plot(null, !this.multipleFiles, true)
 		this.svgPlot.plot(null, true, true)
-	}
-
-	public static clearClicked(event: any) {
-		document.dispatchEvent(new CustomEvent('Clear SVG'))
-		this.fileIndex = 0
-		Communication.interpreter.clearQueue()
-		SVGPlot.gui.getController('Load SVG').show()
-		SVGPlot.gui.getController('Clear SVG').hide()
-		SVGPlot.svgPlot.destroy()
-		SVGPlot.svgPlot = null
-		SVGPlot.gui.getController('Draw').name('Draw')
-		SVGPlot.gui.getController('Draw').hide()
-		SVGPlot.gui.getController('Save GCode').hide()
-	}
-
-	public static drawClicked(event: any) {
-		if(SVGPlot.svgPlot != null) {
-			if(!SVGPlot.svgPlot.plotting) {
-				SVGPlot.gui.getController('Draw').name('Stop, clear commands & go home')
-				document.dispatchEvent(new CustomEvent('Draw'))
-				SVGPlot.plotAndLoadLoop()
-			} else {
-				SVGPlot.gui.getController('Draw').name('Draw')
-				document.dispatchEvent(new CustomEvent('Stop drawing'))
-				Communication.interpreter.sendStop(true)
-				Communication.interpreter.clearQueue()
-				SVGPlot.svgPlot.plotting = false
-				tipibot.goHome()
-			}
-		}
-	}
-
-	public static saveGCodeClicked(event: any) {
-		if(SVGPlot.svgPlot != null) {
-			Communication.interpreter.sendStop(true)
-			Communication.interpreter.clearQueue()
-			Communication.interpreter.justQueueCommands = true
-			SVGPlot.saveGCode()
-			let gCode = Communication.interpreter.getGCode()
-			let blob = new Blob([gCode], {type: "text/plain;charset=utf-8"})
-			saveAs(blob, "gcode.txt")
-			Communication.interpreter.clearQueue()
-			Communication.interpreter.justQueueCommands = false
-		}
-	}
-
-	public static createGUI(gui: GUI) {
-		SVGPlot.gui = gui.addFolder('Plot')
-		SVGPlot.gui.open()
-
-		// SVGPlot.gui.add(Settings.plot, 'fullSpeed').name('Full speed').onFinishChange((value)=> settingsManager.save(false))
-		SVGPlot.gui.add(Settings.plot, 'optimizeTrajectories').name('Optimize Trajectories').onFinishChange((event)=> settingsManager.save(false))
-		SVGPlot.gui.add(Settings.plot, 'disableMotorsOnceFinished').name('Disable motors once finished').onFinishChange((event)=> settingsManager.save(false))
-		// SVGPlot.gui.add(Settings.plot, 'maxCurvatureFullspeed', 0, 180, 1).name('Max curvature').onFinishChange((value)=> settingsManager.save(false))
-
-		SVGPlot.gui.addFileSelectorButton('Load SVG', 'image/svg+xml', true, (event)=> SVGPlot.handleFileSelect(event))
-		let clearSVGButton = SVGPlot.gui.addButton('Clear SVG', SVGPlot.clearClicked)
-		clearSVGButton.hide()
-		let drawButton = SVGPlot.gui.addButton('Draw', SVGPlot.drawClicked)
-		drawButton.hide()
-		let saveGCodeButton = SVGPlot.gui.addButton('Save GCode', SVGPlot.saveGCodeClicked)
-		saveGCodeButton.hide()
-
-		let filterFolder = SVGPlot.gui.addFolder('Filter')
-		filterFolder.add(Settings.plot, 'showPoints').name('Show points').onChange(SVGPlot.createCallback(SVGPlot.prototype.showPoints, true))
-		filterFolder.add(Settings.plot, 'flatten').name('Flatten').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
-		filterFolder.add(Settings.plot, 'flattenPrecision', 0, 10).name('Flatten precision').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
-		filterFolder.add(Settings.plot, 'subdivide').name('Subdivide').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
-		filterFolder.add(Settings.plot, 'maxSegmentLength', 0, 100).name('Max segment length').onChange(SVGPlot.createCallback(SVGPlot.prototype.filter))
-
-		let transformFolder = SVGPlot.gui.addFolder('Transform')
-		SVGPlot.transformFolder = transformFolder
-		transformFolder.addButton('Center', SVGPlot.createCallback(SVGPlot.prototype.center))
-		transformFolder.addSlider('X', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setX, true))
-		transformFolder.addSlider('Y', 0).onFinishChange(SVGPlot.createCallback(SVGPlot.prototype.setY, true))
-		
-		transformFolder.addButton('Flip horizontally', SVGPlot.createCallback(SVGPlot.prototype.flipX))
-		transformFolder.addButton('Flip vertically', SVGPlot.createCallback(SVGPlot.prototype.flipY))
-
-		transformFolder.addButton('Rotate', SVGPlot.createCallback(SVGPlot.prototype.rotate))
-
-		transformFolder.addSlider('Scale', 1, 0.1, 5).onChange(SVGPlot.createCallback(SVGPlot.prototype.scale, true))
-	}
-
-	public static createCallback(f: (p1?: any)=>void, addValue: boolean = false, parameters: any[] = []) {
-		return (value: any)=> { 
-			settingsManager.save(false)
-			if(SVGPlot.svgPlot != null) { 
-				if(addValue) {
-					parameters.unshift(value)
-				}
-				f.apply(SVGPlot.svgPlot, parameters)
-			} 
-		}
 	}
 
 	public static itemMustBeDrawn(item: paper.Item) {
@@ -355,8 +171,8 @@ export class SVGPlot {
 	public static splitLongPaths(item: paper.Item) {
 		for(let child of item.children) {	// recheck the newly created path since they still be too long
 			let path = <paper.Path>child
-			if(path.segments.length > SVGPlot.nSegmentsPerBatch) {
-				path.splitAt(path.segments[SVGPlot.nSegmentsPerBatch-1].location)
+			if(path.segments.length > SVGPlotStatic.nSegmentsPerBatch) {
+				path.splitAt(path.segments[SVGPlotStatic.nSegmentsPerBatch-1].location)
 			}
 		}
 	}
@@ -371,12 +187,12 @@ export class SVGPlot {
 
 	constructor(item: paper.Item=null) {
 
-		if(SVGPlot.svgPlot != null) {
-			SVGPlot.svgPlot.destroy()
-			SVGPlot.svgPlot = null
+		if(SVGPlotStatic.svgPlot != null) {
+			SVGPlotStatic.svgPlot.destroy()
+			SVGPlotStatic.svgPlot = null
 		}
 
-		SVGPlot.svgPlot = this
+		SVGPlotStatic.svgPlot = this
 
 		if(this.background != null) {
 			this.background.remove()
@@ -387,9 +203,9 @@ export class SVGPlot {
 		this.group = new paper.Group()
 		this.group.sendToBack()
 
-		if(SVGPlot.currentMatrix != null) {
+		if(SVGPlotStatic.currentMatrix != null) {
 			this.group.applyMatrix = false
-			this.group.matrix = SVGPlot.currentMatrix
+			this.group.matrix = SVGPlotStatic.currentMatrix
 		}
 
 		this.item = item
@@ -409,7 +225,7 @@ export class SVGPlot {
 		this.setBackground()
 		this.center()
 		console.log("Collapsing SVG...")
-		SVGPlot.collapse(this.item, this.group, this.item.strokeBounds)
+		SVGPlotStatic.collapse(this.item, this.group, this.item.strokeBounds)
 		
 		console.log("SVG collapsed.")
 
@@ -446,7 +262,7 @@ export class SVGPlot {
 
 		let nSegments = this.countSegments()
 		
-		if(nSegments > SVGPlot.nSegmentsPerBatch) {
+		if(nSegments > SVGPlotStatic.nSegmentsPerBatch) {
 			let message = `Warning: there are ${nSegments} segments to draw. 
 Optimizing trajectories and computing speeds (in full speed mode) will take some time to compute 
 (but it will optimize drawing time), make sure to check your settings before starting drawing.`
@@ -464,16 +280,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	onMouseDrag(event:any) {
-		if(tipibot.pen.dragging || this.checkPlotting()) {
-			return
-		}
-		this.group.position = this.group.position.add(event.delta)
-		this.updatePositionGUI()
-	}
-
-	updatePositionGUI() {
-		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
-		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
 	}
 
 	saveItem() {
@@ -534,10 +340,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 		
 		console.log("Flattening and subdividing paths...")
-		SVGPlot.filter(this.item)
+		SVGPlotStatic.filter(this.item)
 		console.log("Paths flattenned and subdivided.")
 		console.log("Splitting long paths...")
-		SVGPlot.splitLongPaths(this.item)
+		SVGPlotStatic.splitLongPaths(this.item)
 		console.log("Paths split.")
 		console.log("There are " + this.item.children.length + " paths in this SVG.")
 
@@ -631,8 +437,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		clone.transform(this.group.matrix)
 		clone.visible = true
 		
-		GUI.startLoadingAnimation()
-
 		// sort by stroke colors
 		let colorToPaths = new Map<string, paper.Path[]>()
 
@@ -656,8 +460,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			clone.addChildren(colorGroup.children)
 			colorGroup.remove()
 		}
-
-		GUI.stopLoadingAnimation()
 
 		this.currentPath = <paper.Path>clone.firstChild
 		let currentColor = this.getColorCSS(this.currentPath.strokeColor)
@@ -697,7 +499,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	storeMatrix() {
-		SVGPlot.currentMatrix = this.group.matrix
+		SVGPlotStatic.currentMatrix = this.group.matrix
 	}
 
 	checkPlotting() {
@@ -715,7 +517,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 		this.group.rotate(90)
 		this.updateShape()
-		this.updatePositionGUI()
 		this.storeMatrix()
 	}
 
@@ -728,7 +529,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.group.scaling = new paper.Point(Math.sign(this.group.scaling.x) * value, Math.sign(this.group.scaling.y) * value)
 
 		this.updateShape()
-		this.updatePositionGUI()
 		this.storeMatrix()
 	}
 
@@ -738,7 +538,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 
 		this.group.position = tipibot.drawArea.bounds.center
-		this.updatePositionGUI()
 		this.storeMatrix()
 	}
 
@@ -880,7 +679,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	plotPath(path: paper.Path) {
-		if(path.className != 'Path' || !SVGPlot.itemMustBeDrawn(path) || path.segments == null) {
+		if(path.className != 'Path' || !SVGPlotStatic.itemMustBeDrawn(path) || path.segments == null) {
 			return
 		}
 		// let speeds = Settings.plot.fullSpeed ? this.computeSpeeds(path) : null
@@ -954,7 +753,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	// plotNextLoaded(callback: ()=> void) {
 	// 	this.nSegments = 0
 
-	// 	while(this.currentPath != null && this.nSegments <= SVGPlot.nSegmentsPerBatch) {
+	// 	while(this.currentPath != null && this.nSegments <= SVGPlotStatic.nSegmentsPerBatch) {
 	// 		this.plotCurrentPath()
 	// 	}
 		
@@ -963,8 +762,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		
 	// 	if(this.currentPath != null) {
 
-	// 		while(this.currentPath.segments.length > SVGPlot.nSegmentsPerBatch) {
-	// 			this.currentPath.splitAt(this.currentPath.segments[SVGPlot.nSegmentsPerBatch-1].location)
+	// 		while(this.currentPath.segments.length > SVGPlotStatic.nSegmentsPerBatch) {
+	// 			this.currentPath.splitAt(this.currentPath.segments[SVGPlotStatic.nSegmentsPerBatch-1].location)
 	// 		}
 
 	// 		tipibot.executeOnceFinished(()=> this.plotNext(callback))
@@ -1037,7 +836,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	// }
 	
 	plotFinished(callback: ()=> void = null) {
-		SVGPlot.gui.getController('Draw').name('Draw')
 
 		this.plotting = false
 		if(callback != null) {
@@ -1046,7 +844,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(Settings.plot.disableMotorsOnceFinished) {
 			tipibot.disableMotors(true)
 		}
-		// if(!SVGPlot.multipleFiles) {
+		// if(!SVGPlotStatic.multipleFiles) {
 		// 	if(Settings.plot.disableMotorsOnceFinished) {
 		// 		tipibot.disableMotors(true)
 		// 	}
@@ -1063,8 +861,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	clear() {
-		if(SVGPlot.svgPlot == this) {
-			SVGPlot.svgPlot = null
+		if(SVGPlotStatic.svgPlot == this) {
+			SVGPlotStatic.svgPlot = null
 		}
 		if(this.raster != null) {
 			this.raster.remove()

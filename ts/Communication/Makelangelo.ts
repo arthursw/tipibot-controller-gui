@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, settingsManager } from "../Settings"
+import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class Makelangelo extends Interpreter {
@@ -8,7 +8,9 @@ export class Makelangelo extends Interpreter {
 
 	constructor(communication: Communication) {
 		super(communication)
-		this.continueMessage = '> '
+		this.serialCommunicationSpeed = 57600
+		// this.continueMessage = '> '
+		this.continueMessage = 'ok'
 	}
 	
 	initialize(initializeAtHome=true) {
@@ -23,7 +25,7 @@ export class Makelangelo extends Interpreter {
 
 		// this.sendPenWidth(Settings.tipibot.penWidth)
 		this.sendSpecs()
-		this.sendInvertXY()
+		// this.sendInvertXY()
 		// // Initialize at home position by default; it is always possible to set position afterward
 		// // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition())
@@ -43,7 +45,9 @@ export class Makelangelo extends Interpreter {
 		this.lastCommandWasMove = false
 		point = this.convertToMakelangeloCoordinates(point)
 		let message = 'Set home: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
-		this.queue('D6 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		// this.queue('D6 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		// this.queue('G28 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
 	}
 
 	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
@@ -68,7 +72,8 @@ export class Makelangelo extends Interpreter {
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		// this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
 		let speedCommand = this.lastCommandWasMove ? '' :  ' F' +  speedInMMperSec.toFixed(2)
-		this.lastCommandWasMove = true
+		// this.lastCommandWasMove = true
+		this.lastCommandWasMove = false
 		this.queue('G1' + speedCommand + ' X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
@@ -76,15 +81,23 @@ export class Makelangelo extends Interpreter {
 		super.sendMoveLinear(point, minSpeed, maxSpeed, callback)
 		point = this.convertToMakelangeloCoordinates(point)
 		let speed = maxSpeed
-		let speedInMMperSec = speed * SettingsManager.mmPerSteps()
+		// let speedInMMperSec = speed * SettingsManager.mmPerSteps()
+		let speedInStepsperSec = speed
 		// let lengths = this.tipibot.cartesianToLengths(point)
 		// let lengthsSteps = SettingsManager.mmToSteps(lengths)
-		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', speed: ' + speedInMMperSec.toFixed(2) // + ', min speed: ' + minSpeed.toFixed(2)
+		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', speed: ' + speedInStepsperSec.toFixed(2) // + ', min speed: ' + minSpeed.toFixed(2)
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		// this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
-		let speedCommand = this.lastCommandWasMove ? '' :  ' F' +  speedInMMperSec.toFixed(2)
-		this.lastCommandWasMove = true
+		let speedCommand = this.lastCommandWasMove ? '' :  ' F' +  speedInStepsperSec.toFixed(2)
+		// this.lastCommandWasMove = true
+		this.lastCommandWasMove = false
 		this.queue('G0' + speedCommand + ' X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
+	}
+
+	sendMoveStation(direction: number=0, nSteps: number=0, nDelays: number=0, callback: () => any = null) {
+		super.sendMoveStation(direction, nSteps, nDelays, callback)
+		let message = 'Move station: direction: ' + direction.toFixed(2) + ', nSteps' + nSteps.toFixed(2) + ', nDelays: ' + nDelays.toFixed(2) // + ', min speed: ' + minSpeed.toFixed(2)
+		this.queue('D30 F' + Math.round(direction) + ' N' + Math.round(nSteps) + ' P' + Math.round(nDelays) + '\n', message, callback)
 	}
 
 	sendMaxSpeed(speed: number=Settings.tipibot.maxSpeed) {
@@ -97,10 +110,15 @@ export class Makelangelo extends Interpreter {
 
 	sendMaxSpeedAndAcceleration(speed: number=Settings.tipibot.maxSpeed, acceleration: number=Settings.tipibot.acceleration) {
 		this.lastCommandWasMove = false
-		let speedInMMperSec = speed * SettingsManager.mmPerSteps()
-		let message = 'Set speed: ' + speedInMMperSec.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2)
+		// let speedInMMperSec = speed * SettingsManager.mmPerSteps()
+		// let message = 'Set speed: ' + speedInMMperSec.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2)
 		// this.queue('G0 F' + speed.toFixed(2) + ' S' + acceleration.toFixed(2) + '\n', message)
-		let speedParameters = 'G0 F' + speedInMMperSec.toFixed(2) + ' A' + acceleration.toFixed(2) + '\n'
+		// let speedParameters = 'G0 F' + speedInMMperSec.toFixed(2) + ' A' + acceleration.toFixed(2) + '\n'
+		
+		// let speedInStepsPerSec = speed
+		// let message = 'Set speed: ' + speed.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2)
+		let message = 'Set acceleration: ' + acceleration.toFixed(2)
+		let speedParameters = 'M201 X' + acceleration.toFixed(2) + ' Y' + acceleration.toFixed(2) + ' Z' + acceleration.toFixed(2) + '\n'
 		this.queue(speedParameters, message)
 	}
 
@@ -150,17 +168,24 @@ export class Makelangelo extends Interpreter {
 		let limitTop = tipibotHeight / 2;
 		let limitBottom = -tipibotHeight / 2;
 
-		let message = 'Set limit right: ' + limitRight.toFixed(2) + ', limit left: ' + limitLeft.toFixed(2)
-		let limitsX = "M101 A0 T" + limitRight.toFixed(2) + " B" + limitLeft.toFixed(2) + "\n"
-		this.queue(limitsX, message)
-		message = 'Set limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
-		let limitsY = "M101 A1 T" + limitTop.toFixed(2) + " B" + limitBottom.toFixed(2) + "\n"
-		this.queue(limitsY, message)
+		// let message = 'Set limit right: ' + limitRight.toFixed(2) + ', limit left: ' + limitLeft.toFixed(2)
+		// let limitsX = "M101 A0 T" + limitRight.toFixed(2) + " B" + limitLeft.toFixed(2) + "\n"
+		// this.queue(limitsX, message)
+		// message = 'Set limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
+		// let limitsY = "M101 A1 T" + limitTop.toFixed(2) + " B" + limitBottom.toFixed(2) + "\n"
+		// this.queue(limitsY, message)
+		let message = 'Set limit right: ' + limitRight.toFixed(2) + ', limit left: ' + limitLeft.toFixed(2) + ', limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
+		let maxBeltLength = tipibotWidth * tipibotWidth + tipibotHeight * tipibotHeight;	// Math.sqrt(Math.pow(tipibotWidth, 2) + Math.pow(tipibotHeight, 2))
+		let limits = "M665 L" + limitLeft.toFixed(2) + " R" + limitRight.toFixed(2) + " T" + limitTop.toFixed(2) + " B" + limitBottom.toFixed(2) + " S5 H" + maxBeltLength.toFixed(2) + "\n"
+		this.queue(limits, message)
+		
+		// * M280 - Set servo position absolute: "M280 P<index> S<angle|µs>". (Requires servos)
+ 		// * M281 - Set servo min|max position: "M281 P<index> L<min> U<max>". (Requires EDITABLE_SERVO_ANGLES)
 		message = 'Set limit servo: '
-		let limitsZ = "M101 A2 T170 B10\n"
+		let limitsZ = "M281 P0 L10 U170\n"
 		this.queue(limitsZ, message)
 
-		this.sendSetHome()
+		// this.sendSetHome()
 		this.sendMaxSpeedAndAcceleration()
 	}
 
@@ -204,7 +229,10 @@ export class Makelangelo extends Interpreter {
 		}
 		// this.queue('M340 P3 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
 		
-		this.queue('G0 F' + servoSpeed + ' Z' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
+		// this.queue('G0 F' + servoSpeed + ' Z' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
+		
+		// * M280 - Set servo position absolute: "M280 P<index> S<angle|µs>". (Requires servos)
+		this.queue('M280 P0 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
 
 		if(delayAfter > 0) {
 			this.sendPause(delayAfter, callback)

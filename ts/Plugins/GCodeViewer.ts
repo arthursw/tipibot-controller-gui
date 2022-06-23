@@ -1,6 +1,6 @@
-import { Settings } from "../Settings"
+import { Settings, paper } from "../Settings"
 import { GUI } from "../GUI"
-import { tipibot } from "../Tipibot"
+import { tipibot } from "../TipibotInteractive"
 import { ajaxPrefilter, isPlainObject } from "jquery"
 
 declare var Two: any

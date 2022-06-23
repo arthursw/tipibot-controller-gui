@@ -1,3 +1,4 @@
+import $ = require("jquery");
 import { GUI } from "./GUI"
 declare var dat: any
 

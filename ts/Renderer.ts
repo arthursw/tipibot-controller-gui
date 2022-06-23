@@ -1,4 +1,4 @@
-import { project } from "paper/dist/paper-core"
+import $ = require("jquery");
 import { Settings, paper } from "./Settings"
 
 export class Renderer {
@@ -19,9 +19,9 @@ export class Renderer {
 
 		
 		paper.setup(<any>this.canvas)
-		project.currentStyle.strokeColor = new paper.Color('black')
-		project.currentStyle.strokeWidth = 0.5
-		project.currentStyle.strokeScaling = false
+		paper.project.currentStyle.strokeColor = new paper.Color('black')
+		paper.project.currentStyle.strokeWidth = 0.5
+		paper.project.currentStyle.strokeScaling = false
 
 		let mainLayer = new paper.Layer()
 

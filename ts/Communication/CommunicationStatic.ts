@@ -1,5 +1,4 @@
-import { GUI, Controller } from "../GUI"
-import { Settings, SettingsManager, settingsManager } from "../Settings"
+import { Settings, settingsManager } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter, SERIAL_COMMUNICATION_SPEED as ISERIAL_COMMUNICATION_SPEED } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
@@ -22,21 +21,19 @@ declare var io: any
 export class Communication {
 
 	socket: any
-	gui: GUI
-	portController: any
 	interpreter: Interpreter
-	autoConnectController: Controller
-	autoConnectIntervalID: NodeJS.Timeout = null
 	serialPortConnectionOpened = false
-	folderTitle: any
+	autoConnectController:any = null
+	static communication: Communication
+	static interpreter: Interpreter
 
-	constructor(gui:GUI) {
-		communication = this
+	constructor(intialize=true) {
+		Communication.communication = this
 		this.socket = null
-		this.createGUI(gui)
-		this.portController = null
-		this.initializeInterpreter(Settings.firmware)
-		this.connectToSerial()
+		if(intialize) {
+			this.initializeInterpreter(Settings.firmware)
+			this.connectToSerial()
+		}
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
 
@@ -44,60 +41,8 @@ export class Communication {
 		this.send('save-settings', JSON.stringify(Settings, null, '\t'))
 	}
 
-	createGUI(gui: GUI) {
-		this.gui = gui.addFolder('Communication')
-		this.folderTitle = $(this.gui.getDomElement()).find('.title')
-		this.folderTitle.append($('<icon>').addClass('serial').append(String.fromCharCode(9679)))
-		this.folderTitle.append($('<icon>').addClass('websocket').append(String.fromCharCode(9679)))
-	}
-
 	setTipibot(tipibot: TipibotInterface) {
 		this.interpreter.setTipibot(tipibot)
-	}
-
-	startAutoConnection() {
-		this.autoConnectIntervalID = setInterval(()=> this.tryConnectSerialPort(), 1000)
-	}
-
-	stopAutoConnection() {
-		clearInterval(this.autoConnectIntervalID)
-		this.autoConnectIntervalID = null
-	}
-
-	setPortName(port: {path: string, isOpened: boolean, baudRate: number}) {
-		this.portController.object[this.portController.property] = port.path
-		this.portController.updateDisplay()
-	}
-
-	onSerialPortConnectionOpened(port: {path: string, isOpened: boolean, baudRate: number} = null) {
-		if(port != null) {
-			this.setPortName(port)
-		}
-		this.serialPortConnectionOpened = true
-		this.stopAutoConnection()
-		this.interpreter.serialPortConnectionOpened()
-
-		this.folderTitle.find('.serial').addClass('connected')
-	}
-
-	onSerialPortConnectionClosed() {
-		this.serialPortConnectionOpened = false
-		if(Settings.autoConnect) {
-			this.startAutoConnection()
-		}
-		// this.interpreter.connectionClosed()
-		this.folderTitle.find('.serial').removeClass('connected')
-	}
-
-	initializePortController(options: string[]) {
-
-		this.portController = this.portController.options(options)
-		
-		$(this.portController.domElement.parentElement.parentElement).mousedown( (event)=> {
-			this.autoConnectController.setValue(false)
-		})
-
-		this.portController.onFinishChange( (value: any) => this.serialConnectionPortChanged(value) )
 	}
 
 	initializeInterpreter(interpreterName: string) {
@@ -116,8 +61,17 @@ export class Communication {
 		} else if(interpreterName == 'Makelangelo') {
 			this.interpreter = new Makelangelo(this)
 		}
+		Communication.interpreter = this.interpreter
 		this.interpreter.setTipibot(tipibot)
 		console.log('initialize '+interpreterName)
+	}
+
+	onSerialPortConnectionOpened(port: {path: string, isOpened: boolean, baudRate: number} = null) {
+		this.serialPortConnectionOpened = true
+	}
+
+	onSerialPortConnectionClosed() {
+		this.serialPortConnectionOpened = false
 	}
 
 	onMessage(event: any) {
@@ -133,29 +87,12 @@ export class Communication {
 			this.onSerialPortConnectionClosed()
 		} else if(type == 'list') {
 
-			let options = ['Disconnected']
-			for(let port of data) {
-				options.push(port.path)
-			}
-			this.initializePortController(options)
-
-			if(Settings.autoConnect) {
-				for(let port of data) {
-					if(port.manufacturer != null && port.manufacturer.indexOf('Arduino') >= 0) {
-						this.portController.setValue(port.path)
-						break
-					}
-				}
-			}
 		} else if(type == 'connected') {
-			this.setPortName(data)
+
 		} else if(type == 'not-connected') {
-			this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
-			if(Settings.autoConnect) {
-				this.startAutoConnection()
-			}
+			
 		} else if(type == 'connected-to-simulator') {
-			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
+
 		} else if(type == 'data') {
 			this.interpreter.messageReceived(messageObject)
 		} else if(type == 'sent') {
@@ -171,38 +108,11 @@ export class Communication {
 		} else if(type == 'load-settings') {
 			settingsManager.loadJSONandOverwriteLocalStorage(data)
 		}
+
+		return messageObject
 	}
 
 	connectToSerial() {
-		let serverController = this.gui.add(Settings, 'websocketServerURL')
-		serverController.onFinishChange((value)=> {
-			settingsManager.save(false)
-		})
-		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'Makelangelo', 'FredBot'] ).name('Firmware')
-		firmwareController.onFinishChange((value)=> {
-			settingsManager.save(false)
-			this.initializeInterpreter(value)
-		})
-
-		this.autoConnectController = this.gui.add(Settings, 'autoConnect').name('Auto connect').onFinishChange((value)=> {
-			settingsManager.save(false)
-			if(value) {
-				this.startAutoConnection()
-			} else {
-				this.stopAutoConnection()
-			}
-		})
-
-		this.portController = this.gui.add( {'Connection': 'Disconnected'}, 'Connection' )
-		
-		this.gui.addButton('Disconnect', ()=> this.disconnectSerialPort() )
-
-		this.gui.addButton('Refresh', ()=> {
-			this.send('list')
-		})
-
-		this.initializePortController(['Disconnected'])
-
 		this.socket = new WebSocket(`ws://${Settings.websocketServerURL}`)
 
 		this.socket.addEventListener('message',  (event:any)=> this.onMessage(event))
@@ -212,12 +122,10 @@ export class Communication {
 	}
 
 	onWebSocketOpen(event: any) {
-		this.folderTitle.find('.websocket').addClass('connected')
 		this.send('is-connected')
 	}
 
 	onWebSocketClose(event: any) {
-		this.folderTitle.find('.websocket').removeClass('connected')
 		console.error('WebSocket disconnected')
 	}
 
@@ -229,11 +137,9 @@ export class Communication {
 	disconnectSerialPort() {
 		this.interpreter.clearQueue()
 		this.interpreter.sendStop(true)
-		this.autoConnectController.setValue(false)
 		this.onSerialPortConnectionClosed()
 		this.send('close')
 		document.dispatchEvent(new CustomEvent('Disconnect'))
-		this.portController.setValue('Disconnected')
 	}
 
 	serialConnectionPortChanged(portName: string) {
@@ -261,5 +167,3 @@ export class Communication {
 		// console.log('Wait for "ready"...')
 	}
 }
-
-export let communication: Communication = null

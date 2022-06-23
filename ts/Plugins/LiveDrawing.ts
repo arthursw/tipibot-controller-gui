@@ -1,11 +1,11 @@
+import $ = require("jquery");
 import { Renderer } from "../Renderer"
-import { Settings, settingsManager } from "../Settings"
+import { Settings, settingsManager, paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { SVGPlot } from "../Plot"
-import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
-import { tipibot } from "../Tipibot"
+import { Communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/CommunicationInteractive"
+import { tipibot } from "../TipibotInteractive"
 import { Interpreter, Command } from "../Communication/Interpreter"
-import { projects, view } from "paper/dist/paper-core"
 
 export class LiveDrawing {
 	
@@ -153,7 +153,7 @@ export class LiveDrawing {
 		let height = window.innerHeight
 		this.canvasJ.width(width)
 		this.canvasJ.height(height)
-		view.viewSize = new paper.Size(width, height)
+		paper.project.view.viewSize = new paper.Size(width, height)
 		this.renderer.centerOnTipibot(this.drawArea.bounds, true, this.canvasJ.get(0))
 		this.project.view.center = this.drawArea.bounds.center
 	}
@@ -225,7 +225,7 @@ export class LiveDrawing {
 
 	stopLiveDrawing() {
 		this.divJ.hide()
-		projects[0].activate()
+		paper.projects[0].activate()
 		this.axes.removeChildren()
 
 		tipibot.ignoreKeyEvents = false
@@ -475,7 +475,7 @@ export class LiveDrawing {
 			this.undoneCommandQueues.push(commandQueue)
 
 			for(let command of commandQueue.commands) {
-				communication.interpreter.removeCommand(command.id)
+				Communication.interpreter.removeCommand(command.id)
 				document.dispatchEvent(new CustomEvent('CancelCommand', { detail: command }))
 			}
 			for(let path of commandQueue.paths) {
@@ -495,7 +495,7 @@ export class LiveDrawing {
 			this.createNewCommandQueue()
 			
 			for(let command of commandQueue.commands) {
-				communication.interpreter.queue(command.data, command.message, command.callback)
+				Communication.interpreter.queue(command.data, command.message, command.callback)
 			}
 			for(let path of commandQueue.paths) {
 				this.drawing.addChild(path)

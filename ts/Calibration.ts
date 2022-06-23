@@ -1,6 +1,6 @@
-import { Settings, settingsManager } from "./Settings"
+import { Settings, settingsManager, paper } from "./Settings"
 import { GUI, Controller } from "./GUI"
-import { tipibot } from "./Tipibot"
+import { tipibot } from "./TipibotInteractive"
 declare var PerspT: any
 
 // Calibration will draw a width x height rectangle (at the center of the paper) with different settings 

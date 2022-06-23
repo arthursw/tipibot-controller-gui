@@ -1,3 +1,5 @@
+import * as paperjs from 'paper';
+export let paper = require('paper');
 import { GUI, Controller } from "./GUI"
 
 export interface TipibotInterface {
