@@ -1,3 +1,4 @@
+import $ = require("jquery");
 import { keyboard } from './Keyboard'
 
 declare var dat: any

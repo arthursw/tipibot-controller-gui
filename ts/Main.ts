@@ -4,20 +4,20 @@
 // import Stats = require("../node_modules/three/examples/js/libs/stats.min.js")
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
-import * as $ from "jquery"
+import $ = require("jquery");
 import { Settings, settingsManager, paper } from "./Settings"
-import { Tipibot, tipibot } from "./Tipibot"
+import { tipibot } from "./TipibotInteractive"
 import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
 import { SVGPlot } from "./Plot"
 import { Calibration } from "./Calibration"
-import { Communication } from "./Communication/Communication"
+import { CommunicationInteractive } from "./Communication/CommunicationInteractive"
 import { CommandDisplay } from "./Communication/CommandDisplay"
 import { initializeKeyboard } from "./Keyboard"
 import { GUI } from "./GUI"
 import { Console } from "./Console"
 import { VisualFeedback, visualFeedback } from "./VisualFeedback"
-import { CommeUnDessein } from "./Plugins/CommeUnDessein"
+import { CommeUnDesseinInteractive } from "./Plugins/CommeUnDesseinInteractive"
 import { Telescreen } from "./Plugins/Telescreen"
 import { SVGSplitter } from "./Plugins/SVGSplitter"
 import { FileManager } from "./Plugins/FileManager"
@@ -28,7 +28,7 @@ import { GCodeViewer } from "./Plugins/GCodeViewer"
 declare var addWheelListener: any
 declare var dat: any
 
-let communication: Communication = null
+let communication: CommunicationInteractive = null
 
 let container = null
 
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())
 
-		communication = new Communication(gui)
+		communication = new CommunicationInteractive(gui)
 
 		settingsManager.createGUI(gui, w.virtualKeyboard)
 
@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 		let pluginFolder = gui.addFolder('Plugins')
 
-		let commeUnDessein = new CommeUnDessein()
+		let commeUnDessein = new CommeUnDesseinInteractive()
 		commeUnDessein.createGUI(pluginFolder)
 
 		let telescreen = new Telescreen()
@@ -184,6 +184,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		tipibot.keyUp(event)
 		renderer.keyUp(event)
 	}
+
 
 	window.addEventListener('resize', windowResize, false)
 	document.body.addEventListener('mousedown', mouseDown)

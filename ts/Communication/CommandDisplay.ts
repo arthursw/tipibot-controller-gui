@@ -1,11 +1,12 @@
-import { Settings, settingsManager } from "../Settings"
+import $ = require("jquery");
+import { Settings, settingsManager, paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
-import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
+import { Communication } from "./CommunicationStatic"
 import { Command, SpecialCommandTypes } from "../Communication/Interpreter"
-import { Pen, MoveType } from "../Pen"
+import { MoveType } from "../Pen"
 import { SVGPlot } from "../Plot"
 import { Console } from "../Console"
-import { tipibot } from "../Tipibot"
+import { tipibot } from "../TipibotInteractive"
 
 export class CommandDisplay {
 
@@ -125,12 +126,14 @@ export class CommandDisplay {
 		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
 		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(value, tipibot.getPosition().y)))
 		this.gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(tipibot.getPosition().x, value)))
-
+		let communication = Communication.communication
 		this.connectButton = this.gui.addButton(communication && communication.serialPortConnectionOpened ? 'Disconnect' : 'Connect', ()=> {
 			if(communication.serialPortConnectionOpened) {
 				communication.disconnectSerialPort()
 			} else {
-				communication.autoConnectController.setValue(true)
+				if(communication.autoConnectController != null) {
+					communication.autoConnectController.setValue(true)
+				}
 			}
 		})
 		document.addEventListener('Connect', ()=> this.connectButton.setName('Disconnect'))
@@ -147,7 +150,7 @@ export class CommandDisplay {
 		tipibot.motorsEnableButton = this.gui.addButton('Disable motors', ()=> tipibot.toggleMotors())
 		this.addIcon(tipibot.motorsEnableButton, 'toggle-motors')
 		
-		this.initializeButton = this.gui.addButton('Initialize', ()=> communication.interpreter.initialize(false))
+		this.initializeButton = this.gui.addButton('Initialize', ()=> Communication.interpreter.initialize(false))
 		
 		this.loadSVGButton = this.gui.addButton('Load SVG', ()=> SVGPlot.gui.getController('Load SVG').click() )
 		this.clearSVGButton = this.gui.addButton('Clear SVG', SVGPlot.clearClicked)
@@ -170,14 +173,14 @@ export class CommandDisplay {
 
 		this.addIcon(this.drawSVGButton, 'draw')
 
-		this.pauseButton = this.gui.add({'Pause': false}, 'Pause').onChange((value) => communication.interpreter.setPause(value))
+		this.pauseButton = this.gui.add({'Pause': false}, 'Pause').onChange((value) => Communication.interpreter.setPause(value))
 		this.addIcon(this.pauseButton, 'pause')
 		this.emergencyStopButton = this.gui.addButton('Emergency stop', () => {
 			this.pauseButton.setValue(true)
-			communication.interpreter.sendStop(true)
+			Communication.interpreter.sendStop(true)
 		})
 		this.saveCommandsButton = this.gui.addButton('Save commands', () => this.saveCommands() )
-		this.clearCommandsButton = this.gui.addButton('Clear commands', () => communication.interpreter.clearQueue() )
+		this.clearCommandsButton = this.gui.addButton('Clear commands', () => Communication.interpreter.clearQueue() )
 		let advancesSettingsButton = this.gui.add(this, 'advancedLayout').name('Advanced settings').onFinishChange((value) => this.toggleAdvancedSettings(value) )
 		this.addIcon(advancesSettingsButton, 'advanced-settings')
 
@@ -234,7 +237,7 @@ export class CommandDisplay {
 	}
 
 	saveCommands() {
-		let gCode = communication.interpreter.getGCode()
+		let gCode = Communication.interpreter.getGCode()
 		let blob = new Blob([gCode], {type: "text/plain;charset=utf-8"})
 		saveAs(blob, "gcode.txt")
 	}
@@ -242,7 +245,7 @@ export class CommandDisplay {
 	click(event: any) {
 		if(event.target.tagName == 'BUTTON') {
 			let commandID = parseInt(event.target.parentNode.id)
-			communication.interpreter.removeCommand(commandID)
+			Communication.interpreter.removeCommand(commandID)
 			this.removeCommand(commandID)
 		}
 	}
@@ -255,7 +258,7 @@ export class CommandDisplay {
 		liJ.append(dataJ)
 		let closeButtonJ = $('<button>x</button>')
 		closeButtonJ.click((event)=> {
-			communication.interpreter.removeCommand(command.id)
+			Communication.interpreter.removeCommand(command.id)
 			this.removeCommand(command.id)
 		})
 		liJ.append(closeButtonJ)
@@ -272,7 +275,7 @@ export class CommandDisplay {
 		let closeButtonJ = $('<button>x</button>')
 		closeButtonJ.click((event)=> {
 			for(let commandID of commandIDs) {
-				communication.interpreter.removeCommand(commandID)
+				Communication.interpreter.removeCommand(commandID)
 			}
 			this.removeCommand(id)
 		})

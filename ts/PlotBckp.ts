@@ -1,9 +1,8 @@
-import { Tipibot, tipibot } from "./Tipibot"
-import { Settings, settingsManager, SettingsManager } from "./Settings"
-import { Communication, communication } from "./Communication/Communication"
+import { tipibot } from "./TipibotInteractive"
+import { Settings, settingsManager, SettingsManager, paper } from "./Settings"
+import { Communication } from "./Communication/CommunicationStatic"
 import { GUI, Controller } from "./GUI"
 import { Pen } from './Pen'
-import { project } from "paper/dist/paper-core"
 
 export class SVGPlot {
 
@@ -13,7 +12,7 @@ export class SVGPlot {
 	readonly pseudoCurvatureDistance = 10 		// in mm
 
 	public static loadImage(event: any) {
-		let svg = project.importSVG(event.target.result)
+		let svg = paper.project.importSVG(event.target.result)
 
 		let svgPlot = new SVGPlot(svg)
 		svgPlot.center()
@@ -52,7 +51,7 @@ export class SVGPlot {
 	}
 
 	public static clearClicked(event: any) {
-		communication.interpreter.clearQueue()
+		Communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
 		SVGPlot.gui.getController('Clear SVG').hide()
 		SVGPlot.svgPlot.destroy()
@@ -68,8 +67,8 @@ export class SVGPlot {
 				SVGPlot.svgPlot.plot()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
-				communication.interpreter.sendStop(true)
-				communication.interpreter.clearQueue()
+				Communication.interpreter.sendStop(true)
+				Communication.interpreter.clearQueue()
 				SVGPlot.svgPlot.plotting = false
 				tipibot.goHome()
 			}
@@ -221,7 +220,7 @@ export class SVGPlot {
 		this.item.visible = true
 
 		// this.item.strokeColor = 'black'
-		this.raster = this.item.rasterize({resolution: project.view.resolution})
+		this.raster = this.item.rasterize({resolution: paper.project.view.resolution})
 		this.group.addChild(this.raster)
 		this.raster.sendToBack()
 		this.item.selected = Settings.plot.showPoints

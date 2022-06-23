@@ -1,7 +1,6 @@
-import { Settings, SettingsManager } from "./Settings"
+import { Settings, SettingsManager, paper } from "./Settings"
 import { Pen } from "./Pen"
-import { tipibot } from "./Tipibot"
-import { view } from "paper/dist/paper-core"
+import { tipibot } from "./TipibotInteractive"
 
 export let visualFeedback: VisualFeedback = null
 
@@ -71,7 +70,7 @@ export class VisualFeedback {
 
 	onZoomChanged() {
 		this.circle.applyMatrix = false
-		this.circle.scaling = new paper.Point(1 / view.zoom, 1 / view.zoom)
+		this.circle.scaling = new paper.Point(1 / paper.project.view.zoom, 1 / paper.project.view.zoom)
 	}
 
 	setVisible(visible: boolean) {

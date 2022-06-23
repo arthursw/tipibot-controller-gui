@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, settingsManager } from "../Settings"
+import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {

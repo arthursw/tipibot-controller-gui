@@ -1,7 +1,6 @@
-import { Settings, settingsManager } from "../Settings"
-import { GUI, Controller } from "../GUI"
-import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
-import { tipibot } from "../Tipibot"
+import $ = require("jquery");
+import { GUI } from "../GUI"
+import { Communication } from "../Communication/CommunicationStatic"
 import { SVGPlot } from "../Plot"
 
 export class FileManager {
@@ -36,12 +35,12 @@ export class FileManager {
 			console.error('No SVG loaded.')
 			return
 		}
-		if(communication.interpreter.commandQueue.length > 0) {
+		if(Communication.interpreter.commandQueue.length > 0) {
 			console.error('Command queue is not empty ; please finish / empty queue before saving a file.')
 			return
 		}
-		communication.send('write-file', this.saveFileName)
-		SVGPlot.plotAndLoadLoop(()=> communication.send('close-file'))
+		Communication.communication.send('write-file', this.saveFileName)
+		SVGPlot.plotAndLoadLoop(()=> Communication.communication.send('close-file'))
 	}
 
 	exportFile(baseName: string, i: number, project: paper.Project, images: any, group: paper.Group) {
@@ -55,7 +54,7 @@ export class FileManager {
 	}
 
 	listFiles() {
-		communication.send('list-files')
+		Communication.communication.send('list-files')
 	}
 
 	createFileItem(fileName: string): any {
@@ -77,7 +76,7 @@ export class FileManager {
 		if(this.printingFileName != null) {
 			if(this.printingFileName == fileName) {
 				this.listJ.find('#' + fileName).find('.print').text('Print')
-				communication.send('cancel-print-file', fileName)
+				Communication.communication.send('cancel-print-file', fileName)
 				this.printingFileName = null
 			} else {
 				console.error('The file ' + this.printingFileName + ' is already being printed.')
@@ -85,14 +84,14 @@ export class FileManager {
 			return
 		}
 		this.listJ.find('#' + fileName).find('.print').text('Cancel print')
-		communication.send('print-file', fileName)
+		Communication.communication.send('print-file', fileName)
 		this.printingFileName = fileName
 	}
 
 	removeFileItem(fileName: string) {
 		this.listJ.find('#' + fileName).remove()
 
-		communication.send('delete-file', fileName)
+		Communication.communication.send('delete-file', fileName)
 	}
 
 	onServerMessage(json: {type: string, data: any}) {

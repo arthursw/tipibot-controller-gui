@@ -1,4 +1,4 @@
-import { Settings, SettingsManager } from "../Settings"
+import { Settings, SettingsManager, paper } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
@@ -215,6 +215,9 @@ export class Interpreter {
 	}
 
 	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
+	}
+
+	sendMoveStation(direction: number=0, nSteps: number=0, nDelays: number=0, callback: () => any = null) {
 	}
 
 	sendDrawSpeed(speed: number=Settings.tipibot.drawSpeed, acceleration: number=Settings.tipibot.acceleration) {

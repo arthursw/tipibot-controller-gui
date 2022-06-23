@@ -1,8 +1,6 @@
-import { Settings, settingsManager } from "../Settings"
+import { paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
-import { SVGPlot } from "../Plot"
-import { communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/Communication"
-import { tipibot } from "../Tipibot"
+import { tipibot } from "../TipibotInteractive"
 
 class Move {
 	
@@ -184,7 +182,7 @@ export class Telescreen {
 
 	disconnect() {
 		// for(let serialPort of communication.serialPorts) {
-		// 	if(serialPort != communication.interpreter.serialPort) {
+		// 	if(serialPort != Communication.interpreter.serialPort) {
 		// 		communication.socket.emit('command', 'close ' + serialPort)
 		// 	}
 		// }
