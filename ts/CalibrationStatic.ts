@@ -1,40 +1,38 @@
-import { Settings, settingsManager, paper } from "./Settings"
-import { GUI, Controller } from "./GUI"
-import { tipibot } from "./TipibotInteractive"
-declare var PerspT: any
+import { Settings, paper } from "./Settings"
+import { Tipibot } from "./TipibotStatic"
+import * as PerspT from 'perspective-transform'
 
+// if (isServer) {
+//     var PerspT = require('perspective-transform');
+// }
 // Calibration will draw a width x height rectangle (at the center of the paper) with different settings 
 // to calibrate the y offset and the width of the machine
 
-export let calibration: Calibration = null
-
 export class Calibration {
 	
-	gui: GUI
     amount: number = 10
     width = 200
     height = 287
     applyTransform = false
     previewTransform = false
-    previewTransformController: Controller
     previewRectangle = false
     previewRectangleItem: paper.Item = null
     previewTransformItem: paper.Path = null
     cornersOnly = false
     points: number[] = []
     transformMatrix: any = null
+    static calibration: Calibration = null
 
-	static initialize(gui: GUI) {
-        calibration = new Calibration(gui)
+	static initialize() {
+        Calibration.calibration = new Calibration()
     }
     
-	constructor(gui: GUI) {
+	constructor() {
         this.loadPoints()
-        this.createGUI(gui)
     }
     
     loadPoints() {
-        if(!Settings.transformMatrix == null || Settings.transformMatrix.destinationPoints == null || Settings.transformMatrix.destinationPoints.length < 8) {
+        if(Settings.transformMatrix == null || Settings.transformMatrix.destinationPoints == null || Settings.transformMatrix.destinationPoints.length < 8) {
             this.points = this.getDrawAreaPoints()
             Settings.transformMatrix.destinationPoints = this.points.slice()
             return
@@ -44,36 +42,8 @@ export class Calibration {
         this.updateTransformMatrix()
     }
 
-	createGUI(gui: GUI) {
-        this.gui = gui.addFolder('Calibration')
-
-        this.gui.addButton('Set top left', ()=> this.updateTransform(0))
-        this.gui.addButton('Set top right', ()=> this.updateTransform(1))
-        this.gui.addButton('Set bottom right', ()=> this.updateTransform(2))
-        this.gui.addButton('Set bottom left', ()=> this.updateTransform(3))
-        this.gui.addButton('Reset transform', ()=> this.resetTransform())
-        this.previewTransformController = this.gui.add(this, 'previewTransform').name('Preview transform').onFinishChange(()=> this.togglePreviewTransform())
-        this.gui.add(this, 'applyTransform').name('Apply transform').onFinishChange((value)=> {
-            Settings.transformMatrix.apply = this.applyTransform
-            settingsManager.save(false)
-        })
-
-        let testRectangleFolder = this.gui.addFolder('Rectangle test')
-
-		testRectangleFolder.add(this, 'width', 0, 5000, 1).name('Width').onChange(()=> this.updatePreviewRectangle())
-		testRectangleFolder.add(this, 'height', 0, 5000, 1).name('Height').onChange(()=> this.updatePreviewRectangle())
-		testRectangleFolder.add(this, 'previewRectangle').name('Preview rectangle').onFinishChange(()=> this.togglePreviewRectangle())
-        testRectangleFolder.add(this, 'cornersOnly').name('Corners only').onFinishChange(()=> this.updatePreviewRectangle())
-        testRectangleFolder.addButton('Draw rectangle', ()=> this.drawRectangle())
-
-        let parameterCalibrationFolder = testRectangleFolder.addFolder('Parameter calibration')
-        parameterCalibrationFolder.add(this, 'amount', 0, 100, 1).name('Amount')
-        parameterCalibrationFolder.addButton('Calibrate Y', ()=> this.calibrateY())
-        parameterCalibrationFolder.addButton('Calibrate Width', ()=> this.calibrateWidth())
-    }
-
     getDrawAreaPoints() {
-        let rectangle = tipibot.computeDrawArea()
+        let rectangle = Tipibot.tipibot.computeDrawArea()
         let points = []
         points.push(rectangle.topLeft.x)
         points.push(rectangle.topLeft.y)
@@ -93,16 +63,13 @@ export class Calibration {
     }
 
     updateTransform(pointIndex: number) {
-        let position = tipibot.getPosition()
+        let position = Tipibot.tipibot.getPosition()
         Settings.transformMatrix.destinationPoints[2 * pointIndex] = position.x
         Settings.transformMatrix.destinationPoints[2 * pointIndex + 1] = position.y
-        settingsManager.save(false)
         this.points[2 * pointIndex] = position.x
         this.points[2 * pointIndex + 1] = position.y
 
         this.updateTransformMatrix()
-
-        this.previewTransformController.setValue(true, true)
         this.updatePreviewTransform()
     }
 
@@ -122,7 +89,7 @@ export class Calibration {
     }
 
     getRectangle(): paper.Rectangle {
-        let drawArea = tipibot.computeDrawArea()
+        let drawArea = Tipibot.tipibot.computeDrawArea()
         let topLeft = drawArea.center.subtract(new paper.Point(this.width/2, this.height/2))
         let rectangle = new paper.Rectangle(topLeft, new paper.Size(this.width, this.height))
         return rectangle
@@ -174,7 +141,7 @@ export class Calibration {
     }
 
     updatePreviewTransform() {
-        let rectangle = tipibot.computeDrawArea()
+        let rectangle = Tipibot.tipibot.computeDrawArea()
 
         let topLeft = this.transform(rectangle.topLeft)
         let topRight = this.transform(rectangle.topRight)
@@ -209,64 +176,64 @@ export class Calibration {
     drawRectangle() {
         let rectangle = this.getRectangle()
 
-        let startPoint = tipibot.getPosition()
+        let startPoint = Tipibot.tipibot.getPosition()
 
-        tipibot.sendSpecs()
-        tipibot.penUp()
+        Tipibot.tipibot.sendSpecs()
+        Tipibot.tipibot.penUp()
         if(this.cornersOnly){
-            tipibot.moveDirect(rectangle.topLeft.add(new paper.Point(0, 10)))
-            tipibot.penDown()
-            tipibot.moveLinear(rectangle.topLeft)
-            tipibot.moveLinear(rectangle.topLeft.add(new paper.Point(10, 0)))
-            tipibot.penUp()
-            tipibot.moveDirect(rectangle.topRight.add(new paper.Point(-10, 0)))
-            tipibot.penDown()
-            tipibot.moveLinear(rectangle.topRight)
-            tipibot.moveLinear(rectangle.topRight.add(new paper.Point(0, 10)))
-            tipibot.penUp()
-            tipibot.moveDirect(rectangle.bottomRight.add(new paper.Point(0, -10)))
-            tipibot.penDown()
-            tipibot.moveLinear(rectangle.bottomRight)
-            tipibot.moveLinear(rectangle.bottomRight.add(new paper.Point(-10, 0)))
-            tipibot.penUp()
-            tipibot.moveDirect(rectangle.bottomLeft.add(new paper.Point(10, 0)))
-            tipibot.penDown()
-            tipibot.moveLinear(rectangle.bottomLeft)
-            tipibot.moveLinear(rectangle.bottomLeft.add(new paper.Point(0, -10)))
+            Tipibot.tipibot.moveDirect(rectangle.topLeft.add(new paper.Point(0, 10)))
+            Tipibot.tipibot.penDown()
+            Tipibot.tipibot.moveLinear(rectangle.topLeft)
+            Tipibot.tipibot.moveLinear(rectangle.topLeft.add(new paper.Point(10, 0)))
+            Tipibot.tipibot.penUp()
+            Tipibot.tipibot.moveDirect(rectangle.topRight.add(new paper.Point(-10, 0)))
+            Tipibot.tipibot.penDown()
+            Tipibot.tipibot.moveLinear(rectangle.topRight)
+            Tipibot.tipibot.moveLinear(rectangle.topRight.add(new paper.Point(0, 10)))
+            Tipibot.tipibot.penUp()
+            Tipibot.tipibot.moveDirect(rectangle.bottomRight.add(new paper.Point(0, -10)))
+            Tipibot.tipibot.penDown()
+            Tipibot.tipibot.moveLinear(rectangle.bottomRight)
+            Tipibot.tipibot.moveLinear(rectangle.bottomRight.add(new paper.Point(-10, 0)))
+            Tipibot.tipibot.penUp()
+            Tipibot.tipibot.moveDirect(rectangle.bottomLeft.add(new paper.Point(10, 0)))
+            Tipibot.tipibot.penDown()
+            Tipibot.tipibot.moveLinear(rectangle.bottomLeft)
+            Tipibot.tipibot.moveLinear(rectangle.bottomLeft.add(new paper.Point(0, -10)))
         } else {
-            tipibot.moveDirect(rectangle.topLeft)
-            tipibot.penDown()
-            tipibot.moveLinear(rectangle.topRight)
-            tipibot.moveLinear(rectangle.bottomRight)
-            tipibot.moveLinear(rectangle.bottomLeft)
-            tipibot.moveLinear(rectangle.topLeft)
+            Tipibot.tipibot.moveDirect(rectangle.topLeft)
+            Tipibot.tipibot.penDown()
+            Tipibot.tipibot.moveLinear(rectangle.topRight)
+            Tipibot.tipibot.moveLinear(rectangle.bottomRight)
+            Tipibot.tipibot.moveLinear(rectangle.bottomLeft)
+            Tipibot.tipibot.moveLinear(rectangle.topLeft)
         }
-        tipibot.penUp()
-        tipibot.moveDirect(startPoint)
+        Tipibot.tipibot.penUp()
+        Tipibot.tipibot.moveDirect(startPoint)
     }
 
 	calibrateY() {
-        let initialPosition = tipibot.getPosition()
+        let initialPosition = Tipibot.tipibot.getPosition()
         for(let i = -this.amount ; i <= this.amount ; i += this.amount) {
-            tipibot.setPosition(new paper.Point(initialPosition.x, initialPosition.y + i), true, false)
+            Tipibot.tipibot.setPosition(new paper.Point(initialPosition.x, initialPosition.y + i), true, false)
             this.drawRectangle()
         }
-        tipibot.setPosition(initialPosition, false, false)
+        Tipibot.tipibot.setPosition(initialPosition, false, false)
     }
     
 	calibrateWidth() {
-        let initialPosition = tipibot.getPosition()
+        let initialPosition = Tipibot.tipibot.getPosition()
         let initialWidth = Settings.tipibot.width
         let initialHeight = Settings.tipibot.height
         let paperCenterX = initialWidth / 2
         for(let i = -this.amount ; i <= this.amount ; i += this.amount) {
             Settings.tipibot.width = initialWidth + i
-            tipibot.setPosition(new paper.Point(initialPosition.x + i / 2, initialPosition.y), false, false)
+            Tipibot.tipibot.setPosition(new paper.Point(initialPosition.x + i / 2, initialPosition.y), false, false)
             this.drawRectangle()
         }
         Settings.tipibot.width = initialWidth
         Settings.tipibot.height = initialHeight
-        tipibot.setPosition(initialPosition, false, false)
-        tipibot.sendSpecs()
+        Tipibot.tipibot.setPosition(initialPosition, false, false)
+        Tipibot.tipibot.sendSpecs()
 	}
 }

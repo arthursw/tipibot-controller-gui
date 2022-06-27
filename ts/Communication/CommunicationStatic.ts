@@ -1,4 +1,4 @@
-import { Settings, settingsManager } from "../Settings"
+import { copyObjectProperties, Settings } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter, SERIAL_COMMUNICATION_SPEED as ISERIAL_COMMUNICATION_SPEED } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
@@ -38,7 +38,7 @@ export class Communication {
 	}
 
 	onSettingChanged(event: CustomEvent) {
-		this.send('save-settings', JSON.stringify(Settings, null, '\t'))
+		this.send('save-settings', Settings)
 	}
 
 	setTipibot(tipibot: TipibotInterface) {
@@ -74,12 +74,10 @@ export class Communication {
 		this.serialPortConnectionOpened = false
 	}
 
-	onMessage(event: any) {
-		let messageObject = JSON.parse(event.data)
+	onMessage(messageObject: any) {
+
 		let type = messageObject.type
 		let data = messageObject.data
-
-		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: messageObject }))
 
 		if(type == 'opened') {
 			this.onSerialPortConnectionOpened()
@@ -106,16 +104,22 @@ export class Communication {
 		} else if(type == 'error') {
 			console.error(data)
 		} else if(type == 'load-settings') {
-			settingsManager.loadJSONandOverwriteLocalStorage(data)
+			copyObjectProperties(Settings, data)
 		}
 
+	}
+
+	onJSONMessage(event: any) {
+		let messageObject = JSON.parse(event.data)
+		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: messageObject }))
+		this.onMessage(messageObject)
 		return messageObject
 	}
 
 	connectToSerial() {
 		this.socket = new WebSocket(`ws://${Settings.websocketServerURL}`)
 
-		this.socket.addEventListener('message',  (event:any)=> this.onMessage(event))
+		this.socket.addEventListener('message',  (event:any)=> this.onJSONMessage(event))
 		this.socket.addEventListener('open',  (event:any)=> this.onWebSocketOpen(event))
 		this.socket.addEventListener('close',  (event:any)=> this.onWebSocketClose(event))
 		this.socket.addEventListener('error',  (event:any)=> this.onWebSocketError(event))

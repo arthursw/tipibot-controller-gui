@@ -1,6 +1,7 @@
 import { GUI, Controller } from "../GUI"
 import { CommeUnDessein, StorageKeys, CommeUnDesseinSize } from "./CommeUnDesseinStatic"
-import { tipibot } from "../TipibotInteractive"
+import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
+import { visualFeedback } from "../VisualFeedback"
 
 export class CommeUnDesseinInteractive extends CommeUnDessein {
 
@@ -21,8 +22,8 @@ export class CommeUnDesseinInteractive extends CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(StorageKeys.CommeUnDesseinSecret, value))
 		commeUnDesseinGUI.add(this, 'serverMode').onFinishChange((value)=> localStorage.setItem(StorageKeys.CommeUnDesseinServerMode, value))
 
-		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || tipibot.drawArea.bounds.width
-		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || tipibot.drawArea.bounds.height
+		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || Tipibot.tipibot.drawArea.bounds.width
+		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || Tipibot.tipibot.drawArea.bounds.height
 
 		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
 			window.localStorage.setItem('commeUnDesseinWidth', value)
@@ -42,5 +43,12 @@ export class CommeUnDesseinInteractive extends CommeUnDessein {
 			this.startButton.setName('Start')
 		}
 		super.toggleStart()
+	}
+
+	setDrawingStatusDrawn(pk: string) {
+		if(visualFeedback.paths.children.length > 0) {
+			visualFeedback.paths.removeChildren()
+		}
+		super.setDrawingStatusDrawn(pk)
 	}
 }

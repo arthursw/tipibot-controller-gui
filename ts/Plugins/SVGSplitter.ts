@@ -1,7 +1,5 @@
-import { Settings, settingsManager, paper } from "../Settings"
-import { GUI, Controller } from "../GUI"
-import { Communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/CommunicationInteractive"
-import { tipibot } from "../TipibotInteractive"
+import { paper } from "../Settings"
+import { GUI } from "../GUI"
 import { SVGPlot } from "../Plot"
 
 declare let JSZip: any

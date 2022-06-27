@@ -5,12 +5,13 @@
 // import { Stats } from "../node_modules/three/examples/js/libs/stats.min.js"
 // import { THREE } from "../node_modules/three/build/three"
 import $ = require("jquery");
-import { Settings, settingsManager, paper } from "./Settings"
-import { tipibot } from "./TipibotInteractive"
+import { Settings, paper } from "./Settings"
+import { settingsManager } from "./SettingsManager"
+import { TipibotInteractive as Tipibot } from "./TipibotInteractive"
 import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
 import { SVGPlot } from "./Plot"
-import { Calibration } from "./Calibration"
+import { CalibrationInteractive } from "./CalibrationInteractive"
 import { CommunicationInteractive } from "./Communication/CommunicationInteractive"
 import { CommandDisplay } from "./Communication/CommandDisplay"
 import { initializeKeyboard } from "./Keyboard"
@@ -51,10 +52,12 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 		dat.GUI.DEFAULT_WIDTH = 325
 
+		renderer = new Renderer()
+
 		w.virtualKeyboard = initializeKeyboard()
 
 		gui = new GUI({ autoPlace: false })
-
+		
 		let controllerConsole = new Console()
 
 		let commandDisplay = new CommandDisplay()
@@ -64,19 +67,17 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
 		let customContainer = document.getElementById('gui')
 		customContainer.appendChild(gui.getDomElement())
-
+		
 		communication = new CommunicationInteractive(gui)
 
 		settingsManager.createGUI(gui, w.virtualKeyboard)
 
 		SVGPlot.createGUI(gui)
 
-		Calibration.initialize(gui)
+		CalibrationInteractive.initialize(gui)
 		
-		renderer = new Renderer()
-
-		communication.setTipibot(tipibot)
-		tipibot.initialize()
+		communication.setTipibot(Tipibot.tipibot)
+		Tipibot.tipibot.initialize()
 
 		renderer.centerOnTipibot(Settings.tipibot)
 
@@ -106,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		gcodeViewer.createGUI(pluginFolder)
 
 		// debug
-		w.tipibot = tipibot
+		w.tipibot = Tipibot.tipibot
 		w.settingsManager = settingsManager
 		w.Settings = Settings
 		w.gui = gui
@@ -145,25 +146,25 @@ document.addEventListener("DOMContentLoaded", function (event) {
 	function mouseMove(event: MouseEvent) {
 		renderer.mouseMove(event)
 
-		if (tipibot.settingPosition) {
+		if (Tipibot.tipibot.settingPosition) {
 			let position = renderer.getWorldPosition(event)
 			if (positionPreview == null) {
 				positionPreview = new paper.Path.Circle(position, Pen.HOME_RADIUS)
 			}
 			positionPreview.position = position
-			tipibot.setPositionSliders(position)
+			Tipibot.tipibot.setPositionSliders(position)
 		}
 	}
 
 	function mouseUp(event: MouseEvent) {
 		renderer.mouseUp(event)
-		if (tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(<HTMLElement>event.target)) {
+		if (Tipibot.tipibot.settingPosition && !settingsManager.tipibotPositionFolder.getController('Set position with mouse').contains(<HTMLElement>event.target)) {
 			if (positionPreview != null) {
 				positionPreview.remove()
 				positionPreview = null
 			}
-			tipibot.setPosition(renderer.getWorldPosition(event))
-			tipibot.toggleSetPosition(false, false)
+			Tipibot.tipibot.setPosition(renderer.getWorldPosition(event))
+			Tipibot.tipibot.toggleSetPosition(false, false)
 		}
 	}
 
@@ -176,12 +177,12 @@ document.addEventListener("DOMContentLoaded", function (event) {
 	}
 
 	function keyDown(event: KeyboardEvent) {
-		tipibot.keyDown(event)
+		Tipibot.tipibot.keyDown(event)
 		renderer.keyDown(event)
 	}
 
 	function keyUp(event: KeyboardEvent) {
-		tipibot.keyUp(event)
+		Tipibot.tipibot.keyUp(event)
 		renderer.keyUp(event)
 	}
 

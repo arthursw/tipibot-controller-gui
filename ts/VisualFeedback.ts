@@ -1,6 +1,6 @@
-import { Settings, SettingsManager, paper } from "./Settings"
+import { Settings, paper, stepsToMm } from "./Settings"
 import { Pen } from "./Pen"
-import { tipibot } from "./TipibotInteractive"
+import { Tipibot } from "./TipibotStatic"
 
 export let visualFeedback: VisualFeedback = null
 
@@ -30,8 +30,8 @@ export class VisualFeedback {
 		this.group.addChild(this.paths)
 		this.group.addChild(this.subTargets)
 
-		let positon = tipibot.getPosition()
-		let gondolaPosition = tipibot.getGondolaPosition()
+		let positon = Tipibot.tipibot.getPosition()
+		let gondolaPosition = Tipibot.tipibot.getGondolaPosition()
 		this.circle = new paper.Path.Circle(positon, Pen.HOME_RADIUS)
 		this.circle.fillColor = new paper.Color('rgba(255, 193, 7, 0.25)')
 		this.circle.strokeColor = new paper.Color('black')
@@ -91,8 +91,8 @@ export class VisualFeedback {
 		let x = parseInt(messages[0])
 		let y = parseInt(messages[1])
 		let lengths = new paper.Point(x, y)
-		let lengthsMm = SettingsManager.stepsToMm(lengths)
-		return tipibot.lengthsToCartesian(lengthsMm)
+		let lengthsMm = stepsToMm(lengths)
+		return Tipibot.tipibot.lengthsToCartesian(lengthsMm)
 	}
 
 	onMessageReceived(data: string) {

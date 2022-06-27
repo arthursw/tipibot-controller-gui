@@ -1,11 +1,11 @@
 import $ = require("jquery");
 import { Renderer } from "../Renderer"
-import { Settings, settingsManager, paper } from "../Settings"
+import { Settings, paper } from "../Settings"
+import { settingsManager } from "../SettingsManager"
 import { GUI, Controller } from "../GUI"
-import { SVGPlot } from "../Plot"
-import { Communication, SERIAL_COMMUNICATION_SPEED } from "../Communication/CommunicationInteractive"
-import { tipibot } from "../TipibotInteractive"
-import { Interpreter, Command } from "../Communication/Interpreter"
+import { Communication } from "../Communication/CommunicationStatic"
+import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
+import { Command } from "../Communication/Interpreter"
 
 export class LiveDrawing {
 	
@@ -103,7 +103,7 @@ export class LiveDrawing {
 	renderAxes(mode: string) {
 		this.mode = mode
 		this.axes.removeChildren()
-		let bounds = tipibot.drawArea.bounds
+		let bounds = Tipibot.tipibot.drawArea.bounds
 		if(mode == 'None') {
 
 		} else if(mode == '2 Symmetries' || mode == '4 Symmetries') {
@@ -193,7 +193,7 @@ export class LiveDrawing {
 			this.drawing = new paper.Group()
 			this.currentDrawing = new paper.Group()
 
-			this.drawArea = new paper.Path.Rectangle(tipibot.drawArea.bounds)
+			this.drawArea = new paper.Path.Rectangle(Tipibot.tipibot.drawArea.bounds)
 			this.drawArea.strokeColor = new paper.Color('black')
 			this.drawArea.strokeWidth = 1
 
@@ -219,7 +219,7 @@ export class LiveDrawing {
 
 		this.renderAxes(this.mode)
 
-		tipibot.ignoreKeyEvents = true
+		Tipibot.tipibot.ignoreKeyEvents = true
 		this.renderer.ignoreWindowResize = true
 	}
 
@@ -228,7 +228,7 @@ export class LiveDrawing {
 		paper.projects[0].activate()
 		this.axes.removeChildren()
 
-		tipibot.ignoreKeyEvents = false
+		Tipibot.tipibot.ignoreKeyEvents = false
 		this.renderer.ignoreWindowResize = false
 		this.renderer.windowResize()
 	}
@@ -261,7 +261,7 @@ export class LiveDrawing {
 			return
 		}
 		let point = this.renderer.getWorldPosition(event)
-		if(!tipibot.drawArea.bounds.contains(point)) {
+		if(!Tipibot.tipibot.drawArea.bounds.contains(point)) {
 			return
 		}
 
@@ -278,9 +278,9 @@ export class LiveDrawing {
 
 			this.undoneCommandQueues = []
 			
-			tipibot.moveDirect(point)
+			Tipibot.tipibot.moveDirect(point)
 
-			tipibot.penDown()
+			Tipibot.tipibot.penDown()
 
 			this.drawing.addChild(this.currentLine)
 
@@ -296,12 +296,12 @@ export class LiveDrawing {
 		}
 		if(this.mouseDown) {
 			let point = this.renderer.getWorldPosition(event)
-			if(!tipibot.drawArea.bounds.contains(point) || (this.undoRedo && point.getDistance(this.currentLine.lastSegment.point) < 15)) {
+			if(!Tipibot.tipibot.drawArea.bounds.contains(point) || (this.undoRedo && point.getDistance(this.currentLine.lastSegment.point) < 15)) {
 				return
 			}
 			
 			if(this.undoRedo) {
-				tipibot.moveLinear(point)
+				Tipibot.tipibot.moveLinear(point)
 			}
 
 			this.currentLine.add(point)
@@ -323,16 +323,16 @@ export class LiveDrawing {
 	}
 	
 	penUp(lines: paper.Path) {
-		tipibot.penUp(undefined, undefined, undefined, ()=> this.pathDrawn(lines))
+		Tipibot.tipibot.penUp(undefined, undefined, undefined, ()=> this.pathDrawn(lines))
 	}
 
 	drawLines(lines: paper.Path) {
 
-		tipibot.penUp()
-		tipibot.moveDirect(lines.firstSegment.point)
-		tipibot.penDown()
+		Tipibot.tipibot.penUp()
+		Tipibot.tipibot.moveDirect(lines.firstSegment.point)
+		Tipibot.tipibot.penDown()
 		for(let segment of lines.segments) {
-			tipibot.moveLinear(segment.point)
+			Tipibot.tipibot.moveLinear(segment.point)
 		}
 		this.penUp(lines)
 	}
@@ -343,12 +343,12 @@ export class LiveDrawing {
 		}
 
 		let point = this.renderer.getWorldPosition(event)
-		if(!tipibot.drawArea.bounds.contains(point)) {
+		if(!Tipibot.tipibot.drawArea.bounds.contains(point)) {
 			return
 		}
 		
 		if(this.undoRedo) {
-			tipibot.moveLinear(point)
+			Tipibot.tipibot.moveLinear(point)
 		}
 
 		this.currentLine.add(point)
@@ -372,17 +372,17 @@ export class LiveDrawing {
 
 			// let instance = definition.place()
 			let instance = <paper.Path>this.currentLine.clone()
-			instance.pivot = tipibot.drawArea.bounds.center
+			instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 			instance.scaling.y = -1
 			this.addLines(instance, commandQueue)
 
 			instance = <paper.Path>this.currentLine.clone() // definition.place()
-			instance.pivot = tipibot.drawArea.bounds.center
+			instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 			instance.scaling.x = -1
 			this.addLines(instance, commandQueue)
 
 			instance = <paper.Path>this.currentLine.clone() // definition.place()
-			instance.pivot = tipibot.drawArea.bounds.center
+			instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 			instance.scaling.x = -1
 			instance.scaling.y = -1
 			this.addLines(instance, commandQueue)
@@ -390,24 +390,24 @@ export class LiveDrawing {
 			if(this.mode == '4 Symmetries') {
 
 				let instance = <paper.Path>this.currentLine.clone() // definition.place()
-				instance.pivot = tipibot.drawArea.bounds.center
+				instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 				instance.rotate(90)
 				this.addLines(instance, commandQueue)
 
 				instance = <paper.Path>this.currentLine.clone() // definition.place()
-				instance.pivot = tipibot.drawArea.bounds.center
+				instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 				instance.rotate(90)
 				instance.scaling.x = -1
 				this.addLines(instance, commandQueue)
 
 				instance = <paper.Path>this.currentLine.clone() // definition.place()
-				instance.pivot = tipibot.drawArea.bounds.center
+				instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 				instance.rotate(90)
 				instance.scaling.y = -1
 				this.addLines(instance, commandQueue)
 
 				instance = <paper.Path>this.currentLine.clone() // definition.place()
-				instance.pivot = tipibot.drawArea.bounds.center
+				instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 				instance.rotate(90)
 				instance.scaling.x = -1
 				instance.scaling.y = -1
@@ -418,7 +418,7 @@ export class LiveDrawing {
 
 			for(let i=1 ; i<this.nRepetitions ; i++) {
 				let instance = <paper.Path>this.currentLine.clone() // definition.place()
-				instance.pivot = tipibot.drawArea.bounds.center
+				instance.pivot = Tipibot.tipibot.drawArea.bounds.center
 				instance.rotate(i * 360 / this.nRepetitions)
 				this.addLines(instance, commandQueue)
 			}

@@ -1,6 +1,6 @@
 import { Communication } from "./Communication/CommunicationStatic"
-import { Settings, SettingsManager, paper } from "./Settings"
-import { tipibot } from "./TipibotInteractive"
+import { Settings, paper, servoDownAngle, servoUpAngle } from "./Settings"
+import { Tipibot } from "./TipibotStatic"
 
 export enum MoveType {
     Direct,
@@ -92,13 +92,13 @@ export class Pen {
 			return
 		}
 		if(updateSliders) {
-			tipibot.setPositionSliders(point)
+			Tipibot.tipibot.setPositionSliders(point)
 		}
 		if(move) {
 			if(moveType == MoveType.Direct) {
-				tipibot.moveDirect(point, callback)
+				Tipibot.tipibot.moveDirect(point, callback)
 			} else {
-				tipibot.moveLinear(point, 0, Settings.tipibot.maxSpeed, callback)
+				Tipibot.tipibot.moveLinear(point, 0, Settings.tipibot.maxSpeed, callback)
 			}
 		}
 		let center = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
@@ -112,7 +112,7 @@ export class Pen {
 		this.lines.segments[2].point.x = Settings.tipibot.width
 	}
 
-	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		let penUpCallback = ()=> {
 			this.state = PenState.Up
 			this.angle = Settings.servo.position.up
@@ -126,7 +126,7 @@ export class Pen {
 		this.angle = Settings.servo.position.up
 	}
 	
-	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		let penDownCallback = ()=> {
 			this.state = PenState.Down
 			this.angle = Settings.servo.position.down

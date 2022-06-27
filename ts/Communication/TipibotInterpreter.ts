@@ -1,5 +1,4 @@
-import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
-import { Interpreter } from "./Interpreter"
+import { Settings } from "../Settings"
 import { PenPlotter } from "./PenPlotter"
 
 export class TipibotInterpreter extends PenPlotter {

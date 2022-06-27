@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
+import { Settings, paper, mmToSteps, servoUpAngle, servoDownAngle } from "../Settings"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class PenPlotter extends Interpreter {
@@ -32,7 +32,7 @@ export class PenPlotter extends Interpreter {
 	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
 		super.sendSetPosition(point)
 		let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		let lengthsSteps = mmToSteps(lengths)
 		// console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
 		// this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
@@ -43,7 +43,7 @@ export class PenPlotter extends Interpreter {
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 		super.sendMoveDirect(point, callback)
 		let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		let lengthsSteps = mmToSteps(lengths)
 		let message = 'Move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
 		// console.log('move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		this.queue('G0 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
@@ -52,7 +52,7 @@ export class PenPlotter extends Interpreter {
 	sendMoveLinear(point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null) {
 		super.sendMoveLinear(point, minSpeed, maxSpeed, callback)
 		let lengths = this.tipibot.cartesianToLengths(point)
-		let lengthsSteps = SettingsManager.mmToSteps(lengths)
+		let lengthsSteps = mmToSteps(lengths)
 		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', min speed: ' + minSpeed.toFixed(2)
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		// this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
@@ -146,11 +146,11 @@ export class PenPlotter extends Interpreter {
 		// this.queue('G4 P' + delayAfter + '\n', callback)
 	}
 
-	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), delayBefore: number = Settings.servo.delay.up.before, delayAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = servoUpAngle(), delayBefore: number = Settings.servo.delay.up.before, delayAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		this.sendPenState(servoUpValue, delayBefore, delayAfter, callback)
 	}
 
-	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		this.sendPenState(servoDownValue, delayBefore, delayAfter, callback)
 	}
 

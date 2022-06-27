@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
+import { mmToSteps, servoDownAngle, servoUpAngle, Settings } from "../Settings"
 import { Interpreter, Command, Communication } from "./Interpreter"
 
 const commands = {
@@ -114,7 +114,7 @@ export class Polargraph extends Interpreter {
 
 	sendMoveToNativePosition(direct: boolean, p: paper.Point, callback: () => any = null ) {
 		p = this.tipibot.cartesianToLengths(p)
-		p = SettingsManager.mmToSteps(p).divide(Settings.tipibot.microstepResolution)
+		p = mmToSteps(p).divide(Settings.tipibot.microstepResolution)
 		let command: string = null;
 		if (direct) {
 			command = commands.CMD_CHANGELENGTHDIRECT + Math.round(p.x) + "," + Math.round(p.y) + "," + this.getMaxSegmentLength() + ',END';
@@ -128,7 +128,7 @@ export class Polargraph extends Interpreter {
 
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     	point = this.tipibot.cartesianToLengths(point)
-		let pointInSteps = SettingsManager.mmToSteps(point).divide(Settings.tipibot.microstepResolution);
+		let pointInSteps = mmToSteps(point).divide(Settings.tipibot.microstepResolution);
 		let command = commands.CMD_SETPOSITION + Math.round(pointInSteps.x) + "," + Math.round(pointInSteps.y) + ',END';
 		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
 		this.queue(command, message);
@@ -187,7 +187,7 @@ export class Polargraph extends Interpreter {
 	sendMotorOff() {
 	}
 
-	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
+	sendPenLiftRange(servoDownValue: number=servoDownAngle(), servoUpValue: number=servoUpAngle()) {
 		let message = 'Set pen lift range: ' + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2)
 		this.queue(commands.CMD_SETPENLIFTRANGE + servoDownValue.toFixed(2) + ',' + servoUpValue.toFixed(2) + ',1,END', message);
 	}
@@ -195,24 +195,24 @@ export class Polargraph extends Interpreter {
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
 	}
 
-	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		if(servoUpTempoBefore > 0) {
 			this.sendPause(servoUpTempoBefore)
 		}
-		let message = 'Set pen up: ' + SettingsManager.servoUpAngle().toFixed(2)
-		this.queue(commands.CMD_PENUP + SettingsManager.servoUpAngle().toFixed(2) + ",END", message);
+		let message = 'Set pen up: ' + servoUpAngle().toFixed(2)
+		this.queue(commands.CMD_PENUP + servoUpAngle().toFixed(2) + ",END", message);
 		// this.queue(commands.CMD_PENUP + "END", callback);
 		if(servoUpTempoAfter > 0) {
 			this.sendPause(servoUpTempoAfter, callback)
 		}
 	}
 
-	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		if(servoDownTempoBefore > 0) {
 			this.sendPause(servoDownTempoBefore)
 		}
-		let message = 'Set pen down: ' + SettingsManager.servoDownAngle().toFixed(2)
-		this.queue(commands.CMD_PENDOWN + SettingsManager.servoDownAngle().toFixed(2) + ",END", message);
+		let message = 'Set pen down: ' + servoDownAngle().toFixed(2)
+		this.queue(commands.CMD_PENDOWN + servoDownAngle().toFixed(2) + ",END", message);
 		// this.queue(commands.CMD_PENDOWN + "END", callback);
 		if(servoDownTempoAfter > 0) {
 			this.sendPause(servoDownTempoAfter, callback)

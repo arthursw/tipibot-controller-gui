@@ -1,8 +1,9 @@
-import { tipibot } from "./TipibotInteractive"
-import { Settings, settingsManager, SettingsManager, paper } from "./Settings"
+import { Tipibot } from "./TipibotStatic"
+import { Settings, paper, mmPerSteps } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
 import { GUI, Controller } from "./GUI"
 import { Pen } from './Pen'
+import { settingsManager } from "./SettingsManager"
 
 export class SVGPlot {
 
@@ -70,7 +71,7 @@ export class SVGPlot {
 				Communication.interpreter.sendStop(true)
 				Communication.interpreter.clearQueue()
 				SVGPlot.svgPlot.plotting = false
-				tipibot.goHome()
+				Tipibot.tipibot.goHome()
 			}
 		}
 	}
@@ -153,7 +154,7 @@ export class SVGPlot {
 
 		this.group.addChild(this.item)
 
-		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
+		// this.item.position = this.item.position.add(Tipibot.tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.filter()
 
@@ -176,8 +177,8 @@ export class SVGPlot {
 	}
 
 	updatePositionGUI() {
-		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
-		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
+		SVGPlot.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - Tipibot.tipibot.drawArea.bounds.left)
+		SVGPlot.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot.tipibot.drawArea.bounds.top)
 	}
 
 	itemMustBeDrawn(item: paper.Item) {
@@ -448,7 +449,7 @@ export class SVGPlot {
 		}
 		this.plotItem(clone)
 		clone.remove()
-		tipibot.goHome(()=> this.plotFinished(callback))
+		Tipibot.tipibot.goHome(()=> this.plotFinished(callback))
 		console.log('Drawing commands generated.')
 	}
 
@@ -473,7 +474,7 @@ export class SVGPlot {
 	}
 
 	center() {
-		this.group.position = tipibot.drawArea.bounds.center
+		this.group.position = Tipibot.tipibot.drawArea.bounds.center
 		this.updatePositionGUI()
 	}
 
@@ -488,11 +489,11 @@ export class SVGPlot {
 	}
 	
 	setX(x: number) {
-		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
+		this.group.position.x = Tipibot.tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
 	}
 	
 	setY(y: number) {
-		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
+		this.group.position.y = Tipibot.tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
 	}
 
 	getAngle(segment: paper.Segment) {
@@ -580,10 +581,9 @@ export class SVGPlot {
 	computeSpeeds(path: paper.Path) {
 		let maxSpeed = Settings.tipibot.maxSpeed
 		let acceleration = Settings.tipibot.acceleration
-		let mmPerSteps = SettingsManager.mmPerSteps()
 
 		let brakingDistanceSteps = maxSpeed * maxSpeed / (2.0 * acceleration)
-		let brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+		let brakingDistanceMm = brakingDistanceSteps * mmPerSteps()
 
 		let reversedSpeeds: number[] = []
 		let currentSegment = path.lastSegment
@@ -615,7 +615,7 @@ export class SVGPlot {
 				previousMinSpeed = minSpeed
 				distanceToLastMinSpeed = 0
 				brakingDistanceSteps = ( (maxSpeed - minSpeed) / acceleration ) * ( (minSpeed + maxSpeed) / 2 )
-				brakingDistanceMm = brakingDistanceSteps * mmPerSteps
+				brakingDistanceMm = brakingDistanceSteps * mmPerSteps()
 			}
 
 			currentSegment = currentSegment == path.firstSegment ? null : currentSegment.previous
@@ -642,7 +642,7 @@ export class SVGPlot {
 		// 	// let circle = paper.Path.Circle(point, 4)
 		// 	// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
 		// }
-		tipibot.moveLinear(point, minSpeed, Settings.tipibot.maxSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
+		Tipibot.tipibot.moveLinear(point, minSpeed, Settings.tipibot.maxSpeed, ()=> Tipibot.tipibot.pen.setPosition(point, true, false), false)
 	}
 
 	plotItem(item: paper.Item) {
@@ -661,11 +661,11 @@ export class SVGPlot {
 					let point = segment.point
 
 					if(segment == path.firstSegment) {
-						if(!tipibot.getPosition().equals(point)) {
-							tipibot.penUp()
-							tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+						if(!Tipibot.tipibot.getPosition().equals(point)) {
+							Tipibot.tipibot.penUp()
+							Tipibot.tipibot.moveDirect(point, ()=> Tipibot.tipibot.pen.setPosition(point, true, false), false)
 						}
-						tipibot.penDown()
+						Tipibot.tipibot.penDown()
 					} else {
 						this.moveTipibotLinear(segment, speeds)
 					}
@@ -695,13 +695,13 @@ export class SVGPlot {
 	// 			let path: paper.Path = <paper.Path>item
 	// 			let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
 	// 			if(segment == path.firstSegment) {
-	// 				if(!tipibot.getPosition().equals(segment.point)) {
-	// 					tipibot.penUp()
-	// 					tipibot.moveDirect(segment.point, this.plotItemStep)
+	// 				if(!Tipibot.tipibot.getPosition().equals(segment.point)) {
+	// 					Tipibot.tipibot.penUp()
+	// 					Tipibot.tipibot.moveDirect(segment.point, this.plotItemStep)
 	// 				}
-	// 				tipibot.penDown()
+	// 				Tipibot.tipibot.penDown()
 	// 			} else {
-	// 				tipibot.moveLinear(segment.point, this.plotItemStep)
+	// 				Tipibot.tipibot.moveLinear(segment.point, this.plotItemStep)
 	// 			}
 
 	// 			// go to next segment

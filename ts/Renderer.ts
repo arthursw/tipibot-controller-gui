@@ -1,5 +1,4 @@
-import $ = require("jquery");
-import { Settings, paper } from "./Settings"
+import { isServer, Settings, paper } from "./Settings"
 
 export class Renderer {
 	
@@ -12,12 +11,14 @@ export class Renderer {
 
 	constructor() {
 		this.canvas = document.createElement('canvas')
-		let containerJ = $('#canvas')
-		this.canvas.width = containerJ.width()
-		this.canvas.height = containerJ.height()
-		containerJ.get(0).appendChild(this.canvas)
 
-		
+		if(!isServer) {
+			let container = document.getElementById('canvas')
+			this.canvas.width = container.offsetWidth
+			this.canvas.height = container.offsetHeight
+			container.appendChild(this.canvas)
+		}
+				
 		paper.setup(<any>this.canvas)
 		paper.project.currentStyle.strokeColor = new paper.Color('black')
 		paper.project.currentStyle.strokeWidth = 0.5
@@ -40,12 +41,12 @@ export class Renderer {
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true, canvas=this.canvas) {
 		if(zoom) {
 			let margin = 200
-			let ratio = Math.max((tipibot.width + margin) / canvas.width * window.devicePixelRatio, (tipibot.height + margin) / canvas.height * window.devicePixelRatio)
+			let ratio = Math.max((Settings.tipibot.width + margin) / canvas.width * window.devicePixelRatio, (Settings.tipibot.height + margin) / canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
 			document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
 		}
 
-		paper.view.center = new paper.Point(tipibot.width / 2, tipibot.height / 2)
+		paper.view.center = new paper.Point(Settings.tipibot.width / 2, Settings.tipibot.height / 2)
 	}
 
 	getDomElement(): any {
@@ -57,12 +58,11 @@ export class Renderer {
 			return
 		}
 		
-		let containerJ = $('#canvas')
-		let width = containerJ.width()
-		let height = containerJ.height()
-		let canvasJ = $(this.canvas)
-		canvasJ.width(width)
-		canvasJ.height(height)
+		let container = document.getElementById('canvas')
+		let width = container.offsetWidth
+		let height = container.offsetHeight
+		this.canvas.width = width
+		this.canvas.height = height
 		paper.view.viewSize = new paper.Size(width, height)
 
 		this.centerOnTipibot(Settings.tipibot, false)
@@ -114,7 +114,7 @@ export class Renderer {
 		switch (event.keyCode) {
 			case 32: 			// space
 				this.spacePressed = true
-				$('#canvas').addClass('grab')
+				document.getElementById('canvas').classList.add('grab')
 		}
 	}
 
@@ -122,7 +122,7 @@ export class Renderer {
 		switch (event.keyCode) {
 			case 32: 			// space
 				this.spacePressed = false
-				$('#canvas').removeClass('grab')
+				document.getElementById('canvas').classList.remove('grab')
 		}
 	}
 

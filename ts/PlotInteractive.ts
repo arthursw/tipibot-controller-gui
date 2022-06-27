@@ -1,8 +1,9 @@
-import { Settings, settingsManager, paper } from "./Settings"
-import { tipibot } from "./TipibotInteractive"
+import { Settings, paper } from "./Settings"
+import { Tipibot } from "./TipibotStatic"
 import { Communication } from "./Communication/CommunicationStatic"
 import { GUI } from "./GUI"
 import { SVGPlotStatic } from "./PlotStatic";
+import { settingsManager } from "./SettingsManager";
 
 export class SVGPlotInteractive extends SVGPlotStatic {
 
@@ -102,7 +103,7 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 				Communication.interpreter.sendStop(true)
 				Communication.interpreter.clearQueue()
 				SVGPlotInteractive.svgPlot.plotting = false
-				tipibot.goHome()
+				Tipibot.tipibot.goHome()
 			}
 		}
 	}
@@ -176,7 +177,7 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 	}
 
 	onMouseDrag(event:any) {
-		if(tipibot.pen.dragging || this.checkPlotting()) {
+		if(Tipibot.tipibot.pen.dragging || this.checkPlotting()) {
 			return
 		}
 		this.group.position = this.group.position.add(event.delta)
@@ -184,8 +185,8 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 	}
 
 	updatePositionGUI() {
-		SVGPlotInteractive.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - tipibot.drawArea.bounds.left)
-		SVGPlotInteractive.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - tipibot.drawArea.bounds.top)
+		SVGPlotInteractive.transformFolder.getController('X').setValueNoCallback(this.group.bounds.left - Tipibot.tipibot.drawArea.bounds.left)
+		SVGPlotInteractive.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot.tipibot.drawArea.bounds.top)
 	}
 
 	plot(callback: ()=> void = null, goHomeOnceFinished = true, gCode = false) {

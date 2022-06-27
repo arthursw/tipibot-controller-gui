@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, settingsManager, paper } from "../Settings"
+import { Settings, paper, autoHomePosition, mmPerSteps, servoUpAngle, servoDownAngle } from "../Settings"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class Makelangelo extends Interpreter {
@@ -50,7 +50,13 @@ export class Makelangelo extends Interpreter {
 		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
 	}
 
-	sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
+    sendAutoHome(callback: () => any = null) {
+		super.sendAutoHome(callback)
+		this.lastCommandWasMove = false
+		this.queue('G28 XY\n', 'Auto home.', ()=> this.sendSetPosition(autoHomePosition(), callback))
+	}
+
+	sendSetPosition(point: paper.Point=this.tipibot.getPosition(), callback: () => any = null) {
 		super.sendSetPosition(point)
 		this.lastCommandWasMove = false
 		point = this.convertToMakelangeloCoordinates(point)
@@ -58,14 +64,14 @@ export class Makelangelo extends Interpreter {
 		// let lengthsSteps = SettingsManager.mmToSteps(lengths)
 		// console.log('set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		let message = 'Set position: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2)
-		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message)
+		this.queue('G92 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
 	}
 
 	sendMoveDirect(point: paper.Point, callback: () => any = null) {
 		super.sendMoveDirect(point, callback)
 		point = this.convertToMakelangeloCoordinates(point)
 		let speed = Settings.tipibot.maxSpeed
-		let speedInMMperSec = speed * SettingsManager.mmPerSteps()
+		let speedInMMperSec = speed * mmPerSteps()
 		// let lengths = this.tipibot.cartesianToLengths(point)
 		// let lengthsSteps = SettingsManager.mmToSteps(lengths)
 		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', speed: ' + speedInMMperSec.toFixed(2)
@@ -239,11 +245,11 @@ export class Makelangelo extends Interpreter {
 		}
 	}
 
-	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), delayBefore: number = Settings.servo.delay.up.before, delayAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = servoUpAngle(), delayBefore: number = Settings.servo.delay.up.before, delayAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 		this.sendPenState(servoUpValue, delayBefore, delayAfter, callback)
 	}
 
-	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = servoDownAngle(), delayBefore: number = Settings.servo.delay.down.before, delayAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 		this.sendPenState(servoDownValue, delayBefore, delayAfter, callback)
 	}
 

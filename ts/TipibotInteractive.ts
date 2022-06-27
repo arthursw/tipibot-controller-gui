@@ -1,19 +1,24 @@
 import $ = require("jquery");
 import { Communication } from "./Communication/CommunicationStatic"
-import { Settings, SettingsManager, settingsManager, paper } from "./Settings"
+import { Settings, paper, servoDownAngle, servoUpAngle } from "./Settings"
+import { settingsManager } from "./SettingsManager"
 import { Pen, MoveType, PenState } from "./Pen"
 import { GUI, Controller } from "./GUI"
-import { TipibotStatic } from "./TipibotStatic"
+import { Tipibot } from "./TipibotStatic"
 
-export class TipibotInteractive extends TipibotStatic {
+export class TipibotInteractive extends Tipibot {
 
 	gui: GUI
 	penStateButton: Controller = null
 	motorsEnableButton: Controller = null
 
+	static tipibot: TipibotInteractive
+
 	constructor() {
 		super()
 		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
+		Tipibot.tipibot = this
+		TipibotInteractive.tipibot = this
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -40,9 +45,9 @@ export class TipibotInteractive extends TipibotStatic {
 	togglePenState() {
 		let callback = ()=> console.log('pen state changed')
 		if(this.pen.state == PenState.Up) {
-			this.penDown(SettingsManager.servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
+			this.penDown(servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
 		} else {
-			this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
+			this.penUp(servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
 		}
 	}
 
@@ -77,6 +82,8 @@ export class TipibotInteractive extends TipibotStatic {
 
 	initialize() {
 		super.initialize()
+		settingsManager.setTipibot(this)
+		
 		this.home = this.createTarget(Settings.tipibot.homeX, Settings.tipibot.homeY, Pen.HOME_RADIUS)
 		
 		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
@@ -140,7 +147,7 @@ export class TipibotInteractive extends TipibotStatic {
 		this.motorsEnableButton.setName('Disable motors')
 	}
 
-	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
 		let liftPen = super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback, force)
 		if(liftPen) {
 			this.penStateButton.setName('Pen down')
@@ -148,7 +155,7 @@ export class TipibotInteractive extends TipibotStatic {
 		return liftPen
 	}
 
-	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
 		let lowerPen = super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback, force)
 		if(lowerPen) {
 			this.penStateButton.setName('Pen up')
@@ -206,5 +213,4 @@ export class TipibotInteractive extends TipibotStatic {
 	keyUp(event:KeyboardEvent) {
 	}
 }
-
-export let tipibot = new TipibotInteractive()
+let tipibot = new TipibotInteractive()

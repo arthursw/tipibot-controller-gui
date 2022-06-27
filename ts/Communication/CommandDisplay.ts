@@ -1,12 +1,13 @@
 import $ = require("jquery");
-import { Settings, settingsManager, paper } from "../Settings"
+import { Settings, paper } from "../Settings"
+import { settingsManager } from "../SettingsManager"
 import { GUI, Controller } from "../GUI"
 import { Communication } from "./CommunicationStatic"
 import { Command, SpecialCommandTypes } from "../Communication/Interpreter"
 import { MoveType } from "../Pen"
 import { SVGPlot } from "../Plot"
 import { Console } from "../Console"
-import { tipibot } from "../TipibotInteractive"
+import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 
 export class CommandDisplay {
 
@@ -16,6 +17,7 @@ export class CommandDisplay {
 	connectButton: Controller
 	goHomeButton: Controller
 	setHomeButton: Controller
+	autoHomeButton: Controller
 	initializeButton: Controller
 	loadSVGButton: Controller
 	clearSVGButton: Controller
@@ -52,58 +54,58 @@ export class CommandDisplay {
 		})
 		$('#move-controls button.up-arrow').mousedown(()=> {
 			let amount = parseFloat($('#move-speed button.selected').attr('data-value'))
-			tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(0, -amount)))
+			Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(0, -amount)))
 		})
 		$('#move-controls button.down-arrow').mousedown(()=> {
 			let amount = parseFloat($('#move-speed button.selected').attr('data-value'))
-			tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(0, amount)))
+			Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(0, amount)))
 		})
 		$('#move-controls button.left-arrow').mousedown(()=> {
 			let amount = parseFloat($('#move-speed button.selected').attr('data-value'))
-			tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(-amount, 0)))
+			Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(-amount, 0)))
 		})
 		$('#move-controls button.right-arrow').mousedown(()=> {
 			let amount = parseFloat($('#move-speed button.selected').attr('data-value'))
-			tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(amount, 0)))
+			Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(amount, 0)))
 		})
 		$('#move-controls button.home').mousedown(()=> {
-			tipibot.goHome(()=> console.log('I am home :-)'))
+			Tipibot.tipibot.goHome(()=> console.log('I am home :-)'))
 		})
 	}
 
 	initializeServoControls() {
 
 		$('#servo-controls button.plus').mousedown(()=> {
-			tipibot.servoPlus()
+			Tipibot.tipibot.servoPlus()
 		})
 		$('#servo-controls button.minus').mousedown(()=> {
-			tipibot.servoMinus()
+			Tipibot.tipibot.servoMinus()
 		})
 
 		$('#servo-controls button.go-pen-up').mousedown(()=> {
-			tipibot.servoChanged(true, 'up', false)
+			Tipibot.tipibot.servoChanged(true, 'up', false)
 		})
 		$('#servo-controls button.go-pen-down').mousedown(()=> {
-			tipibot.servoChanged(true, 'down', false)
+			Tipibot.tipibot.servoChanged(true, 'down', false)
 		})
 		$('#servo-controls button.go-pen-close').mousedown(()=> {
-			tipibot.servoChanged(true, 'close', false)
+			Tipibot.tipibot.servoChanged(true, 'close', false)
 		})
 		$('#servo-controls button.go-pen-drop').mousedown(()=> {
-			tipibot.servoChanged(true, 'drop', false)
+			Tipibot.tipibot.servoChanged(true, 'drop', false)
 		})
 
 		$('#servo-controls button.set-pen-up').mousedown(()=> {
-			tipibot.servoChanged(true, 'up', true)
+			Tipibot.tipibot.servoChanged(true, 'up', true)
 		})
 		$('#servo-controls button.set-pen-down').mousedown(()=> {
-			tipibot.servoChanged(true, 'down', true)
+			Tipibot.tipibot.servoChanged(true, 'down', true)
 		})
 		$('#servo-controls button.set-pen-close').mousedown(()=> {
-			tipibot.servoChanged(true, 'close', true)
+			Tipibot.tipibot.servoChanged(true, 'close', true)
 		})
 		$('#servo-controls button.set-pen-drop').mousedown(()=> {
-			tipibot.servoChanged(true, 'drop', true)
+			Tipibot.tipibot.servoChanged(true, 'drop', true)
 		})
 	}
 
@@ -122,17 +124,16 @@ export class CommandDisplay {
 			let controller = settingsManager.gui.getFolder('Settings').getController('fullscreen')
 			controller.setValue(!controller.getValue())
 		})
-		tipibot.gui = this.gui
+		Tipibot.tipibot.gui = this.gui
 		let position = { moveX: Settings.tipibot.homeX, moveY: Settings.tipibot.homeY }
-		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(value, tipibot.getPosition().y)))
-		this.gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> tipibot.move(MoveType.Direct, new paper.Point(tipibot.getPosition().x, value)))
-		let communication = Communication.communication
-		this.connectButton = this.gui.addButton(communication && communication.serialPortConnectionOpened ? 'Disconnect' : 'Connect', ()=> {
-			if(communication.serialPortConnectionOpened) {
-				communication.disconnectSerialPort()
+		this.gui.add(position, 'moveX', 0, Settings.tipibot.width).name('Move X').onFinishChange((value)=> Tipibot.tipibot.move(MoveType.Direct, new paper.Point(value, Tipibot.tipibot.getPosition().y)))
+		this.gui.add(position, 'moveY', 0, Settings.tipibot.height).name('Move Y').onFinishChange((value)=> Tipibot.tipibot.move(MoveType.Direct, new paper.Point(Tipibot.tipibot.getPosition().x, value)))
+		this.connectButton = this.gui.addButton(Communication.communication && Communication.communication.serialPortConnectionOpened ? 'Disconnect' : 'Connect', ()=> {
+			if(Communication.communication.serialPortConnectionOpened) {
+				Communication.communication.disconnectSerialPort()
 			} else {
-				if(communication.autoConnectController != null) {
-					communication.autoConnectController.setValue(true)
+				if(Communication.communication.autoConnectController != null) {
+					Communication.communication.autoConnectController.setValue(true)
 				}
 			}
 		})
@@ -140,15 +141,18 @@ export class CommandDisplay {
 		document.addEventListener('Disconnect', ()=> this.connectButton.setName('Connect'))
 		this.addIcon(this.connectButton, 'connect')
 
-		this.goHomeButton = this.gui.addButton('Go home', ()=> tipibot.goHome(()=> console.log('I am home :-)')))
+		this.goHomeButton = this.gui.addButton('Go home', ()=> Tipibot.tipibot.goHome(()=> console.log('I am home :-)')))
 
-		this.setHomeButton = this.gui.addButton('Set home', ()=> tipibot.setHome())
+		this.setHomeButton = this.gui.addButton('Set home', ()=> Tipibot.tipibot.setHome())
 		this.addIcon(this.setHomeButton, 'set-home')
 
-		tipibot.penStateButton = this.gui.addButton('Pen down', () => tipibot.togglePenState() )
-		this.addIcon(tipibot.penStateButton, 'pen')
-		tipibot.motorsEnableButton = this.gui.addButton('Disable motors', ()=> tipibot.toggleMotors())
-		this.addIcon(tipibot.motorsEnableButton, 'toggle-motors')
+		this.autoHomeButton = this.gui.addButton('Auto home', ()=> Tipibot.tipibot.autoHome())
+		this.addIcon(this.autoHomeButton, 'set-home')
+
+		Tipibot.tipibot.penStateButton = this.gui.addButton('Pen down', () => Tipibot.tipibot.togglePenState() )
+		this.addIcon(Tipibot.tipibot.penStateButton, 'pen')
+		Tipibot.tipibot.motorsEnableButton = this.gui.addButton('Disable motors', ()=> Tipibot.tipibot.toggleMotors())
+		this.addIcon(Tipibot.tipibot.motorsEnableButton, 'toggle-motors')
 		
 		this.initializeButton = this.gui.addButton('Initialize', ()=> Communication.interpreter.initialize(false))
 		

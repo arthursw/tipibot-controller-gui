@@ -1,5 +1,4 @@
-import { Settings, SettingsManager, settingsManager } from "../Settings"
-import { Interpreter, Communication } from "./Interpreter"
+import { Communication } from "./Interpreter"
 import { PenPlotter } from "./PenPlotter"
 
 export class FredBot extends PenPlotter {

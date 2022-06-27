@@ -1,7 +1,8 @@
 import $ = require("jquery");
 import { GUI, Controller } from "../GUI"
 import { Communication } from "./CommunicationStatic"
-import { Settings, settingsManager } from "../Settings"
+import { Settings } from "../Settings"
+import { settingsManager } from "../SettingsManager"
 
 export class CommunicationInteractive extends Communication {
 
@@ -71,8 +72,8 @@ export class CommunicationInteractive extends Communication {
 		this.portController.onFinishChange( (value: any) => this.serialConnectionPortChanged(value) )
 	}
 
-	onMessage(event: any) {
-		let messageObject = super.onMessage(event)
+	onMessage(messageObject: any) {
+		super.onMessage(messageObject)
 		let type = messageObject.type
 		let data = messageObject.data
 
@@ -100,8 +101,10 @@ export class CommunicationInteractive extends Communication {
 			}
 		} else if(type == 'connected-to-simulator') {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
+		} else if(type == 'load-settings') {
+			settingsManager.loadJSONandOverwriteLocalStorage(data)
 		}
-		return messageObject
+		return
 	}
 
 	connectToSerial() {

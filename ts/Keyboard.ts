@@ -2,7 +2,7 @@ import * as $ from "jquery"
 import Keyboard from 'simple-keyboard';
 import 'simple-keyboard/build/css/index.css';
 import { Settings, isServer, paper } from './Settings'
-import { tipibot } from './TipibotInteractive'
+import { TipibotInteractive as Tipibot } from "./TipibotInteractive"
 
 const nameToSpeed: any = {
     "{x0.25}": 0.25,
@@ -194,16 +194,16 @@ export class VirtualKeyboard {
 		let amount: number = speedName != null ? nameToSpeed[speedName] : 1
 		switch (button) {
 			case '{arrowleft}': 			// left arrow
-				tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(-amount, 0)))
+				Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(-amount, 0)))
 				break;
 			case '{arrowup}':   			// up arrow
-				tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(0, -amount)))
+				Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(0, -amount)))
 				break;
 			case '{arrowright}': 			// right arrow
-				tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(amount, 0)))
+				Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(amount, 0)))
 				break;
 			case '{arrowdown}': 			// down arrow
-				tipibot.moveDirect(tipibot.getPosition().add(new paper.Point(0, amount)))
+				Tipibot.tipibot.moveDirect(Tipibot.tipibot.getPosition().add(new paper.Point(0, amount)))
 				break;
 			
 			default:

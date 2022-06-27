@@ -1,10 +1,10 @@
 import { Communication } from "./Communication/CommunicationStatic"
-import { isServer, Settings, SettingsManager, settingsManager, paper } from "./Settings"
+import { isServer, Settings, paper, servoUpAngle, servoDownAngle, autoHomePosition } from "./Settings"
 import { Pen, MoveType, PenState } from "./Pen"
 import { TipibotInterface } from "./TipibotInterface"
-import { calibration } from "./Calibration"
+import { Calibration } from "./CalibrationStatic"
 
-export class TipibotStatic implements TipibotInterface {
+export class Tipibot implements TipibotInterface {
 
 	tipibotArea: paper.Path
 	drawArea: paper.Path
@@ -25,9 +25,15 @@ export class TipibotStatic implements TipibotInterface {
 
 	ignoreKeyEvents = false
 
+	static tipibot: Tipibot = null
 	constructor() {
 		this.moveToButtons = []
 		this.lastSentPosition = new paper.Point(0, 0)
+		Tipibot.tipibot = this
+	}
+
+	setPositionSliders(position: paper.Point): void {
+		
 	}
 
 	toggleSetPosition(setPosition?: boolean, cancel=true): void {
@@ -64,8 +70,6 @@ export class TipibotStatic implements TipibotInterface {
 		this.pen = new Pen(Settings.tipibot.homeX, Settings.tipibot.homeY, Settings.tipibot.penOffset, Settings.tipibot.width)
 
 		this.pen.group.bringToFront()
-
-		settingsManager.setTipibot(this)
 	}
 
 	updateTipibotArea() {
@@ -188,13 +192,13 @@ export class TipibotStatic implements TipibotInterface {
 
 		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
-			if(calibration.applyTransform) {
-				target = calibration.transform(target)
+			if(Calibration.calibration.applyTransform) {
+				target = Calibration.calibration.transform(target)
 			}
 			Communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
-			if(calibration.applyTransform) {
-				target = calibration.transform(target)
+			if(Calibration.calibration.applyTransform) {
+				target = Calibration.calibration.transform(target)
 			}
 			Communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback)
 		}
@@ -309,7 +313,7 @@ export class TipibotStatic implements TipibotInterface {
 		
 	}
 
-	penUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
 		let liftPen = this.pen.state != PenState.Up || force
 		if(liftPen) {
 			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
@@ -317,7 +321,7 @@ export class TipibotStatic implements TipibotInterface {
 		return liftPen
 	}
 
-	penDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
 		let lowerPen = this.pen.state == PenState.Up || force
 		if(lowerPen) {
 			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
@@ -334,13 +338,18 @@ export class TipibotStatic implements TipibotInterface {
 		Communication.interpreter.sendSetHome(this.getGondolaPosition())
 	}
 
+	autoHome(callback: ()=> any=null) {
+		this.setPosition(autoHomePosition(), false, true)
+		Communication.interpreter.sendAutoHome(callback)
+	}
+
 	goHome(callback: ()=> any = null) {
 		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		// let goHomeCallback = ()=> {
 		// 	this.pen.setPosition(homePoint, true, false)
 		// 	callback()
 		// }
-		this.penUp(SettingsManager.servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
+		this.penUp(servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
 		// this.penUp(null, null, null, true)
 		// The pen will make me (tipibot) move :-)
 		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
@@ -353,5 +362,6 @@ export class TipibotStatic implements TipibotInterface {
 		this.updateDrawArea()
 	}
 }
-
-export let tipibot: TipibotStatic = isServer ? new TipibotStatic() : null
+if(isServer) {
+	let tipibot = new Tipibot()
+}

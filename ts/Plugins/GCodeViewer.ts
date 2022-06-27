@@ -1,6 +1,6 @@
 import { Settings, paper } from "../Settings"
 import { GUI } from "../GUI"
-import { tipibot } from "../TipibotInteractive"
+import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 import { ajaxPrefilter, isPlainObject } from "jquery"
 
 declare var Two: any
@@ -60,7 +60,7 @@ export class GCodeViewer {
                 }
             }
         }
-        let currentPosition = tipibot.getHome()
+        let currentPosition = Tipibot.tipibot.getHome()
         let currentColor = new paper.Color(0,0,0)
         let penUp = true
         let currentPen = null
@@ -117,7 +117,7 @@ export class GCodeViewer {
         var container = document.createElement('div')
 
         var params = { width: Settings.drawArea.width, height: Settings.drawArea.height }
-        let drawArea = tipibot.computeDrawArea()
+        let drawArea = Tipibot.tipibot.computeDrawArea()
         var two = new Two(params).appendTo(container)
         
         let blobs = []

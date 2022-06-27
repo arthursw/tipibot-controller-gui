@@ -1,4 +1,4 @@
-import { tipibot } from "./TipibotInteractive"
+import { Tipibot } from "./TipibotStatic"
 import { Settings, isServer, paper } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
 import { PenState } from './Pen'
@@ -220,7 +220,7 @@ export class SVGPlotStatic {
 
 		this.group.addChild(this.item)
 
-		// this.item.position = this.item.position.add(tipibot.drawArea.getBounds().topLeft)
+		// this.item.position = this.item.position.add(Tipibot.tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.setBackground()
 		this.center()
@@ -463,29 +463,29 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 
 		this.currentPath = <paper.Path>clone.firstChild
 		let currentColor = this.getColorCSS(this.currentPath.strokeColor)
-		tipibot.sendChangePen(currentColor, this.currentColorIndex++)
+		Tipibot.tipibot.sendChangePen(currentColor, this.currentColorIndex++)
 
 		if(!gCode) {
 			// this.plotNext(()=> {
 			// 	if(goHomeOnceFinished) {
-			// 		tipibot.goHome(()=> this.plotFinished(callback))
+			// 		Tipibot.tipibot.goHome(()=> this.plotFinished(callback))
 			// 	} else {
 			// 		this.plotFinished(callback)
 			// 	}
 			// })
 			this.plotAll()
 			if(goHomeOnceFinished) {
-				tipibot.goHome(()=> this.plotFinished(callback))
+				Tipibot.tipibot.goHome(()=> this.plotFinished(callback))
 			} else {
 				this.plotFinished(callback)
 			}
 		} else {
 			this.plotGCode()
 			if(goHomeOnceFinished) {
-				tipibot.goHome()
+				Tipibot.tipibot.goHome()
 			}
 			if(Settings.plot.disableMotorsOnceFinished) {
-				tipibot.disableMotors(true)
+				Tipibot.tipibot.disableMotors(true)
 			}
 			this.plotting = false
 		}
@@ -537,7 +537,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			return
 		}
 
-		this.group.position = tipibot.drawArea.bounds.center
+		this.group.position = Tipibot.tipibot.drawArea.bounds.center
 		this.storeMatrix()
 	}
 
@@ -565,7 +565,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(this.checkPlotting()) {
 			return
 		}
-		this.group.position.x = tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
+		this.group.position.x = Tipibot.tipibot.drawArea.bounds.left + x + this.group.bounds.width / 2
 		this.storeMatrix()
 	}
 	
@@ -573,7 +573,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		if(this.checkPlotting()) {
 			return
 		}
-		this.group.position.y = tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
+		this.group.position.y = Tipibot.tipibot.drawArea.bounds.top + y + this.group.bounds.height / 2
 		this.storeMatrix()
 	}
 
@@ -675,7 +675,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		// 	// let circle = paper.Path.Circle(point, 4)
 		// 	// circle.fillColor = <any> { hue: speedRatio * 240, saturation: 1, brightness: 1 }
 		// }
-		tipibot.moveLinear(point, minSpeed, Settings.tipibot.drawSpeed, ()=> tipibot.pen.setPosition(point, true, false), false)
+		Tipibot.tipibot.moveLinear(point, minSpeed, Settings.tipibot.drawSpeed, ()=> Tipibot.tipibot.pen.setPosition(point, true, false), false)
 	}
 
 	plotPath(path: paper.Path) {
@@ -688,11 +688,11 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			let point = segment.point
 
 			if(segment == path.firstSegment) {
-				if(!tipibot.lastSentPosition.equals(point)) {
-					tipibot.penUp()
-					tipibot.moveDirect(point, ()=> tipibot.pen.setPosition(point, true, false), false)
+				if(!Tipibot.tipibot.lastSentPosition.equals(point)) {
+					Tipibot.tipibot.penUp()
+					Tipibot.tipibot.moveDirect(point, ()=> Tipibot.tipibot.pen.setPosition(point, true, false), false)
 				}
-				tipibot.penDown()
+				Tipibot.tipibot.penDown()
 			} else {
 				// this.moveTipibotLinear(segment, speeds)
 				this.moveTipibotLinear(segment)
@@ -716,11 +716,11 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			let currentColor = this.getColorCSS(this.currentPath.strokeColor)
 			let nextColor = this.getColorCSS(currentPath.strokeColor)
 			if(currentColor != null && nextColor != null && currentColor != nextColor) {
-				let wasPenUp = tipibot.pen.state == PenState.Up
-				tipibot.penUp()
-				tipibot.sendChangePen(nextColor, this.currentColorIndex++)
+				let wasPenUp = Tipibot.tipibot.pen.state == PenState.Up
+				Tipibot.tipibot.penUp()
+				Tipibot.tipibot.sendChangePen(nextColor, this.currentColorIndex++)
 				if(!wasPenUp) {
-					tipibot.penDown()
+					Tipibot.tipibot.penDown()
 				} 
 			}
 		}
@@ -766,7 +766,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	// 			this.currentPath.splitAt(this.currentPath.segments[SVGPlotStatic.nSegmentsPerBatch-1].location)
 	// 		}
 
-	// 		tipibot.executeOnceFinished(()=> this.plotNext(callback))
+	// 		Tipibot.tipibot.executeOnceFinished(()=> this.plotNext(callback))
 	// 	} else {
 	// 		callback()
 	// 	}
@@ -789,13 +789,13 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	// 			let path: paper.Path = <paper.Path>item
 	// 			let segment = this.currentSegment != null ? this.currentSegment : path.firstSegment
 	// 			if(segment == path.firstSegment) {
-	// 				if(!tipibot.getPosition().equals(segment.point)) {
-	// 					tipibot.penUp()
-	// 					tipibot.moveDirect(segment.point, this.plotItemStep)
+	// 				if(!Tipibot.tipibot.getPosition().equals(segment.point)) {
+	// 					Tipibot.tipibot.penUp()
+	// 					Tipibot.tipibot.moveDirect(segment.point, this.plotItemStep)
 	// 				}
-	// 				tipibot.penDown()
+	// 				Tipibot.tipibot.penDown()
 	// 			} else {
-	// 				tipibot.moveLinear(segment.point, this.plotItemStep)
+	// 				Tipibot.tipibot.moveLinear(segment.point, this.plotItemStep)
 	// 			}
 
 	// 			// go to next segment
@@ -842,11 +842,11 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			callback()
 		}
 		if(Settings.plot.disableMotorsOnceFinished) {
-			tipibot.disableMotors(true)
+			Tipibot.tipibot.disableMotors(true)
 		}
 		// if(!SVGPlotStatic.multipleFiles) {
 		// 	if(Settings.plot.disableMotorsOnceFinished) {
-		// 		tipibot.disableMotors(true)
+		// 		Tipibot.tipibot.disableMotors(true)
 		// 	}
 		// }
 	}

@@ -1,8 +1,7 @@
 import { Settings, paper } from "../Settings"
 import { SVGPlotStatic } from "../PlotStatic"
 import { Communication } from "../Communication/CommunicationStatic"
-import { tipibot } from "../TipibotInteractive"
-import { visualFeedback } from "../VisualFeedback"
+import { Tipibot } from "../TipibotStatic"
 
 const RequestTimeout = 2000
 
@@ -11,7 +10,7 @@ const RequestTimeout = 2000
 export let CommeUnDesseinSize = new paper.Size(4000, 3000)
 
 let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
-	let drawArea = tipibot.drawArea.bounds
+	let drawArea = Tipibot.tipibot.drawArea.bounds
 	let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
 	const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
 	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size as any).multiply(drawArea.size as any).add(drawArea.topLeft)
@@ -129,7 +128,7 @@ export class CommeUnDessein {
 		}
 		Communication.interpreter.sendStop(true)
 		Communication.interpreter.clearQueue()
-		tipibot.goHome()
+		Tipibot.tipibot.goHome()
 		this.state = State.NextDrawing
 		clearTimeout(this.timeoutID)
 	}
@@ -277,9 +276,6 @@ export class CommeUnDessein {
 	// }
 
 	setDrawingStatusDrawn(pk: string) {
-		if(visualFeedback.paths.children.length > 0) {
-			visualFeedback.paths.removeChildren()
-		}
 
 		if(this.state != State.Drawing) {
 			console.error('CommeUnDessein trying to setDrawingStatusDrawn while not in Drawing state')

@@ -1,4 +1,4 @@
-import { Settings, SettingsManager, paper } from "../Settings"
+import { Settings, paper, servoUpAngle, servoDownAngle } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
@@ -207,6 +207,9 @@ export class Interpreter {
 
     sendSetHome(point: paper.Point=this.tipibot.getPosition()) {
 	}
+
+    sendAutoHome(callback: () => any = null) {
+	}
 	
     sendSetPosition(point: paper.Point=this.tipibot.getPosition()) {
     }
@@ -275,10 +278,10 @@ export class Interpreter {
 	sendPenState(servoValue: number, servoTempo: number = 0) {
 	}
 
-	sendPenUp(servoUpValue: number = SettingsManager.servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	sendPenUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
 	}
 
-	sendPenDown(servoDownValue: number = SettingsManager.servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	sendPenDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
 	}
 
 	sendPenClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null) {
@@ -290,7 +293,7 @@ export class Interpreter {
 	sendStop(force = true) {
 	}
 
-	sendPenLiftRange(servoDownValue: number=SettingsManager.servoDownAngle(), servoUpValue: number=SettingsManager.servoUpAngle()) {
+	sendPenLiftRange(servoDownValue: number=servoDownAngle(), servoUpValue: number=servoUpAngle()) {
 	}
 
 	sendPenDelays(servoDownDelay: number=Settings.servo.delay.down.before, servoUpDelay: number=Settings.servo.delay.up.before) {
