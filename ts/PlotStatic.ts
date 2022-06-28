@@ -1,5 +1,5 @@
 import { Tipibot } from "./TipibotStatic"
-import { Settings, isServer, paper } from "./Settings"
+import { Settings, isServer, paper, document, createEvent } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
 import { PenState } from './Pen'
 
@@ -231,7 +231,7 @@ export class SVGPlotStatic {
 
 		this.filter()
 
-		this.group.onMouseDrag = (event: Event)=> this.onMouseDrag(event)
+		this.group.onMouseDrag = isServer ? null : (event: Event)=> this.onMouseDrag(event)
 
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
@@ -747,7 +747,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		for(let i=nCommands ; i< Communication.interpreter.commandQueue.length ; i++) {
 			commandsIDs.push(Communication.interpreter.commandQueue[i].id)
 		}
-		document.dispatchEvent(new CustomEvent('QueueCommands', { detail: commandsIDs }))
+		document.dispatchEvent(createEvent('QueueCommands', { detail: commandsIDs }))
 	}
 
 	// plotNextLoaded(callback: ()=> void) {

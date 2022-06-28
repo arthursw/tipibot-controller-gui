@@ -1,5 +1,5 @@
 import $ = require("jquery");
-import { Settings, paper } from "../Settings"
+import { Settings, paper, createEvent } from "../Settings"
 import { settingsManager } from "../SettingsManager"
 import { GUI, Controller } from "../GUI"
 import { Communication } from "./CommunicationStatic"
@@ -296,7 +296,7 @@ export class CommandDisplay {
 		}
 		itemJ.remove()
 		this.updateName()
-		document.dispatchEvent(new CustomEvent('CommandListChanged'))
+		document.dispatchEvent(createEvent('CommandListChanged'))
 	}
 
 	updateName() {
@@ -309,7 +309,7 @@ export class CommandDisplay {
 		// }
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
-		document.dispatchEvent(new CustomEvent('CommandListChanged'))
+		document.dispatchEvent(createEvent('CommandListChanged'))
 	}
 
 	sendCommand(command: Command) {
@@ -345,6 +345,6 @@ export class CommandDisplay {
 		// }
 		this.listJ.children().remove()
 		this.updateName()
-		document.dispatchEvent(new CustomEvent('CommandListChanged'))
+		document.dispatchEvent(createEvent('CommandListChanged'))
 	}
 }

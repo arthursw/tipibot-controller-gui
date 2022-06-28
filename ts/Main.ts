@@ -45,7 +45,7 @@ let drawing = {
 
 let w = <any>window
 
-document.addEventListener("DOMContentLoaded", function (event) {
+document.addEventListener("DOMContentLoaded", function (event:any) {
 
 
 	function initialize() {

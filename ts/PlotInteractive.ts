@@ -1,4 +1,4 @@
-import { Settings, paper } from "./Settings"
+import { Settings, paper, createEvent } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
 import { Communication } from "./Communication/CommunicationStatic"
 import { GUI } from "./GUI"
@@ -33,7 +33,7 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 	}
 
 	public static handleFileSelect(event: any) {
-		document.dispatchEvent(new CustomEvent('Load SVG'))
+		document.dispatchEvent(createEvent('Load SVG'))
 
 		this.gui.getController('Load SVG').hide()
 		this.gui.getController('Clear SVG').show()
@@ -79,7 +79,7 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 	}
 
 	public static clearClicked(event: any) {
-		document.dispatchEvent(new CustomEvent('Clear SVG'))
+		document.dispatchEvent(createEvent('Clear SVG'))
 		this.fileIndex = 0
 		Communication.interpreter.clearQueue()
 		SVGPlotInteractive.gui.getController('Load SVG').show()
@@ -95,11 +95,11 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 		if(SVGPlotInteractive.svgPlot != null) {
 			if(!SVGPlotInteractive.svgPlot.plotting) {
 				SVGPlotInteractive.gui.getController('Draw').name('Stop, clear commands & go home')
-				document.dispatchEvent(new CustomEvent('Draw'))
+				document.dispatchEvent(createEvent('Draw'))
 				SVGPlotInteractive.plotAndLoadLoop()
 			} else {
 				SVGPlotInteractive.gui.getController('Draw').name('Draw')
-				document.dispatchEvent(new CustomEvent('Stop drawing'))
+				document.dispatchEvent(createEvent('Stop drawing'))
 				Communication.interpreter.sendStop(true)
 				Communication.interpreter.clearQueue()
 				SVGPlotInteractive.svgPlot.plotting = false

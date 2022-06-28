@@ -88,14 +88,14 @@ export class Communication {
 		if(value == 'Disconnected') {
 			this.socket.emit('command', 'close ' + this.interpreter.serialPort)
 			
-			document.dispatchEvent(new CustomEvent('Disconnect'))
+			document.dispatchEvent(createEvent('Disconnect'))
 		}
 		else if(value == 'Refresh') {
 			this.serialPorts = []
 			this.socket.emit('command', 'list')
 		} else {
 			this.interpreter.setSerialPort(value);
-			document.dispatchEvent(new CustomEvent('Connect', { detail: value }))
+			document.dispatchEvent(createEvent('Connect', { detail: value }))
 			this.socket.emit('command', 'open ' + value + ' ' + SERIAL_COMMUNICATION_SPEED)
 		}
 	}

@@ -1,21 +1,7 @@
 export let paper = require('paper');
-
 export let isServer = (typeof process !== 'undefined') && (typeof process.versions.node !== 'undefined')
-
-
-if(isServer) {
-	// paper = require('paper');
-	var size = new paper.Size(1000, 1000);
-	paper.setup(size);
-
-	let circle = new paper.Path.Circle(new paper.Point(0, 0), 30)
-	circle.fillColor = new paper.Color(0.1, 0.3, 0.2);
-	circle.flatten(3)
-	console.log(circle.fillColor.red, circle.fillColor.green, circle.fillColor.blue)
-	for(let s of circle.segments) {
-		console.log(s.point.x)
-	}
-}
+export let document: Document = isServer ? (new EventTarget() as any) : window.document
+export let createEvent = (name:string, data:any=null):any => isServer ? new Event(name, data) : new CustomEvent(name, data)
 
 let tipibotHeight = 2020
 let tipibotWidth = 1780

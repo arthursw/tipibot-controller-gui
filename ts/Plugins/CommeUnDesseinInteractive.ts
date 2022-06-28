@@ -2,6 +2,7 @@ import { GUI, Controller } from "../GUI"
 import { CommeUnDessein, StorageKeys, CommeUnDesseinSize } from "./CommeUnDesseinStatic"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 import { visualFeedback } from "../VisualFeedback"
+import { Communication } from "../Communication/CommunicationStatic"
 
 export class CommeUnDesseinInteractive extends CommeUnDessein {
 
@@ -17,10 +18,9 @@ export class CommeUnDesseinInteractive extends CommeUnDessein {
 			folderName += ' (Test mode)'
 		}
 		let commeUnDesseinGUI = gui.addFolder(folderName)
-		commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => localStorage.setItem(StorageKeys.Origin, value))
-		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => localStorage.setItem(StorageKeys.Mode, value))
-		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => localStorage.setItem(StorageKeys.CommeUnDesseinSecret, value))
-		commeUnDesseinGUI.add(this, 'serverMode').onFinishChange((value)=> localStorage.setItem(StorageKeys.CommeUnDesseinServerMode, value))
+		commeUnDesseinGUI.add(this, 'origin').onFinishChange((value) => this.settingsChanged(StorageKeys.Origin, value))
+		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => this.settingsChanged(StorageKeys.Mode, value))
+		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => this.settingsChanged(StorageKeys.CommeUnDesseinSecret, value))
 
 		CommeUnDesseinSize.width = parseInt(window.localStorage.getItem('commeUnDesseinWidth')) || Tipibot.tipibot.drawArea.bounds.width
 		CommeUnDesseinSize.height = parseInt(window.localStorage.getItem('commeUnDesseinHeight')) || Tipibot.tipibot.drawArea.bounds.height
@@ -34,6 +34,11 @@ export class CommeUnDesseinInteractive extends CommeUnDessein {
 
 		this.startButton = commeUnDesseinGUI.addButton('Start', ()=> this.toggleStart())
 		// commeUnDesseinGUI.open()
+	}
+
+	settingsChanged(key:string, value: any) {
+		localStorage.setItem(key, value)
+		Communication.communication.send('comme-un-dessein', { key: key, value: value })
 	}
 
 	toggleStart() {

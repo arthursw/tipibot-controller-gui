@@ -1,4 +1,4 @@
-import { Settings, paper } from "../Settings"
+import { Settings, paper, isServer } from "../Settings"
 import { SVGPlotStatic } from "../PlotStatic"
 import { Communication } from "../Communication/CommunicationStatic"
 import { Tipibot } from "../TipibotStatic"
@@ -37,8 +37,7 @@ let commeundesseinAjaxURL = '/ajaxCallNoCSRF/'
 export const StorageKeys = {
 	Mode: 'Mode',
 	Origin: 'Origin',
-	CommeUnDesseinSecret: 'CommeUnDesseinSecret',
-	CommeUnDesseinServerMode: 'CommeUnDesseinServerMode'
+	CommeUnDesseinSecret: 'CommeUnDesseinSecret'
 }
 
 // $.ajaxSetup({
@@ -85,14 +84,13 @@ export class CommeUnDessein {
 	state: State = State.NextDrawing
 	testMode: boolean
 	started: boolean = false
-	serverMode: boolean = true
 	timeoutID: NodeJS.Timeout = null
 
-	settings = {
-		mode: '',
-		origin: '',
-		secret: '',		
-	}
+	// settings = {
+	// 	mode: '',
+	// 	origin: '',
+	// 	secret: '',		
+	// }
 
 	static startCommeUnDessein() {
 		let commeUnDessein = new CommeUnDessein(false)
@@ -101,9 +99,11 @@ export class CommeUnDessein {
 
 	constructor(testMode=false) {
 		this.testMode = testMode
+		if(isServer) {
+			return
+		}
 		this.mode = localStorage.getItem(StorageKeys.Mode) || 'CommeUnDessein'
 		this.origin = localStorage.getItem(StorageKeys.Origin) || ''
-
 		let secret = localStorage.getItem(StorageKeys.CommeUnDesseinSecret)
 		if (secret != null) {
 			this.secret = secret

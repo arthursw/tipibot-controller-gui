@@ -1,5 +1,5 @@
 import { Tipibot } from "./TipibotStatic"
-import { Settings, isServer, paper } from "./Settings"
+import { Settings, isServer, document, paper, createEvent } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
 import { GUI } from "./GUI"
 import { PenState } from './Pen'
@@ -51,7 +51,7 @@ export class SVGPlot {
 	}
 
 	public static handleFileSelect(event: any) {
-		document.dispatchEvent(new CustomEvent('Load SVG'))
+		document.dispatchEvent(createEvent('Load SVG'))
 
 		this.gui.getController('Load SVG').hide()
 		this.gui.getController('Clear SVG').show()
@@ -130,7 +130,7 @@ export class SVGPlot {
 	}
 
 	public static clearClicked(event: any) {
-		document.dispatchEvent(new CustomEvent('Clear SVG'))
+		document.dispatchEvent(createEvent('Clear SVG'))
 		this.fileIndex = 0
 		Communication.interpreter.clearQueue()
 		SVGPlot.gui.getController('Load SVG').show()
@@ -146,11 +146,11 @@ export class SVGPlot {
 		if(SVGPlot.svgPlot != null) {
 			if(!SVGPlot.svgPlot.plotting) {
 				SVGPlot.gui.getController('Draw').name('Stop, clear commands & go home')
-				document.dispatchEvent(new CustomEvent('Draw'))
+				document.dispatchEvent(createEvent('Draw'))
 				SVGPlot.plotAndLoadLoop()
 			} else {
 				SVGPlot.gui.getController('Draw').name('Draw')
-				document.dispatchEvent(new CustomEvent('Stop drawing'))
+				document.dispatchEvent(createEvent('Stop drawing'))
 				Communication.interpreter.sendStop(true)
 				Communication.interpreter.clearQueue()
 				SVGPlot.svgPlot.plotting = false
@@ -414,7 +414,7 @@ export class SVGPlot {
 
 		this.filter()
 
-		this.group.onMouseDrag = (event: Event)=> this.onMouseDrag(event)
+		this.group.onMouseDrag = isServer ? null : (event: Event)=> this.onMouseDrag(event)
 
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
@@ -947,7 +947,7 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		for(let i=nCommands ; i< Communication.interpreter.commandQueue.length ; i++) {
 			commandsIDs.push(Communication.interpreter.commandQueue[i].id)
 		}
-		document.dispatchEvent(new CustomEvent('QueueCommands', { detail: commandsIDs }))
+		document.dispatchEvent(createEvent('QueueCommands', { detail: commandsIDs }))
 	}
 
 	// plotNextLoaded(callback: ()=> void) {

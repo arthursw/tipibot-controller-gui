@@ -71,7 +71,6 @@ export class Console {
 		console.warn = (...args: any[])=> log(args, this.warn, 'warn')
 		console.table = (...args: any[])=> log(args, this.table, 'table')
 
-
 		this.gui = new GUI({ autoPlace: false })
 
 		let customContainer = document.getElementById('info')

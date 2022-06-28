@@ -1,8 +1,7 @@
 import { Tipibot } from "./TipibotStatic"
 import { Settings, paper, mmPerSteps } from "./Settings"
 import { Communication } from "./Communication/CommunicationStatic"
-import { GUI, Controller } from "./GUI"
-import { Pen } from './Pen'
+import { GUI } from "./GUI"
 import { settingsManager } from "./SettingsManager"
 
 export class SVGPlot {

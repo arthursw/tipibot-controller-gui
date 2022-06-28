@@ -1,8 +1,8 @@
-import { isServer, Settings, paper } from "./Settings"
-
+import { Size } from "paper/dist/paper-core"
+import { isServer, Settings, paper, document, createEvent } from "./Settings"
 export class Renderer {
 	
-	canvas: HTMLCanvasElement
+	canvas: HTMLCanvasElement | paper.Size
 	dragging: boolean
 	previousPosition: paper.Point
 	spacePressed: boolean
@@ -10,13 +10,15 @@ export class Renderer {
 	ignoreWindowResize = false
 
 	constructor() {
-		this.canvas = document.createElement('canvas')
-
+	
 		if(!isServer) {
+			this.canvas = document.createElement('canvas')
 			let container = document.getElementById('canvas')
 			this.canvas.width = container.offsetWidth
 			this.canvas.height = container.offsetHeight
 			container.appendChild(this.canvas)
+		} else {
+			this.canvas = new Size(1000, 1000)
 		}
 				
 		paper.setup(<any>this.canvas)
@@ -41,9 +43,9 @@ export class Renderer {
 	centerOnTipibot(tipibot: {width: number, height: number}, zoom=true, canvas=this.canvas) {
 		if(zoom) {
 			let margin = 200
-			let ratio = Math.max((Settings.tipibot.width + margin) / canvas.width * window.devicePixelRatio, (Settings.tipibot.height + margin) / canvas.height * window.devicePixelRatio)
+			let ratio = isServer ? 1 : Math.max((Settings.tipibot.width + margin) / canvas.width * window.devicePixelRatio, (Settings.tipibot.height + margin) / canvas.height * window.devicePixelRatio)
 			paper.view.zoom = 1 / ratio
-			document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
+			document.dispatchEvent(createEvent('ZoomChanged', { detail: { } }))
 		}
 
 		paper.view.center = new paper.Point(Settings.tipibot.width / 2, Settings.tipibot.height / 2)
@@ -105,7 +107,7 @@ export class Renderer {
 		}
 		let cursorPosition = this.getWorldPosition(event)
 		paper.view.zoom = Math.max(0.1, Math.min(5, paper.view.zoom - event.deltaY / 300))
-		document.dispatchEvent(new CustomEvent('ZoomChanged', { detail: { } }))
+		document.dispatchEvent(createEvent('ZoomChanged', { detail: { } }))
 		let newCursorPosition = this.getWorldPosition(event)
 		paper.view.translate(newCursorPosition.subtract(cursorPosition))
 	}

@@ -1,6 +1,6 @@
 import $ = require("jquery");
 import { Renderer } from "../Renderer"
-import { Settings, paper } from "../Settings"
+import { Settings, paper, createEvent } from "../Settings"
 import { settingsManager } from "../SettingsManager"
 import { GUI, Controller } from "../GUI"
 import { Communication } from "../Communication/CommunicationStatic"
@@ -476,7 +476,7 @@ export class LiveDrawing {
 
 			for(let command of commandQueue.commands) {
 				Communication.interpreter.removeCommand(command.id)
-				document.dispatchEvent(new CustomEvent('CancelCommand', { detail: command }))
+				document.dispatchEvent(createEvent('CancelCommand', { detail: command }))
 			}
 			for(let path of commandQueue.paths) {
 				path.remove()

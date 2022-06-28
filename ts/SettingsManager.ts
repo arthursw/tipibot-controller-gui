@@ -1,6 +1,6 @@
 import { GUI } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
-import { copyObjectPropertiesFromJSON, isServer, mmPerSteps, Settings, paper } from "./Settings"
+import { copyObjectPropertiesFromJSON, isServer, mmPerSteps, Settings, paper, createEvent } from "./Settings"
 
 const MAX_SPEED = 20000
 
@@ -103,7 +103,7 @@ export class SettingsManager {
 		let feedbackFolder = settingsFolder.addFolder('Feedback')
 		feedbackFolder.add(Settings.feedback, 'enable').name('Enable feedback')
 		feedbackFolder.add(Settings.feedback, 'rate', 1, 100, 1).name('Feedback rate (info/sec.)')
-		feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(new CustomEvent('ClearFeedback')))
+		feedbackFolder.addButton('Clear feedback', () => document.dispatchEvent(createEvent('ClearFeedback')))
 		
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
@@ -275,7 +275,7 @@ export class SettingsManager {
 				this.virtualKeyboard.enableArrowsController.show()
 			}
 		}
-		document.dispatchEvent(new CustomEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
+		document.dispatchEvent(createEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
 		this.save(false)
 	}
 
@@ -310,7 +310,7 @@ export class SettingsManager {
 		// this.tipibot.setY(Settings.tipibot.homeY, true)
 		this.tipibot.setHome(false)
 
-		document.dispatchEvent(new CustomEvent('SettingChanged', { detail: { all: true } }))
+		document.dispatchEvent(createEvent('SettingChanged', { detail: { all: true } }))
 
 		// save to local storage
 		this.save(false)

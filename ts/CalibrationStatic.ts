@@ -1,10 +1,10 @@
-import { Settings, paper } from "./Settings"
+import { Settings, paper, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
 import * as PerspT from 'perspective-transform'
 
-// if (isServer) {
-//     var PerspT = require('perspective-transform');
-// }
+if (isServer) {
+    var ServerPerspT = require('perspective-transform');
+}
 // Calibration will draw a width x height rectangle (at the center of the paper) with different settings 
 // to calibrate the y offset and the width of the machine
 
@@ -59,7 +59,7 @@ export class Calibration {
     updateTransformMatrix() {
         let srcCorners = this.getDrawAreaPoints()
         let dstCorners = this.points
-        this.transformMatrix = PerspT(srcCorners, dstCorners)
+        this.transformMatrix = isServer ? ServerPerspT(srcCorners, dstCorners) : PerspT(srcCorners, dstCorners)
     }
 
     updateTransform(pointIndex: number) {

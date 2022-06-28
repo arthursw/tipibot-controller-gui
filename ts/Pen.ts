@@ -1,5 +1,5 @@
 import { Communication } from "./Communication/CommunicationStatic"
-import { Settings, paper, servoDownAngle, servoUpAngle } from "./Settings"
+import { Settings, paper, servoDownAngle, servoUpAngle, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
 
 export enum MoveType {
@@ -66,9 +66,11 @@ export class Pen {
 		this.group.addChild(this.offsetLine)
 
 		this.previousPosition = new paper.Point(0, 0)
-
-		this.group.onMouseDrag = (event:paper.MouseEvent) => this.onMouseDrag(event as any)
-		this.group.onMouseUp = (event:paper.MouseEvent) => this.onMouseUp(event as any)
+		
+		if(!isServer) {
+			this.group.onMouseDrag = (event:paper.MouseEvent) => this.onMouseDrag(event as any)
+			this.group.onMouseUp = (event:paper.MouseEvent) => this.onMouseUp(event as any)
+		}
 	}
 
 	onMouseDrag(event:any) {

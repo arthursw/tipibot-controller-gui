@@ -1,4 +1,4 @@
-import { Settings, paper, servoUpAngle, servoDownAngle } from "../Settings"
+import { Settings, paper, servoUpAngle, servoDownAngle, document, createEvent } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 
 const MAX_INPUT_BUFFER_LENGTH = 500
@@ -82,7 +82,7 @@ export class Interpreter {
 		if(this.pause) {
 			return
 		}
-		document.dispatchEvent(new CustomEvent('SendCommand', { detail: command }))
+		document.dispatchEvent(createEvent('SendCommand', { detail: command }))
 		if(command.special == SpecialCommandTypes.ChangePen) {
 			this.pause = true
 			console.log('send: ' + command.message + ' - ' + command.data)
@@ -132,7 +132,7 @@ export class Interpreter {
 			return
 		}
 
-		document.dispatchEvent(new CustomEvent('MessageReceived', { detail: message }))
+		document.dispatchEvent(createEvent('MessageReceived', { detail: message }))
 		
 		let isContinueMessage = message.indexOf(this.continueMessage) == 0
 		
@@ -147,7 +147,7 @@ export class Interpreter {
 				if(command.callback != null) {
 					command.callback()
 				}
-				document.dispatchEvent(new CustomEvent('CommandExecuted', { detail: command }))
+				document.dispatchEvent(createEvent('CommandExecuted', { detail: command }))
 				this.startQueue()
 			}
 		}
@@ -166,7 +166,7 @@ export class Interpreter {
 			this.commandQueue.push(command)
 			return
 		}
-		document.dispatchEvent(new CustomEvent('QueueCommand', { detail: command }))
+		document.dispatchEvent(createEvent('QueueCommand', { detail: command }))
 
 		this.commandQueue.push(command)
 
@@ -190,7 +190,7 @@ export class Interpreter {
 
 	clearQueue() {
 		this.commandQueue = []
-		document.dispatchEvent(new CustomEvent('ClearQueue', { detail: null }))
+		document.dispatchEvent(createEvent('ClearQueue', { detail: null }))
 	}
 
 	executeOnceFinished(callback: ()=> void) {

@@ -1,4 +1,4 @@
-import { copyObjectProperties, Settings } from "../Settings"
+import { copyObjectProperties, createEvent, document, Settings } from "../Settings"
 import { TipibotInterface } from "../TipibotInterface"
 import { Interpreter, SERIAL_COMMUNICATION_SPEED as ISERIAL_COMMUNICATION_SPEED } from "./Interpreter"
 import { Polargraph } from "./Polargraph"
@@ -106,12 +106,11 @@ export class Communication {
 		} else if(type == 'load-settings') {
 			copyObjectProperties(Settings, data)
 		}
-
 	}
 
 	onJSONMessage(event: any) {
 		let messageObject = JSON.parse(event.data)
-		document.dispatchEvent(new CustomEvent('ServerMessage', { detail: messageObject }))
+		document.dispatchEvent(createEvent('ServerMessage', { detail: messageObject }))
 		this.onMessage(messageObject)
 		return messageObject
 	}
@@ -143,7 +142,7 @@ export class Communication {
 		this.interpreter.sendStop(true)
 		this.onSerialPortConnectionClosed()
 		this.send('close')
-		document.dispatchEvent(new CustomEvent('Disconnect'))
+		document.dispatchEvent(createEvent('Disconnect'))
 	}
 
 	serialConnectionPortChanged(portName: string) {
@@ -151,7 +150,7 @@ export class Communication {
 			this.disconnectSerialPort()
 		} else if(portName != 'Disconnected') {
 			this.interpreter.setSerialPort(portName);
-			document.dispatchEvent(new CustomEvent('Connect', { detail: portName }))
+			document.dispatchEvent(createEvent('Connect', { detail: portName }))
 			console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed)
 			this.send('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed })
 		}
