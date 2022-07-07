@@ -1,6 +1,6 @@
 import { GUI } from "./GUI"
 import { TipibotInterface } from "./TipibotInterface"
-import { copyObjectPropertiesFromJSON, isServer, mmPerSteps, Settings, paper, createEvent } from "./Settings"
+import { copyObjectPropertiesFromJSON, isServer, mmPerSteps, Settings, paper, createEvent, copyObjectProperties } from "./Settings"
 
 const MAX_SPEED = 20000
 
@@ -359,6 +359,11 @@ export class SettingsManager {
 
 	loadJSONandOverwriteLocalStorage(settingsJsonString: string) {
 		copyObjectPropertiesFromJSON(Settings, settingsJsonString)
+		this.save(false)
+	}
+
+	loadObjectandOverwriteLocalStorage(settings: any) {
+		copyObjectProperties(Settings, settings)
 		this.save(false)
 	}
 }

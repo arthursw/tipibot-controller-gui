@@ -162,11 +162,15 @@ export class Makelangelo extends Interpreter {
 	}
 
 	sendSpecs(tipibotWidth: number=Settings.tipibot.width, tipibotHeight: number=Settings.tipibot.height, stepsPerRev: number=Settings.tipibot.stepsPerRev, mmPerRev: number=Settings.tipibot.mmPerRev, microstepResolution: number=Settings.tipibot.microstepResolution) {
-		// let stepsPerRevolution = stepsPerRev*microstepResolution
-		// let millimetersPerStep = mmPerRev / stepsPerRevolution;
+		let stepsPerRevolution = stepsPerRev * microstepResolution;
+		let millimetersPerStep = mmPerRev / stepsPerRevolution;
+		let stepsPerMillimeter = 1 / millimetersPerStep;
 		// let message = 'Setup: tipibotWidth: ' + tipibotWidth + ', stepsPerRevolution: ' + (stepsPerRev*microstepResolution) + ', mmPerRev: ' + mmPerRev + ', millimetersPerStep: ' + millimetersPerStep
 		// console.log(message)
 		// this.queue('M4 X' + tipibotWidth + ' E0.5 S' + (stepsPerRev*microstepResolution) + ' P' + mmPerRev + '\n', message)
+		let message = 'Set stepsPerMillimeter: ' + stepsPerMillimeter.toFixed(3);
+		let g92command = 'G92 X'+stepsPerMillimeter.toFixed(3)+ ' Y' +stepsPerMillimeter.toFixed(3) + '\n'
+		this.queue(g92command, message)
 		this.lastCommandWasMove = false
 
 		let limitRight = tipibotWidth / 2;
@@ -180,7 +184,7 @@ export class Makelangelo extends Interpreter {
 		// message = 'Set limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
 		// let limitsY = "M101 A1 T" + limitTop.toFixed(2) + " B" + limitBottom.toFixed(2) + "\n"
 		// this.queue(limitsY, message)
-		let message = 'Set limit right: ' + limitRight.toFixed(2) + ', limit left: ' + limitLeft.toFixed(2) + ', limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
+		message = 'Set limit right: ' + limitRight.toFixed(2) + ', limit left: ' + limitLeft.toFixed(2) + ', limit top: ' + limitTop.toFixed(2) + ', limit bottom: ' + limitBottom.toFixed(2)
 		let maxBeltLength = tipibotWidth * tipibotWidth + tipibotHeight * tipibotHeight;	// Math.sqrt(Math.pow(tipibotWidth, 2) + Math.pow(tipibotHeight, 2))
 		let limits = "M665 L" + limitLeft.toFixed(2) + " R" + limitRight.toFixed(2) + " T" + limitTop.toFixed(2) + " B" + limitBottom.toFixed(2) + " S5 H" + maxBeltLength.toFixed(2) + "\n"
 		this.queue(limits, message)

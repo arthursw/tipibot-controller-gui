@@ -189,6 +189,31 @@ export class SVGPlotInteractive extends SVGPlotStatic {
 		SVGPlotInteractive.transformFolder.getController('Y').setValueNoCallback(this.group.bounds.top - Tipibot.tipibot.drawArea.bounds.top)
 	}
 
+	updateShape() {
+		if(this.raster != null) {
+			this.raster.remove()
+		}
+
+		this.item.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
+		
+		for(let child of this.item.children) {
+			child.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
+		}
+
+		this.item.selected = false
+		this.item.visible = true
+
+		// this.item.strokeColor = 'black'
+		this.raster = this.item.rasterize({resolution: paper.project.view.resolution})
+		this.group.addChild(this.raster)
+		this.raster.sendToBack()
+		if(this.background != null) {
+			this.background.sendToBack()
+		}
+		this.item.selected = Settings.plot.showPoints
+		this.item.visible = Settings.plot.showPoints
+	}
+	
 	plot(callback: ()=> void = null, goHomeOnceFinished = true, gCode = false) {
 		GUI.startLoadingAnimation()
 		super.plot(callback, goHomeOnceFinished, gCode)

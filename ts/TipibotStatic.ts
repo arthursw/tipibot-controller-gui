@@ -2,7 +2,7 @@ import { Communication } from "./Communication/CommunicationStatic"
 import { isServer, Settings, paper, servoUpAngle, servoDownAngle, autoHomePosition } from "./Settings"
 import { Pen, MoveType, PenState } from "./Pen"
 import { TipibotInterface } from "./TipibotInterface"
-import { Calibration } from "./CalibrationStatic"
+// import { Calibration } from "./CalibrationStatic"
 
 export class Tipibot implements TipibotInterface {
 
@@ -192,14 +192,14 @@ export class Tipibot implements TipibotInterface {
 
 		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
-			if(Calibration.calibration.applyTransform) {
-				target = Calibration.calibration.transform(target)
-			}
+			// if(Settings.transformMatrix.apply) {
+			// 	target = Calibration.calibration.transform(target)
+			// }
 			Communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
-			if(Calibration.calibration.applyTransform) {
-				target = Calibration.calibration.transform(target)
-			}
+			// if(Settings.transformMatrix.apply) {
+			// 	target = Calibration.calibration.transform(target)
+			// }
 			Communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback)
 		}
 

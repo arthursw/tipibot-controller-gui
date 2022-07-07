@@ -102,7 +102,7 @@ export class CommunicationInteractive extends Communication {
 		} else if(type == 'connected-to-simulator') {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
 		} else if(type == 'load-settings') {
-			settingsManager.loadJSONandOverwriteLocalStorage(data)
+			settingsManager.loadObjectandOverwriteLocalStorage(data)
 		}
 		return
 	}

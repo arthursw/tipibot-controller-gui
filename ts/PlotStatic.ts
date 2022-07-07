@@ -241,7 +241,7 @@ export class SVGPlotStatic {
 			this.background.remove()
 		}
 		this.background = new paper.Path.Rectangle(this.item.bounds)
-		this.background.fillColor = new paper.Color('white')
+		this.background.fillColor = new paper.Color(1,1,1)
 		this.background.strokeColor = null
 		this.background.strokeWidth = 0
 		this.background.sendToBack()
@@ -304,28 +304,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	updateShape() {
-		if(this.raster != null) {
-			this.raster.remove()
-		}
-
-		this.item.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
-		
-		for(let child of this.item.children) {
-			child.strokeWidth = Settings.tipibot.penWidth / this.group.scaling.x
-		}
-
-		this.item.selected = false
-		this.item.visible = true
-
-		// this.item.strokeColor = 'black'
-		this.raster = this.item.rasterize({resolution: paper.project.view.resolution})
-		this.group.addChild(this.raster)
-		this.raster.sendToBack()
-		if(this.background != null) {
-			this.background.sendToBack()
-		}
-		this.item.selected = Settings.plot.showPoints
-		this.item.visible = Settings.plot.showPoints
 	}
 
 	filter() {

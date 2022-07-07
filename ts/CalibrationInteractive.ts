@@ -7,6 +7,7 @@ export class CalibrationInteractive extends Calibration {
 	
 	gui: GUI
     previewTransformController: Controller
+    applyTransform = false
     
 	static initialize(gui: any=null) {
         Calibration.calibration = new CalibrationInteractive(gui)

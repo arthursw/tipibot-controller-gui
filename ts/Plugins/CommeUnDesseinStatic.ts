@@ -35,9 +35,12 @@ let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
 let commeundesseinAjaxURL = '/ajaxCallNoCSRF/'
 
 export const StorageKeys = {
-	Mode: 'Mode',
-	Origin: 'Origin',
-	CommeUnDesseinSecret: 'CommeUnDesseinSecret'
+	CommeUnDessein: 'comme-un-dessein',
+	Mode: 'mode',
+	Origin: 'origin',
+	Secret: 'secret',
+	Width: 'width',
+	Height: 'height',
 }
 
 // $.ajaxSetup({
@@ -67,12 +70,13 @@ export const StorageKeys = {
 // 	}
 // });
 
-enum State {
+export enum State {
 	NextDrawing,
 	RequestedNextDrawing,
 	Drawing,
 	SetStatus,
-	RequestedSetStatus
+	RequestedSetStatus,
+	Stopped
 }
 
 export class CommeUnDessein {
@@ -81,45 +85,45 @@ export class CommeUnDessein {
 	origin: string = ''
 	secret: string = '******'
 	currentDrawing: { items: any[], pk: string }
-	state: State = State.NextDrawing
+	state: State = State.Stopped
 	testMode: boolean
-	started: boolean = false
+	// started: boolean = false
 	timeoutID: NodeJS.Timeout = null
+	isConnectedToServer = false
 
 	// settings = {
 	// 	mode: '',
 	// 	origin: '',
 	// 	secret: '',		
 	// }
-
-	static startCommeUnDessein() {
-		let commeUnDessein = new CommeUnDessein(false)
-		commeUnDessein.requestNextDrawing()
-	}
+	static commeUnDessein: CommeUnDessein
 
 	constructor(testMode=false) {
 		this.testMode = testMode
-		if(isServer) {
-			return
-		}
-		this.mode = localStorage.getItem(StorageKeys.Mode) || 'CommeUnDessein'
-		this.origin = localStorage.getItem(StorageKeys.Origin) || ''
-		let secret = localStorage.getItem(StorageKeys.CommeUnDesseinSecret)
-		if (secret != null) {
-			this.secret = secret
-		}
 	}
 
 	toggleStart() {
-		if(!this.started) {
+		if(this.state == State.Stopped) {
 			if(document.cookie.indexOf('csrftoken') < 0) {
 				console.log('Old Warning (which you can ignore safely): the Comme un dessein csrf token cookie is not present, please visit http://commeundessein.co/ before starting Comme un Dessein')
 			}
-			this.requestNextDrawing()
+			if(!this.isConnectedToServer) {
+				this.start()
+			} else {
+				Communication.communication.send('comme-un-dessein-start')
+			}
 		} else {
-			this.stopAndClear()
+			if(!this.isConnectedToServer) {
+				this.stopAndClear()
+			} else {
+				Communication.communication.send('comme-un-dessein-stop')
+			}
 		}
-		this.started = !this.started
+	}
+
+	start() {
+		this.setState(State.NextDrawing)
+		this.requestNextDrawing()
 	}
 
 	stopAndClear() {
@@ -129,8 +133,17 @@ export class CommeUnDessein {
 		Communication.interpreter.sendStop(true)
 		Communication.interpreter.clearQueue()
 		Tipibot.tipibot.goHome()
-		this.state = State.NextDrawing
+		this.setState(State.Stopped)
 		clearTimeout(this.timeoutID)
+	}
+
+	setState(state: State) {
+		this.state = state
+	}
+
+	request(data: { method: string, url: string, data: any }, callback: (response:any)=> void, error: (response:any)=> void) {
+		// $.ajax(data).done(callback).fail(error)
+		console.log('static request')
 	}
 
 	requestNextDrawing() {
@@ -146,54 +159,67 @@ export class CommeUnDessein {
 		let data = {
 			data: JSON.stringify({ function: functionName, args: args })
 		}
-		this.state = State.RequestedNextDrawing
+
+		this.setState(State.RequestedNextDrawing)
 		
 		console.log('Request next drawing...')
 
 		// let url = this.testMode ? 'http://localhost:8000/ajaxCallNoCSRF/' : commeundesseinAjaxURL
 		let url = this.origin + commeundesseinAjaxURL
-		// $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((results) => {
-		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
-			if(this.testMode) {
-				console.log(results)
-			}
-			if (results.message == 'no path') {
-				this.state = State.NextDrawing
-				console.log('There are no path to draw. Request next drawing in a few seconds...')
-				if(this.started) {
-					clearTimeout(this.timeoutID)
-					this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
-				}
-				return
-			}
-			if(this.state != State.RequestedNextDrawing) {
-				console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state')
-				return
-			}
-			this.drawSVG(results)
-			return
-		}).fail((results) => {
-			console.error('getNextValidatedDrawing request failed')
-			console.error(results)
-			this.state = State.NextDrawing
-			if(this.started) {
-				clearTimeout(this.timeoutID)
-				this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
-			}
-		})
+		
+		// $.ajax({ method: "GET", url: url, data: data, xhrFields: { withCredentials: false }, headers: {'Access-Control-Allow-Origin':true} }).done((response) => {
+		this.request({ method: "POST", url: url, data: data }, (res)=> this.requestNextDrawingCallback(res), (res)=> this.requestNextDrawingError(res))
+		// $.ajax({ method: "POST", url: url, data: data }).done((response) =>this.requestNextDrawingCallback(response)).fail((response) => this.requestNextDrawingError(response))
 	}
 
-	drawSVG(results: any) {
-		if (results.state == 'error') {
-			console.log(results)
+	requestNextDrawingCallback(response: any) {
+		console.log('requestNextDrawingCallback')
+		console.log(response)
+
+		if(this.testMode) {
+			console.log(response)
+		}
+		if (response.message == 'no path') {
+			console.log('There are no path to draw. Request next drawing in a few seconds...')
+			if(this.state != State.Stopped) {
+				clearTimeout(this.timeoutID)
+				this.setState(State.NextDrawing)
+				this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+			}
 			return
 		}
-		this.state = State.Drawing
-		this.currentDrawing = results
+		if(this.state != State.RequestedNextDrawing) {
+			console.error('CommeUnDessein trying to set to draw while not in RequestedNextDrawing state')
+			return
+		}
+		this.drawSVG(response)
+	}
 
+	requestNextDrawingError(response: any) {
+		console.error('getNextValidatedDrawing request failed')
+		console.error(response)
+		if(this.state != State.Stopped) {
+			clearTimeout(this.timeoutID)
+			this.setState(State.NextDrawing)
+			this.timeoutID = setTimeout(() => this.requestNextDrawing(), RequestTimeout)
+		}
+	}
+
+
+	drawSVG(response: any) {
+		console.log('drawSVG')
+		if (response.state == 'error') {
+			console.log(response)
+			return
+		}
+		this.setState(State.Drawing)
+		this.currentDrawing = response
+		
 		let drawing = new paper.Group()
-
-		paper.project.importSVG(results.svg, (item: paper.Item, svg: string)=> {
+		
+		console.log('import svg...')
+		let newItem = paper.project.importSVG(response.svg, (item: paper.Item, svg: string)=> {
+			console.log('imported svg...')
 			if(item.visible == false) {
 				console.error('When receiving next validated drawing: while importing SVG: the imported item is not visible: ignore.')
 				return
@@ -206,7 +232,7 @@ export class CommeUnDessein {
 
 				// Ignore anything that humans can't see to avoid hacks
 				let strokeColor: any = path.strokeColor
-				if(path.strokeWidth <= 0.2 || path.strokeColor.equals(new paper.Color('white')) || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
+				if(path.strokeWidth <= 0.2 || path.strokeColor.equals(new paper.Color(1,1,1)) || path.strokeColor == null || path.opacity <= 0.1 || strokeColor.alpha <= 0.2 || !path.visible) {
 					continue
 				}
 
@@ -224,22 +250,23 @@ export class CommeUnDessein {
 			if(SVGPlotStatic.svgPlot != null) {
 				SVGPlotStatic.svgPlot.destroy()
 			}
+			console.log('new svg plot...')
 			SVGPlotStatic.svgPlot = new SVGPlotStatic(drawing)
-			SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
+			SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(response.pk))
 		})
 	}
 
-	// draw(results: any) {
-	// 	if (results.state == 'error') {
-	// 		console.log(results)
+	// draw(response: any) {
+	// 	if (response.state == 'error') {
+	// 		console.log(response)
 	// 		return
 	// 	}
-	// 	this.state = State.Drawing
-	// 	this.currentDrawing = results
+	//	this.setState(State.Drawing)
+	// 	this.currentDrawing = response
 
 	// 	let drawing = new paper.Group()
 
-	// 	for (let itemJson of results.items) {
+	// 	for (let itemJson of response.items) {
 	// 		let item = JSON.parse(itemJson)
 
 	// 		let pk = item._id.$oid
@@ -272,7 +299,7 @@ export class CommeUnDessein {
 	// 		SVGPlotStatic.svgPlot.destroy()
 	// 	}
 	// 	SVGPlotStatic.svgPlot = new SVGPlot(drawing)
-	// 	SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(results.pk))
+	// 	SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(response.pk))
 	// }
 
 	setDrawingStatusDrawn(pk: string) {
@@ -290,38 +317,43 @@ export class CommeUnDessein {
 		let data = {
 			data: JSON.stringify({ function: functionName, args: args })
 		}
-		this.state = State.RequestedSetStatus
+		this.setState(State.RequestedSetStatus)
 
 		if(this.testMode) {
 			console.log('setDrawingStatusDrawn')
 		}
 
 		let url = this.origin + commeundesseinAjaxURL
-		$.ajax({ method: "POST", url: url, data: data }).done((results) => {
-			console.log(results)
-			if(this.testMode) {
-				console.log(results)
-			}
-			if (results.state == 'error') {
-				console.error(results)
-				return
-			}
-			if(this.state != State.RequestedSetStatus) {
-				console.error('CommeUnDessein trying to requestNextDrawing while not in RequestedSetStatus state')
-				return
-			}
-			this.state = State.NextDrawing
-			if(this.started) {
-				this.requestNextDrawing()
-			}
+
+		this.request({ method: "POST", url: url, data: data }, (res)=> this.setDrawingStatusDrawnCallback(res, url), (res)=> this.setDrawingStatusDrawnError(res, pk))
+	}
+
+	setDrawingStatusDrawnCallback(response:any, url:string) {
+		// console.log(response)
+		if(this.testMode) {
+			console.log(response)
+		}
+		if (response.state == 'error') {
+			console.error(response)
 			return
-		}).fail((results) => {
-			console.error('setDrawingStatusDrawn request failed')
-			console.error(results)
-			this.state = State.Drawing
-			if(this.started) {
-				this.setDrawingStatusDrawn(pk)
-			}
-		})
+		}
+		if(this.state != State.RequestedSetStatus) {
+			console.log('CommeUnDessein trying to requestNextDrawing while not in RequestedSetStatus state, which happens if user has stopped CommeUnDessein before the request answer:', url)
+			return
+		}
+		this.setState(State.NextDrawing)
+		this.requestNextDrawing()
+	}
+
+	setDrawingStatusDrawnError(response:any, pk:string) {
+		console.error('setDrawingStatusDrawn request failed')
+		console.error(response)
+		this.setState(State.Drawing)
+		if(this.state != (State.Stopped as any)) {
+			this.setDrawingStatusDrawn(pk)
+		}
+	}
+
+	saveSettings(key: string, value: any) {
 	}
 }

@@ -13,7 +13,6 @@ export class Calibration {
     amount: number = 10
     width = 200
     height = 287
-    applyTransform = false
     previewTransform = false
     previewRectangle = false
     previewRectangleItem: paper.Item = null
@@ -38,7 +37,6 @@ export class Calibration {
             return
         }
         this.points = Settings.transformMatrix.destinationPoints
-        this.applyTransform = Settings.transformMatrix.apply
         this.updateTransformMatrix()
     }
 
