@@ -1,14 +1,17 @@
-import { Settings } from "./Settings"
+import { Settings, paper } from "./Settings"
 import { settingsManager } from "./SettingsManager"
 import { GUI, Controller } from "./GUI"
 import { Calibration } from "./CalibrationStatic"
+import { Tipibot } from "./TipibotStatic"
 
+// on handle click (if not shift): move to handle
+// on validate button: set handle to current position
+// on handle drag if shift: update handle position 
 export class CalibrationInteractive extends Calibration {
 	
 	gui: GUI
     previewTransformController: Controller
-    applyTransform = false
-    
+
 	static initialize(gui: any=null) {
         Calibration.calibration = new CalibrationInteractive(gui)
     }
@@ -20,22 +23,24 @@ export class CalibrationInteractive extends Calibration {
 
 	createGUI(gui: GUI) {
         this.gui = gui.addFolder('Calibration')
+        this.gui.add(Settings.calibration, 'maxStepSize', 1, 1000, 1).name('Max step size').onFinishChange((value)=> settingsManager.save(false))
+        this.gui.add(this, 'nCellsX', 1, 10, 1).name('N cells X').onFinishChange(()=> this.initializeGrid(true))
+        this.gui.add(this, 'nCellsY', 1, 10, 1).name('N cells Y').onFinishChange(()=> this.initializeGrid(true))
+        
+        this.gui.addButton('Apply current handle', ()=> this.applyHandle())
+        this.gui.addButton('Reset calibration', ()=> this.initializeGrid(true))
 
-        this.gui.addButton('Set top left', ()=> this.updateTransform(0))
-        this.gui.addButton('Set top right', ()=> this.updateTransform(1))
-        this.gui.addButton('Set bottom right', ()=> this.updateTransform(2))
-        this.gui.addButton('Set bottom left', ()=> this.updateTransform(3))
-        this.gui.addButton('Reset transform', ()=> this.resetTransform())
-        this.previewTransformController = this.gui.add(this, 'previewTransform').name('Preview transform').onFinishChange(()=> this.togglePreviewTransform())
-        this.gui.add(this, 'applyTransform').name('Apply transform').onFinishChange((value)=> {
-            Settings.transformMatrix.apply = this.applyTransform
+        this.previewTransformController = this.gui.add(this, 'previewTransform').name('Preview transform').onFinishChange((value)=> {
+            this.handleGroup.visible = value
+            this.gridGroup.visible = value
+        })
+        this.gui.add(Settings.calibration, 'apply').name('Apply calibration').onFinishChange((value)=> {
             settingsManager.save(false)
         })
 
         let testRectangleFolder = this.gui.addFolder('Rectangle test')
-
-		testRectangleFolder.add(this, 'width', 0, 5000, 1).name('Width').onChange(()=> this.updatePreviewRectangle())
-		testRectangleFolder.add(this, 'height', 0, 5000, 1).name('Height').onChange(()=> this.updatePreviewRectangle())
+		testRectangleFolder.add(this, 'previewRectangleWidth', 0, 5000, 1).name('Width').onChange(()=> this.updatePreviewRectangle())
+		testRectangleFolder.add(this, 'previewRectangleHeight', 0, 5000, 1).name('Height').onChange(()=> this.updatePreviewRectangle())
 		testRectangleFolder.add(this, 'previewRectangle').name('Preview rectangle').onFinishChange(()=> this.togglePreviewRectangle())
         testRectangleFolder.add(this, 'cornersOnly').name('Corners only').onFinishChange(()=> this.updatePreviewRectangle())
         testRectangleFolder.addButton('Draw rectangle', ()=> this.drawRectangle())
@@ -46,9 +51,10 @@ export class CalibrationInteractive extends Calibration {
         parameterCalibrationFolder.addButton('Calibrate Width', ()=> this.calibrateWidth())
     }
 
-    updateTransform(pointIndex: number) {
-        super.updateTransform(pointIndex)
-        settingsManager.save(false)
+    applyHandle() {
+        this.handles[this.currentHandle.y][this.currentHandle.x].position = Tipibot.tipibot.getPosition()
+        this.saveHandles()
+        this.updateGrid()
         this.previewTransformController.setValue(true, true)
     }
 }

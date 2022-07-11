@@ -69,6 +69,11 @@ export let Settings = {
 		destinationPoints: new Array<number>(),
 		apply: false
 	},
+	calibration: {
+		grid: new Array<Array<number[]>>(),
+		apply: false,
+		maxStepSize: 10
+	},
 	plot: {
 		showPoints: false,
 		optimizeTrajectories: true,

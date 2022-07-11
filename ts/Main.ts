@@ -11,7 +11,7 @@ import { TipibotInteractive as Tipibot } from "./TipibotInteractive"
 import { Renderer } from "./Renderer"
 import { Pen } from "./Pen"
 import { SVGPlot } from "./Plot"
-// import { CalibrationInteractive } from "./CalibrationInteractive"
+import { CalibrationInteractive } from "./CalibrationInteractive"
 import { CommunicationInteractive } from "./Communication/CommunicationInteractive"
 import { CommandDisplay } from "./Communication/CommandDisplay"
 import { initializeKeyboard } from "./Keyboard"
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 
 		SVGPlot.createGUI(gui)
 
-		// CalibrationInteractive.initialize(gui)
+		CalibrationInteractive.initialize(gui)
 		
 		communication.setTipibot(Tipibot.tipibot)
 		Tipibot.tipibot.initialize()
@@ -119,6 +119,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 		w.SVGPlot = SVGPlot
 		w.commeUnDessein = commeUnDessein
 		w.telescreen = telescreen
+		w.paper = paper
 	}
 
 	initialize()

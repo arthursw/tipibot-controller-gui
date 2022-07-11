@@ -1,6 +1,7 @@
 import { Settings, paper, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
 import * as PerspT from 'perspective-transform'
+import { Communication } from "./Communication/CommunicationStatic";
 
 if (isServer) {
     var ServerPerspT = require('perspective-transform');
@@ -8,11 +9,23 @@ if (isServer) {
 // Calibration will draw a width x height rectangle (at the center of the paper) with different settings 
 // to calibrate the y offset and the width of the machine
 
+const HANDLE_SIZE = 100
+
 export class Calibration {
 	
+    nCellsX = 3
+    nCellsY = 2
+    maxStepSize = 100
+    matrices: Array<Array<any>> = []
+    handles: Array<Array<paper.Path>> = []
+    grid: Array<Array<paper.Path>> = []
+    handleGroup: paper.Group = null
+    gridGroup: paper.Group = null
+    currentHandle: paper.Point
+
     amount: number = 10
-    width = 200
-    height = 287
+    previewRectangleWidth = 210-10
+    previewRectangleHeight = 297-10
     previewTransform = false
     previewRectangle = false
     previewRectangleItem: paper.Item = null
@@ -20,6 +33,7 @@ export class Calibration {
     cornersOnly = false
     points: number[] = []
     transformMatrix: any = null
+    
     static calibration: Calibration = null
 
 	static initialize() {
@@ -27,21 +41,18 @@ export class Calibration {
     }
     
 	constructor() {
-        this.loadPoints()
-    }
-    
-    loadPoints() {
-        if(Settings.transformMatrix == null || Settings.transformMatrix.destinationPoints == null || Settings.transformMatrix.destinationPoints.length < 8) {
-            this.points = this.getDrawAreaPoints()
-            Settings.transformMatrix.destinationPoints = this.points.slice()
-            return
+        this.handleGroup = new paper.Group()
+        this.gridGroup = new paper.Group()
+        this.currentHandle = new paper.Point(0, 0)
+        this.loadHandles()
+        if(this.nCellsX == 0 || this.nCellsY == 0) {
+            this.nCellsX = 3
+            this.nCellsY = 2
+            this.initializeGrid()
         }
-        this.points = Settings.transformMatrix.destinationPoints
-        this.updateTransformMatrix()
     }
 
-    getDrawAreaPoints() {
-        let rectangle = Tipibot.tipibot.computeDrawArea()
+    getPointsFromRectangle(rectangle: paper.Rectangle) {
         let points = []
         points.push(rectangle.topLeft.x)
         points.push(rectangle.topLeft.y)
@@ -53,43 +64,184 @@ export class Calibration {
         points.push(rectangle.bottomLeft.y)
         return points
     }
-
-    updateTransformMatrix() {
-        let srcCorners = this.getDrawAreaPoints()
-        let dstCorners = this.points
-        this.transformMatrix = isServer ? ServerPerspT(srcCorners, dstCorners) : PerspT(srcCorners, dstCorners)
+    
+    getTransformMatrix(srcCorners: number[], dstCorners: number[]) {
+        return isServer ? ServerPerspT(srcCorners, dstCorners) : PerspT(srcCorners, dstCorners)
     }
 
-    updateTransform(pointIndex: number) {
-        let position = Tipibot.tipibot.getPosition()
-        Settings.transformMatrix.destinationPoints[2 * pointIndex] = position.x
-        Settings.transformMatrix.destinationPoints[2 * pointIndex + 1] = position.y
-        this.points[2 * pointIndex] = position.x
-        this.points[2 * pointIndex + 1] = position.y
-
-        this.updateTransformMatrix()
-        this.updatePreviewTransform()
+    getTransformMatrixFromRectangles(sourceRectangle: paper.Rectangle, destinationRectangle: paper.Rectangle) {
+        return this.getTransformMatrix(this.getPointsFromRectangle(sourceRectangle), this.getPointsFromRectangle(destinationRectangle))
     }
 
-    resetTransform() {
-        this.points = this.getDrawAreaPoints()
-        this.transformMatrix = null
-        if(this.previewTransform) {
-            this.updatePreviewTransform()
-        } else if(this.previewRectangleItem != null) {
-            this.previewTransformItem.remove()
-            this.previewTransformItem = null
+    getDrawAreaPoints() {
+        let rectangle = Tipibot.tipibot.computeDrawArea()
+        return this.getPointsFromRectangle(rectangle)
+    }
+
+    moveTipibot(end: paper.Point, moveCallback: ()=>any = null) {
+        let start = this.transform(Tipibot.tipibot.lastSentPosition)
+        let delta = end.subtract(start)
+        let length = delta.length
+        delta = delta.divide(length)
+        let nSteps = Math.ceil(length / Settings.calibration.maxStepSize)
+        for(let n=0 ; n<nSteps ; n++) {
+            let point = start.add(delta.multiply(n*length/nSteps))
+            point = this.transform(point)
+            Communication.interpreter.sendMoveDirect(point, n==nSteps-1 ? moveCallback : null)
         }
     }
 
+    getMatrix(point: paper.Point) {
+        let drawArea = Tipibot.tipibot.computeDrawArea()
+        let cell = drawArea.size.divide(point.subtract(drawArea.topLeft) as any) as any
+        return this.matrices != null && this.matrices.length > cell.y && this.matrices[cell.y].length > cell.x ? this.matrices[cell.y][cell.x] : null
+    }
+
     transform(point: paper.Point) {
-        return this.transformMatrix != null ? new paper.Point(this.transformMatrix.transform(point.x, point.y)) : point
+        let matrix = this.getMatrix(point)
+        return matrix != null ? new paper.Point(matrix.transform(point.x, point.y)) : point
+    }
+
+    createHandle(point: paper.Point, x: number, y: number) {
+        let handle = new paper.Path.Rectangle(new paper.Rectangle(point.x-HANDLE_SIZE/2, point.y-HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE))
+        handle.strokeColor = new paper.Color(('black'))
+        handle.strokeWidth = 1
+        handle.fillColor = new paper.Color(1, 1, 1, 0.1)
+        if(!isServer) {
+            handle.onMouseDrag = (event:paper.MouseEvent) => this.onHandleDrag(event, x, y)
+            handle.onClick = (event:paper.MouseEvent) => this.onHandleClick(event, x, y)
+            handle.onMouseUp = (event:paper.MouseEvent) => this.onHandleUp(event, x, y)
+        }
+        this.handleGroup.addChild(handle)
+        return handle
+    }
+
+    initializeGrid(save=false) {
+        this.gridGroup.removeChildren()
+        this.handleGroup.removeChildren()
+        let drawArea = Tipibot.tipibot.computeDrawArea()
+        let cellWidth = drawArea.width / this.nCellsX
+        let cellHeight = drawArea.height / this.nCellsY
+        this.handles = []
+        for(let y=0 ; y<this.nCellsY+1 ; y++) {
+            let handlesRow = []
+            for(let x=0 ; x<this.nCellsX+1 ; x++) {
+                handlesRow.push(this.createHandle(new paper.Point(drawArea.left+x*cellWidth, drawArea.top+y*cellHeight), x, y))
+            }
+            this.handles.push(handlesRow)
+        }
+        this.updateGrid()
+        if(save) {
+            this.saveHandles()
+        }
+    }
+
+    onHandleDrag(event:paper.MouseEvent, x: number, y: number) {
+        if(event.modifiers.shiftKey) {
+            this.handles[y][x].position = event.point
+            this.updateGrid()
+        }
+    }
+
+    resetHandles() {
+        for(let handlesRow of this.handles) {
+            for(let handle of handlesRow) {
+                handle.strokeColor = new paper.Color('black')
+            }
+        }
+    }
+
+    onHandleClick(event: paper.MouseEvent, x:number, y: number) {
+        if(!event.modifiers.shiftKey) {
+            Tipibot.tipibot.moveDirect(this.handles[y][x].position)
+            this.currentHandle.x = x
+            this.currentHandle.y = y
+            this.resetHandles()
+            this.handles[y][x].strokeColor = new paper.Color('green')
+        }
+    }
+
+    onHandleUp(event:paper.MouseEvent, x: number, y: number) {
+        this.saveHandles()
+    }
+
+    getPointListFromPath(path: paper.Path) {
+        let pointList = []
+        for(let segment of path.segments) {
+            pointList.push(segment.point.x)
+            pointList.push(segment.point.y)
+        }
+        return pointList
+    }
+
+    updateGrid() {
+        this.gridGroup.removeChildren()
+        this.grid = []
+        this.matrices = []
+        let drawArea = Tipibot.tipibot.computeDrawArea()
+        let cellWidth = drawArea.width / this.nCellsX
+        let cellHeight = drawArea.height / this.nCellsY
+        for(let y=0 ; y<this.nCellsY ; y++) {
+            let matricesRow = []
+            let gridRow = []
+            for(let x=0 ; x<this.nCellsX ; x++) {
+                let point = new paper.Point(x*cellWidth, y*cellHeight)
+                let topLeft = drawArea.topLeft.add(point)
+                let bottomRight = drawArea.topLeft.add(new paper.Point((x+1)*cellWidth, (y+1)*cellHeight))
+                let cellRectangle = new paper.Rectangle(topLeft, bottomRight)
+                let path = new paper.Path()
+                path.add(this.handles[y][x].position)
+                path.add(this.handles[y][x+1].position)
+                path.add(this.handles[y+1][x+1].position)
+                path.add(this.handles[y+1][x].position)
+                path.strokeColor = new paper.Color('orange')
+                path.strokeWidth = 1
+                matricesRow.push(this.getTransformMatrix(this.getPointsFromRectangle(cellRectangle), this.getPointListFromPath(path)))
+                path.closed = true
+                this.gridGroup.addChild(path)
+                gridRow.push(path)
+
+            }
+            this.matrices.push(matricesRow)
+            this.grid.push(gridRow)
+        }
+    }
+
+    saveHandles() {
+        Settings.calibration.grid = new Array<Array<number[]>>()
+        for(let y=0 ; y<this.nCellsY+1 ; y++) {
+            let row = []
+            for(let x=0 ; x<this.nCellsX+1 ; x++) {
+            let point = this.handles[y][x].position
+                row.push([point.x, point.y])
+            }
+            Settings.calibration.grid.push(row)
+        }
+    }
+
+    loadHandles() {
+        this.handles = []
+        this.nCellsX = 0
+        this.nCellsY = 0
+        for(let row of Settings.calibration.grid) {
+            this.nCellsX = 0
+            let handleRow = []
+            for(let point of row) {
+                handleRow.push(this.createHandle(new paper.Point(point[0], point[1]), this.nCellsX, this.nCellsY))
+                this.nCellsX += 1
+            }
+            this.nCellsY += 1
+            this.handles.push(handleRow)
+        }
+        this.nCellsX -= 1
+        this.nCellsY -= 1
+        this.updateGrid()
     }
 
     getRectangle(): paper.Rectangle {
         let drawArea = Tipibot.tipibot.computeDrawArea()
-        let topLeft = drawArea.center.subtract(new paper.Point(this.width/2, this.height/2))
-        let rectangle = new paper.Rectangle(topLeft, new paper.Size(this.width, this.height))
+        let topLeft = drawArea.center.subtract(new paper.Point(this.previewRectangleWidth/2, this.previewRectangleHeight/2))
+        let rectangle = new paper.Rectangle(topLeft, new paper.Size(this.previewRectangleWidth, this.previewRectangleHeight))
         return rectangle
     }
 
@@ -138,38 +290,38 @@ export class Calibration {
         }
     }
 
-    updatePreviewTransform() {
-        let rectangle = Tipibot.tipibot.computeDrawArea()
+    // updatePreviewTransform() {
+    //     let rectangle = Tipibot.tipibot.computeDrawArea()
 
-        let topLeft = this.transform(rectangle.topLeft)
-        let topRight = this.transform(rectangle.topRight)
-        let bottomRight = this.transform(rectangle.bottomRight)
-        let bottomLeft = this.transform(rectangle.bottomLeft)
+    //     let topLeft = this.transform(rectangle.topLeft)
+    //     let topRight = this.transform(rectangle.topRight)
+    //     let bottomRight = this.transform(rectangle.bottomRight)
+    //     let bottomLeft = this.transform(rectangle.bottomLeft)
 
-        if(this.previewTransformItem != null) {
-            this.previewTransformItem.remove()
-            this.previewTransformItem = null
-        }
+    //     if(this.previewTransformItem != null) {
+    //         this.previewTransformItem.remove()
+    //         this.previewTransformItem = null
+    //     }
 
-        this.previewTransformItem = new paper.Path()
-        this.previewTransformItem.add(topLeft)
-        this.previewTransformItem.add(topRight)
-        this.previewTransformItem.add(bottomRight)
-        this.previewTransformItem.add(bottomLeft)
-        this.previewTransformItem.add(topLeft)
+    //     this.previewTransformItem = new paper.Path()
+    //     this.previewTransformItem.add(topLeft)
+    //     this.previewTransformItem.add(topRight)
+    //     this.previewTransformItem.add(bottomRight)
+    //     this.previewTransformItem.add(bottomLeft)
+    //     this.previewTransformItem.add(topLeft)
 
-        this.previewTransformItem.strokeColor = new paper.Color('orange')
-        this.previewTransformItem.strokeWidth = 1
-    }
+    //     this.previewTransformItem.strokeColor = new paper.Color('orange')
+    //     this.previewTransformItem.strokeWidth = 1
+    // }
 
-    togglePreviewTransform() {
-        if(this.previewTransform) {
-            this.updatePreviewTransform()
-        } else if(this.previewTransformItem != null) {
-            this.previewTransformItem.remove()
-            this.previewTransformItem = null
-        }
-    }
+    // togglePreviewTransform() {
+    //     if(this.previewTransform) {
+    //         this.updatePreviewTransform()
+    //     } else if(this.previewTransformItem != null) {
+    //         this.previewTransformItem.remove()
+    //         this.previewTransformItem = null
+    //     }
+    // }
 
     drawRectangle() {
         let rectangle = this.getRectangle()
