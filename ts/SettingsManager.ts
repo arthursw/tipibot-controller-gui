@@ -6,6 +6,9 @@ const MAX_SPEED = 20000
 
 declare let saveAs: any
 
+export let capitalizeFirstLetter = (name: string) => {
+	return name.charAt(0).toUpperCase() + name.slice(1)
+}
 export class SettingsManager {
 	
 	gui: GUI = null
@@ -14,6 +17,7 @@ export class SettingsManager {
 	settingsFolder: GUI = null
 	motorsFolder: GUI = null
 	homeFolder: GUI = null
+	anglesFolder: GUI = null
 	tipibot: TipibotInterface
 	virtualKeyboard: any = null
 	debug = false
@@ -69,14 +73,15 @@ export class SettingsManager {
 
 		penFolder.add(Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width')
 		penFolder.add(Settings.tipibot, 'penOffset', -200, 200, 1).name('Pen offset')
+		penFolder.add(Settings.servo, 'delta', 0, 45, 1).name('Angle delta')
 		penFolder.add(Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.')
 
-		let anglesFolder = penFolder.addFolder('Angles')
-		anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
-		anglesFolder.add(Settings.servo.position, 'up', 0, 3180).name('Up')
-		anglesFolder.add(Settings.servo.position, 'down', 0, 3180).name('Down')
-		anglesFolder.add(Settings.servo.position, 'close', 0, 3180).name('Close')
-		anglesFolder.add(Settings.servo.position, 'drop', 0, 3180).name('Drop')
+		this.anglesFolder = penFolder.addFolder('Angles')
+		this.anglesFolder.add(Settings.servo.position, 'invert').name('Invert')
+		this.anglesFolder.add(Settings.servo.position, 'up', 0, 3180).name('Up')
+		this.anglesFolder.add(Settings.servo.position, 'down', 0, 3180).name('Down')
+		this.anglesFolder.add(Settings.servo.position, 'close', 0, 3180).name('Close')
+		this.anglesFolder.add(Settings.servo.position, 'drop', 0, 3180).name('Drop')
 
 		let delaysFolder = penFolder.addFolder('Delays')
 		let delaysUpFolder = delaysFolder.addFolder('Up')
@@ -86,6 +91,38 @@ export class SettingsManager {
 		let delaysDownFolder = delaysFolder.addFolder('Down')
 		delaysDownFolder.add(Settings.servo.delay.down, 'before', 0, 3000, 1).name('Before')
 		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
+		
+		let groundStationFolder = settingsFolder.addFolder('Ground station')
+		
+		groundStationFolder.add(Settings.groundStation.speeds, 'gondola', 0, 10000, 1).name('Gondola speed')
+		groundStationFolder.add(Settings.groundStation.speeds, 'station', 0, 10000, 1).name('Station speed')
+
+		let xFolder = groundStationFolder.addFolder('X')
+		for(let name in Settings.groundStation.x) {
+			xFolder.add(Settings.groundStation.x, name).name(capitalizeFirstLetter(name))
+		}
+
+		let yFolder = groundStationFolder.addFolder('Y')
+		for(let name in Settings.groundStation.y) {
+			yFolder.add(Settings.groundStation.y, name).name(capitalizeFirstLetter(name))
+		}
+		let extruderFolder = groundStationFolder.addFolder('Extruder')
+
+		extruderFolder.add(Settings.groundStation.extruder, 'drop', -1000, 1000, 1).name('Drop')
+		extruderFolder.add(Settings.groundStation.extruder, 'close', -1000, 1000, 1).name('Close')
+		extruderFolder.add(Settings.groundStation.extruder, 'open', -1000, 1000, 1).name('Open')
+
+		let actionsFolder = groundStationFolder.addFolder('Actions')
+		actionsFolder.addButton('Move above station', ()=> this.tipibot.moveAboveStation())
+		for(let name in Settings.groundStation.x) {
+			if(name == 'station') {
+				continue
+			}
+			actionsFolder.addButton('Pick ' + capitalizeFirstLetter(name), ()=> this.tipibot.pickPen(name))
+			actionsFolder.addButton('Drop ' + capitalizeFirstLetter(name), ()=> this.tipibot.dropPen(name))
+		}
+		actionsFolder.addButton('Open pen', ()=> this.tipibot.openPen())
+		actionsFolder.addButton('Close pen', ()=> this.tipibot.closePen())
 
 		this.motorsFolder = settingsFolder.addFolder('Motors')
 
@@ -253,17 +290,27 @@ export class SettingsManager {
 			if(changeFinished) {
 				this.tipibot.servoChanged(changeFinished, name, false)
 			}
+			for(let angleName of ['up', 'down', 'close', 'drop']) {
+				if(name == angleName) {
+					this.anglesFolder.getController(angleName).setValueNoCallback(value)
+				}
+			}
 		} else if(parentNames[0] == 'Pen') {
 			if(name == 'penWidth') {
 				if(changeFinished) {
 					this.tipibot.penWidthChanged(true)
 				}
-			} else if(name == 'speed') {
-				this.tipibot.servoChanged(changeFinished, null, true)
+			// } else if(name == 'speed') {
+			// 	this.tipibot.servoChanged(changeFinished, null, true)
 			} else if(name == 'penOffset') {
 				this.tipibot.setPosition(this.tipibot.getPosition(), changeFinished, false)
 			}
+		} else if(parentNames[0] == 'Extruder') {
+			this.tipibot.moveGroundStation(value)
 		} else if(parentNames[0] == 'Draw area dimensions') {
+			if(name == 'y') {
+				this.drawAreaDimensionsFolder.getController('height').max(Settings.tipibot.height - value, changeFinished)
+			}
 			this.tipibot.drawAreaChanged(changeFinished)
 			this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)
 		} else if(parentNames[0] == 'Feedback') {

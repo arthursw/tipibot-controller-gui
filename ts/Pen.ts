@@ -1,11 +1,7 @@
 import { Communication } from "./Communication/CommunicationStatic"
 import { Settings, paper, servoDownAngle, servoUpAngle, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
-
-export enum MoveType {
-    Direct,
-    Linear,
-}
+import { MoveType } from "./TipibotInterface"
 
 export enum PenState {
 	Up,
@@ -112,6 +108,32 @@ export class Pen {
 
 	tipibotWidthChanged() {
 		this.lines.segments[2].point.x = Settings.tipibot.width
+	}
+
+	plus(callback: ()=> void = null) {
+		let newAngle = this.angle + Settings.servo.delta;
+		this.angle = newAngle;
+		Communication.interpreter.sendMovePen(this.angle, callback);
+		// let penMoveCallback = ()=> {
+		// 	this.angle = newAngle
+		// 	if(callback != null) {
+		// 		callback()
+		// 	}
+		// }
+		// Communication.interpreter.sendMovePen(this.angle, penMoveCallback);
+	}
+
+	minus(callback: ()=> void = null) {
+		let newAngle = this.angle - Settings.servo.delta;
+		this.angle = newAngle;
+		Communication.interpreter.sendMovePen(this.angle, callback);
+		// let penMoveCallback = ()=> {
+		// 	this.angle = newAngle
+		// 	if(callback != null) {
+		// 		callback()
+		// 	}
+		// }
+		// Communication.interpreter.sendMovePen(this.angle, penMoveCallback);
 	}
 
 	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {

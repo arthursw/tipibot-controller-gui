@@ -4,7 +4,7 @@ import { settingsManager } from "../SettingsManager"
 import { GUI, Controller } from "../GUI"
 import { Communication } from "./CommunicationStatic"
 import { Command, SpecialCommandTypes } from "../Communication/Interpreter"
-import { MoveType } from "../Pen"
+import { MoveType } from "../TipibotInterface"
 import { SVGPlot } from "../Plot"
 import { Console } from "../Console"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
@@ -76,10 +76,10 @@ export class CommandDisplay {
 	initializeServoControls() {
 
 		$('#servo-controls button.plus').mousedown(()=> {
-			Tipibot.tipibot.servoPlus()
+			Tipibot.tipibot.penPlus()
 		})
 		$('#servo-controls button.minus').mousedown(()=> {
-			Tipibot.tipibot.servoMinus()
+			Tipibot.tipibot.penMinus()
 		})
 
 		$('#servo-controls button.go-pen-up').mousedown(()=> {
@@ -96,16 +96,21 @@ export class CommandDisplay {
 		})
 
 		$('#servo-controls button.set-pen-up').mousedown(()=> {
-			Tipibot.tipibot.servoChanged(true, 'up', true)
+			Settings.servo.position.up = Tipibot.tipibot.pen.angle
+			settingsManager.settingChanged(['Angles'], 'up', Settings.servo.position.up, true)
+			
 		})
 		$('#servo-controls button.set-pen-down').mousedown(()=> {
-			Tipibot.tipibot.servoChanged(true, 'down', true)
+			Settings.servo.position.down = Tipibot.tipibot.pen.angle
+			settingsManager.settingChanged(['Angles'], 'down', Settings.servo.position.down, true)
 		})
 		$('#servo-controls button.set-pen-close').mousedown(()=> {
-			Tipibot.tipibot.servoChanged(true, 'close', true)
+			Settings.servo.position.close = Tipibot.tipibot.pen.angle
+			settingsManager.settingChanged(['Angles'], 'close', Settings.servo.position.close, true)
 		})
 		$('#servo-controls button.set-pen-drop').mousedown(()=> {
-			Tipibot.tipibot.servoChanged(true, 'drop', true)
+			Settings.servo.position.drop = Tipibot.tipibot.pen.angle
+			settingsManager.settingChanged(['Angles'], 'drop', Settings.servo.position.drop, true)
 		})
 	}
 
@@ -114,6 +119,7 @@ export class CommandDisplay {
 		let gui = tipibotConsole.gui
 		
 		this.initializeMoveControls()
+		this.initializeServoControls()
 
 		this.gui = gui.addFolder('Commands')
 		let controlsJ = $('#controls')

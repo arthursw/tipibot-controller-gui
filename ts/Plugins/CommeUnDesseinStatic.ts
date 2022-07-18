@@ -7,12 +7,11 @@ const RequestTimeout = 2000
 
 // let scale = 1000
 
-export let CommeUnDesseinSize = new paper.Size(4000, 3000)
+// export let CommeUnDesseinSize = new paper.Size(4000, 3000)
 
-let commeUnDesseinToDrawArea = function(point: paper.Point): paper.Point {
+let commeUnDesseinToDrawArea = function(point: paper.Point, cityWidth: number, cityHeight: number, cityPixelPerMm: number): paper.Point {
 	let drawArea = Tipibot.tipibot.drawArea.bounds
-	let CommeUnDesseinPosition = new paper.Point(-CommeUnDesseinSize.width/2, -CommeUnDesseinSize.height/2)
-	const CommeUnDesseinDrawArea = new paper.Rectangle(CommeUnDesseinPosition, CommeUnDesseinSize)
+	const CommeUnDesseinDrawArea = new paper.Rectangle(-cityWidth*cityPixelPerMm/2, -cityHeight*cityPixelPerMm/2, cityWidth*cityPixelPerMm, cityHeight*cityPixelPerMm)
 	return point.subtract(CommeUnDesseinDrawArea.topLeft).divide(CommeUnDesseinDrawArea.size as any).multiply(drawArea.size as any).add(drawArea.topLeft)
 }
 
@@ -242,7 +241,7 @@ export class CommeUnDessein {
 				
 				// now that controlPath is flattened: convert in draw area coordinates
 				for(let segment of controlPath.segments) {
-					segment.point = commeUnDesseinToDrawArea(segment.point)
+					segment.point = commeUnDesseinToDrawArea(segment.point, response.cityWidth, response.cityHeight, response.cityPixelPerMm)
 				}
 				drawing.addChild(controlPath)
 			}

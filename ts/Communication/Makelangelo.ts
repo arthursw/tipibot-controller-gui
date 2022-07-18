@@ -1,4 +1,5 @@
 import { Settings, paper, autoHomePosition, mmPerSteps, servoUpAngle, servoDownAngle } from "../Settings"
+import { MoveType } from "../TipibotInterface"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class Makelangelo extends Interpreter {
@@ -30,6 +31,7 @@ export class Makelangelo extends Interpreter {
 		// // This is to ensure the tipibot is correctly automatically initialized even when the user moves it without initializing it before 
 		this.sendSetPosition(initializeAtHome ? new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset) : this.tipibot.getGondolaPosition())
 		this.sendMaxSpeed()
+		// this.sendMovePen(-10)
 		this.tipibot.initializedCommunication = true
 	}
 
@@ -71,13 +73,14 @@ export class Makelangelo extends Interpreter {
 		super.sendMoveDirect(point, callback)
 		point = this.convertToMakelangeloCoordinates(point)
 		let speed = Settings.tipibot.maxSpeed
-		let speedInMMperSec = speed * mmPerSteps()
+		// let speedInMMperSec = speed * mmPerSteps()
+		let speedInStepsperSec = speed
 		// let lengths = this.tipibot.cartesianToLengths(point)
 		// let lengthsSteps = SettingsManager.mmToSteps(lengths)
-		let message = 'Move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', speed: ' + speedInMMperSec.toFixed(2)
+		let message = 'Move direct: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ', speed: ' + speedInStepsperSec.toFixed(2) // + ', min speed: ' + minSpeed.toFixed(2)
 		// console.log('move linear: ' + point.x.toFixed(2) + ', ' + point.y.toFixed(2) + ' - l: ' + Math.round(lengthsSteps.x) + ', r: ' + Math.round(lengthsSteps.y))
 		// this.queue('G1 X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + ' P' + minSpeed.toFixed(2) + '\n', message, callback)
-		let speedCommand = this.lastCommandWasMove ? '' :  ' F' +  speedInMMperSec.toFixed(2)
+		let speedCommand = this.lastCommandWasMove ? '' :  ' F' +  speedInStepsperSec.toFixed(2)
 		// this.lastCommandWasMove = true
 		this.lastCommandWasMove = false
 		this.queue('G1' + speedCommand + ' X' + point.x.toFixed(2) + ' Y' + point.y.toFixed(2) + '\n', message, callback)
@@ -227,6 +230,20 @@ export class Makelangelo extends Interpreter {
 	// 	// see https://www.arduino.cc/en/Reference/ServoWriteMicroseconds
 	// 	return 700 + 1600 * servoValue / 180
 	// }
+	
+	sendMoveExtruder(position: number, callback:()=> any= null) {
+		let message = 'Move extruder to ' + position + ' at speed ' + Settings.groundStation.speeds.station
+		this.queue('G0 E' + position + ' F' + Settings.groundStation.speeds.station + '\n', message, callback)
+	}
+
+	sendMovePen(angle: number, callback: ()=> void = null) {
+		// let minPulse = 500;
+		// let maxPulse = 2500;
+		// let midPulse = (minPulse + maxPulse) / 2;
+		// let amountToPulse = midPulse + amount * (maxPulse - midPulse);
+		// this.queue('M280 P0 S'+amountToPulse+'\n', 'Servo plus', callback)
+		this.queue('M280 P0 S'+angle+'\n', 'Servo plus', callback)
+	}
 
 	sendPenState(servoValue: number, delayBefore: number = 0, delayAfter: number = 0, callback: ()=> void = null) {
 		this.lastCommandWasMove = false

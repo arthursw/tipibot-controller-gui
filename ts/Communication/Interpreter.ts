@@ -275,7 +275,14 @@ export class Interpreter {
 	sendMotorOn() {
 	}
 
+	sendMoveExtruder(position: number, callback:()=> any= null) {
+	}
+
 	sendPenState(servoValue: number, servoTempo: number = 0) {
+	}
+	
+	sendMovePen(amount: number, callback: ()=> void = null) {
+		
 	}
 
 	sendPenUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {

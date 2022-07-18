@@ -1,5 +1,10 @@
 import * as paperjs from 'paper';
 
+export enum MoveType {
+    Direct,
+    Linear,
+}
+
 export interface TipibotInterface {
 	tipibotArea: paper.Path
 	drawArea: paper.Path
@@ -19,8 +24,15 @@ export interface TipibotInterface {
 	sizeChanged(sendChange: boolean): void
 	drawAreaChanged(sendChange: boolean): void
 
+	move(moveType: MoveType, point: paper.Point, minSpeed?: number, maxSpeed?: number, callback?: () => any, movePen?:boolean): void
 	penUp(servoUpValue?: number, servoUpTempoBefore?: number): void
 	penDown(servoDownValue?: number, servoDownTempoBefore?: number): void
+	moveGroundStation(position: number, callback?:()=> any): void
+	moveAboveStation(callback?:()=> any): void
+	pickPen(name: string, callback?:()=> any): void
+	dropPen(name: string, callback?:()=> any): void
+	openPen(callback?:()=> any): void
+	closePen(callback?:()=> any): void
 
 	cartesianToLengths(point: paper.Point): paper.Point
 	lengthsToCartesian(lengths: paper.Point): paper.Point

@@ -2,8 +2,9 @@ import $ = require("jquery");
 import { Communication } from "./Communication/CommunicationStatic"
 import { Settings, paper, servoDownAngle, servoUpAngle } from "./Settings"
 import { settingsManager } from "./SettingsManager"
-import { Pen, MoveType, PenState } from "./Pen"
+import { Pen, PenState } from "./Pen"
 import { GUI, Controller } from "./GUI"
+import { MoveType } from "./TipibotInterface"
 import { Tipibot } from "./TipibotStatic"
 
 export class TipibotInteractive extends Tipibot {

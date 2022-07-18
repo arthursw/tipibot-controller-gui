@@ -1,6 +1,7 @@
 import { Communication } from "./Communication/CommunicationStatic"
 import { isServer, Settings, paper, servoUpAngle, servoDownAngle, autoHomePosition } from "./Settings"
-import { Pen, MoveType, PenState } from "./Pen"
+import { Pen, PenState } from "./Pen"
+import { MoveType } from "./TipibotInterface"
 import { TipibotInterface } from "./TipibotInterface"
 import { Calibration } from "./CalibrationStatic"
 
@@ -306,12 +307,70 @@ export class Tipibot implements TipibotInterface {
 		Communication.interpreter.executeOnceFinished(callback)
 	}
 
-	servoPlus() {
-		
+	moveGroundStation(position: number, callback:()=> any= null) {
+		Communication.interpreter.sendMoveExtruder(position, callback)
 	}
 
-	servoMinus() {
-		
+	moveAboveStation(callback:()=> any= null) {
+		console.log('Move above station')
+		let x = Settings.groundStation.x.station
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penUp(undefined, undefined, undefined, callback)
+	}
+
+	pickPen(name: string, callback:()=> any= null) {
+		console.log('Pick pen ' + name)
+		let x = (Settings.groundStation.x as any)[name]
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penDrop()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.groundStation.speeds.gondola)
+		this.pen.penClose()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		this.pen.penUp(undefined, undefined, undefined, callback)
+	}
+
+	dropPen(name: string, callback:()=> any= null) {
+		console.log('Drop pen ' + name)
+		let x = (Settings.groundStation.x as any)[name]
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.groundStation.speeds.gondola)
+		this.pen.penDrop()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		this.pen.penUp(undefined, undefined, undefined, callback)
+	}
+
+	openPen(callback:()=> any= null) {
+		console.log('Open pen')
+		let x = Settings.groundStation.x.station
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.groundStation.speeds.gondola)
+		this.moveGroundStation(Settings.groundStation.extruder.open)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		this.moveGroundStation(Settings.groundStation.extruder.drop, callback)
+	}
+
+	closePen(callback:()=> any= null) {
+		console.log('Open pen')
+		let x = Settings.groundStation.x.station
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.cap), 0, Settings.groundStation.speeds.gondola)
+		this.moveGroundStation(Settings.groundStation.extruder.open)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.groundStation.speeds.gondola)
+		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		this.moveGroundStation(Settings.groundStation.extruder.close)
+		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola, callback)
+	}
+
+	penPlus() {
+		this.pen.plus()
+	}
+
+	penMinus() {
+		this.pen.minus()
 	}
 
 	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
@@ -351,7 +410,7 @@ export class Tipibot implements TipibotInterface {
 		// 	callback()
 		// }
 		this.penUp(servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, null, true)
-		// this.penUp(null, null, null, true)
+		// this.penUp(undefined, undefined, undefined, true)
 		// The pen will make me (tipibot) move :-)
 		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
 		this.moveDirect(homePoint, callback, false)

@@ -1,6 +1,6 @@
 import $ = require("jquery");
 import { GUI, Controller } from "../GUI"
-import { CommeUnDessein, StorageKeys, CommeUnDesseinSize, State } from "./CommeUnDesseinStatic"
+import { CommeUnDessein, StorageKeys, State } from "./CommeUnDesseinStatic"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 import { visualFeedback } from "../VisualFeedback"
 import { Communication } from "../Communication/CommunicationStatic"
@@ -37,15 +37,15 @@ export class CommeUnDesseinInteractive extends CommeUnDessein {
 		commeUnDesseinGUI.add(this, 'mode').onFinishChange((value) => this.settingsChanged(StorageKeys.Mode, value))
 		commeUnDesseinGUI.add(this, 'secret').onFinishChange((value) => this.settingsChanged(StorageKeys.Secret, value))
 
-		CommeUnDesseinSize.width = parseInt(this.getItem(StorageKeys.Width)) || Tipibot.tipibot.drawArea.bounds.width
-		CommeUnDesseinSize.height = parseInt(this.getItem(StorageKeys.Height)) || Tipibot.tipibot.drawArea.bounds.height
+		// CommeUnDesseinSize.width = parseInt(this.getItem(StorageKeys.Width)) || Tipibot.tipibot.drawArea.bounds.width
+		// CommeUnDesseinSize.height = parseInt(this.getItem(StorageKeys.Height)) || Tipibot.tipibot.drawArea.bounds.height
 
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
-			this.setItem(StorageKeys.Width, value)
-		})
-		commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, 5000, 1).name('Height').onFinishChange((value)=> {
-			this.setItem(StorageKeys.Height, value)
-		})
+		// commeUnDesseinGUI.add(CommeUnDesseinSize, 'width', 0, 5000, 1).name('Width').onFinishChange((value)=> {
+		// 	this.setItem(StorageKeys.Width, value)
+		// })
+		// commeUnDesseinGUI.add(CommeUnDesseinSize, 'height', 0, 5000, 1).name('Height').onFinishChange((value)=> {
+		// 	this.setItem(StorageKeys.Height, value)
+		// })
 
 		this.startButton = commeUnDesseinGUI.addButton('Start', ()=> this.toggleStart())
 		// commeUnDesseinGUI.open()

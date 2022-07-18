@@ -41,6 +41,7 @@ export let Settings = {
 		penOffset: 0
 	},
 	servo: {
+		delta: 5,
 		speed: 100,
 		position: {
 			invert: false,
@@ -58,6 +59,30 @@ export let Settings = {
 				before: 1000,
 				after: 2000,
 			},
+		}
+	},
+	groundStation: {
+		speeds: {
+			gondola: 1000,
+			station: 7000,
+		},
+		y: {
+			above: 200,
+			cap: 100,
+			station: 10,
+			pen: 0,
+		},
+		x: {
+			station: 0,
+			red: 100,
+			greend: 200,
+			blue: 300,
+			black: 400,
+		},
+		extruder: {
+			drop: 0,
+			close: 50,
+			open: -300,
 		}
 	},
 	drawArea: {
