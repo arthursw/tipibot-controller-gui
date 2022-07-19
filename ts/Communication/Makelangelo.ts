@@ -209,9 +209,11 @@ export class Makelangelo extends Interpreter {
 		let message = 'Wait: ' + delay
 		// G4 [Snn] [Pnn]
 		// Wait S milliseconds and P seconds.
-		let seconds = Math.floor(delay)
-		let milliseconds = (seconds - delay) * 1000
-		this.queue('G4 S' + milliseconds + ' P' + seconds + '\n', message, callback)
+		// let seconds = Math.floor(delay)
+		// let milliseconds = (seconds - delay) * 1000
+		let milliseconds = delay
+		// this.queue('G4 S' + milliseconds + ' P' + seconds + '\n', message, callback)
+		this.queue('G4 S' + milliseconds + '\n', message, callback)
 		// console.log('error: command not implemented')
 	}
 
