@@ -250,7 +250,7 @@ export class CommeUnDessein {
 				SVGPlotStatic.svgPlot.destroy()
 			}
 			console.log('new svg plot...')
-			SVGPlotStatic.svgPlot = new SVGPlotStatic(drawing)
+			SVGPlotStatic.svgPlot = new SVGPlotStatic(drawing, false)
 			SVGPlotStatic.svgPlot.plot(() => this.setDrawingStatusDrawn(response.pk))
 		})
 	}

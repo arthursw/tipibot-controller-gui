@@ -185,7 +185,7 @@ export class SVGPlotStatic {
 	
 	plotting = false
 
-	constructor(item: paper.Item=null) {
+	constructor(item: paper.Item=null, center=true) {
 
 		if(SVGPlotStatic.svgPlot != null) {
 			SVGPlotStatic.svgPlot.destroy()
@@ -223,7 +223,9 @@ export class SVGPlotStatic {
 		// this.item.position = this.item.position.add(Tipibot.tipibot.drawArea.getBounds().topLeft)
 		this.originalItem = null
 		this.setBackground()
-		this.center()
+		if(center) {
+			this.center()
+		}
 		console.log("Collapsing SVG...")
 		SVGPlotStatic.collapse(this.item, this.group, this.item.strokeBounds)
 		
