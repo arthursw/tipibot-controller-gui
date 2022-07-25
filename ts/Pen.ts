@@ -28,6 +28,8 @@ export class Pen {
 
 	previousPosition: paper.Point
 	angle: number
+	currentColor = 'black'
+	opened = false
 
 	static moveTypeFromMouseEvent(event: MouseEvent) {
 		return 	event.altKey ? MoveType.Linear : MoveType.Direct

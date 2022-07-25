@@ -29,10 +29,12 @@ export interface TipibotInterface {
 	penDown(servoDownValue?: number, servoDownTempoBefore?: number): void
 	moveGroundStation(position: number, callback?:()=> any): void
 	moveAboveStation(callback?:()=> any): void
-	pickPen(name: string, callback?:()=> any): void
-	dropPen(name: string, callback?:()=> any): void
-	openPen(callback?:()=> any): void
-	closePen(callback?:()=> any): void
+	pickPen(name: string, force?:boolean, callback?:()=> any): void
+	changePen(name: string, callback?:()=> any): void
+	dropPen(name?: string, force?:boolean, callback?:()=> any): void
+	openPen(force?:boolean, callback?:()=> any): void
+	activatePen(callback?:()=> any): void
+	closePen(force?:boolean, callback?:()=> any): void
 
 	cartesianToLengths(point: paper.Point): paper.Point
 	lengthsToCartesian(lengths: paper.Point): paper.Point

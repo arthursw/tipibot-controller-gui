@@ -20,7 +20,6 @@ export class SVGPlotStatic {
 	public static readonly nSegmentsPerBatch = 1000
 	public static readonly nSegmentsMax = SVGPlotStatic.nSegmentsPerBatch * 3
 
-	currentColorIndex = 0
 	nSegments = 0
 	currentPath: paper.Path = null
 
@@ -442,8 +441,6 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		}
 
 		this.currentPath = <paper.Path>clone.firstChild
-		let currentColor = this.getColorCSS(this.currentPath.strokeColor)
-		Tipibot.tipibot.sendChangePen(currentColor, this.currentColorIndex++)
 
 		if(!gCode) {
 			// this.plotNext(()=> {
@@ -689,28 +686,26 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 	}
 
 	plotCurrentPath() {
+		if(this.currentPath == null) {
+			return
+		}
+
+		let nextColor = this.getColorCSS(this.currentPath.strokeColor)
+		Tipibot.tipibot.changePen(nextColor)
+		
 		this.plotPath(this.currentPath)
 		this.nSegments += this.currentPath.segments.length
-		let currentPath = <paper.Path>this.currentPath.nextSibling
-		if(currentPath != null) {
-			let currentColor = this.getColorCSS(this.currentPath.strokeColor)
-			let nextColor = this.getColorCSS(currentPath.strokeColor)
-			if(currentColor != null && nextColor != null && currentColor != nextColor) {
-				let wasPenUp = Tipibot.tipibot.pen.state == PenState.Up
-				Tipibot.tipibot.penUp()
-				Tipibot.tipibot.sendChangePen(nextColor, this.currentColorIndex++)
-				if(!wasPenUp) {
-					Tipibot.tipibot.penDown()
-				} 
-			}
-		}
-		this.currentPath = currentPath
+		this.currentPath = <paper.Path>this.currentPath.nextSibling
 	}
 
 	plotGCode() {
 		this.nSegments = 0
 		while(this.currentPath != null) {
 			this.plotCurrentPath()
+		}
+		Tipibot.tipibot.closePen()
+		if(Settings.groundStation.useColors) {
+			Tipibot.tipibot.dropPen()
 		}
 	}
 
@@ -720,6 +715,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.nSegments = 0
 		while(this.currentPath != null) {
 			this.plotCurrentPath()
+		}
+		Tipibot.tipibot.closePen()
+		if(Settings.groundStation.useColors) {
+			Tipibot.tipibot.dropPen()
 		}
 		Communication.interpreter.justQueueCommands = false
 		Communication.interpreter.startQueue()

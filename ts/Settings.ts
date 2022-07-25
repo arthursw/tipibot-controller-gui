@@ -31,6 +31,7 @@ export let Settings = {
 		invertMotorLeft: false,
 		invertMotorRight: false,
 		drawSpeed: 330,
+		manoeuverSpeed: 1000,
 		maxSpeed: 4042,
 		acceleration: 200,
 		stepsPerRev: 200,
@@ -62,10 +63,9 @@ export let Settings = {
 		}
 	},
 	groundStation: {
-		speeds: {
-			gondola: 1000,
-			station: 7000,
-		},
+		speed: 7000,
+		useColors: false,
+		activateWhenOpening: true,
 		y: {
 			above: 200,
 			cap: 100,
@@ -82,6 +82,7 @@ export let Settings = {
 		extruder: {
 			drop: 0,
 			close: 50,
+			activate: 30,
 			open: -300,
 		}
 	},

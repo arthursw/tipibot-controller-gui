@@ -234,8 +234,8 @@ export class Makelangelo extends Interpreter {
 	// }
 	
 	sendMoveExtruder(position: number, callback:()=> any= null) {
-		let message = 'Move extruder to ' + position + ' at speed ' + Settings.groundStation.speeds.station
-		this.queue('G0 E' + position + ' F' + Settings.groundStation.speeds.station + '\n', message, callback)
+		let message = 'Move extruder to ' + position + ' at speed ' + Settings.groundStation.speed
+		this.queue('G0 E' + position + ' F' + Settings.groundStation.speed + '\n', message, callback)
 	}
 
 	sendMovePen(angle: number, callback: ()=> void = null) {

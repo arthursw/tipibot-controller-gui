@@ -93,9 +93,10 @@ export class SettingsManager {
 		delaysDownFolder.add(Settings.servo.delay.down, 'after', 0, 3000, 1).name('After')
 		
 		let groundStationFolder = settingsFolder.addFolder('Ground station')
-		
-		groundStationFolder.add(Settings.groundStation.speeds, 'gondola', 0, 10000, 1).name('Gondola speed')
-		groundStationFolder.add(Settings.groundStation.speeds, 'station', 0, 10000, 1).name('Station speed')
+	
+		groundStationFolder.add(Settings.groundStation, 'speed', 0, 10000, 1).name('Station speed')
+		groundStationFolder.add(Settings.groundStation, 'useColors').name('Use colors')
+		groundStationFolder.add(Settings.groundStation, 'activateWhenOpening').name('Activate when opening')
 
 		let xFolder = groundStationFolder.addFolder('X')
 		for(let name in Settings.groundStation.x) {
@@ -109,6 +110,7 @@ export class SettingsManager {
 		let extruderFolder = groundStationFolder.addFolder('Extruder')
 
 		extruderFolder.add(Settings.groundStation.extruder, 'drop', -1000, 1000, 1).name('Drop')
+		extruderFolder.add(Settings.groundStation.extruder, 'activate', -1000, 1000, 1).name('Activate')
 		extruderFolder.add(Settings.groundStation.extruder, 'close', -1000, 1000, 1).name('Close')
 		extruderFolder.add(Settings.groundStation.extruder, 'open', -1000, 1000, 1).name('Open')
 
@@ -118,17 +120,19 @@ export class SettingsManager {
 			if(name == 'station') {
 				continue
 			}
-			actionsFolder.addButton('Pick ' + capitalizeFirstLetter(name), ()=> this.tipibot.pickPen(name))
-			actionsFolder.addButton('Drop ' + capitalizeFirstLetter(name), ()=> this.tipibot.dropPen(name))
+			actionsFolder.addButton('Pick ' + capitalizeFirstLetter(name), ()=> this.tipibot.pickPen(name, true))
+			actionsFolder.addButton('Drop ' + capitalizeFirstLetter(name), ()=> this.tipibot.dropPen(name, true))
 		}
-		actionsFolder.addButton('Open pen', ()=> this.tipibot.openPen())
-		actionsFolder.addButton('Close pen', ()=> this.tipibot.closePen())
+		actionsFolder.addButton('Open pen', ()=> this.tipibot.openPen(true))
+		actionsFolder.addButton('Activate pen', ()=> this.tipibot.activatePen())
+		actionsFolder.addButton('Close pen', ()=> this.tipibot.closePen(true))
 
 		this.motorsFolder = settingsFolder.addFolder('Motors')
 
 		this.motorsFolder.add(Settings.tipibot, 'invertMotorLeft').name('Invert left motor')
 		this.motorsFolder.add(Settings.tipibot, 'invertMotorRight').name('Invert right motor')
 		this.motorsFolder.add(Settings.tipibot, 'drawSpeed', 1, MAX_SPEED, 1).name('Draw speed steps/sec.')
+		this.motorsFolder.add(Settings.tipibot, 'manoeuverSpeed', 0, MAX_SPEED, 1).name('Manoeuver speed steps/sec.')
 		this.motorsFolder.add(Settings.tipibot, 'maxSpeed', 1, MAX_SPEED, 1).name('Max speed steps/sec.')
 		this.motorsFolder.add({maxSpeedMm: Settings.tipibot.maxSpeed * mmPerSteps()}, 'maxSpeedMm', 0.1, MAX_SPEED * mmPerSteps(), 0.01).name('Max speed mm/sec.')
 		this.motorsFolder.add(Settings.tipibot, 'acceleration', 1, 5000, 1).name('Acceleration')

@@ -318,51 +318,102 @@ export class Tipibot implements TipibotInterface {
 		this.pen.penUp(undefined, undefined, undefined, callback)
 	}
 
-	pickPen(name: string, callback:()=> any= null) {
+	pickPen(name: string, force=false, callback:()=> any= null) {
+		if(!force && (this.pen.currentColor != null || this.pen.currentColor == name)) {
+			return
+		}
 		console.log('Pick pen ' + name)
 		let x = (Settings.groundStation.x as any)[name]
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penDrop()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.tipibot.manoeuverSpeed)
 		this.pen.penClose()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed)
 		this.pen.penUp(undefined, undefined, undefined, callback)
+		this.pen.currentColor = name
 	}
 
-	dropPen(name: string, callback:()=> any= null) {
+	dropPen(name: string=Tipibot.tipibot.pen.currentColor, force=false, callback:()=> any= null) {
+		if(!force && this.pen.currentColor == null) {
+			return
+		}
 		console.log('Drop pen ' + name)
 		let x = (Settings.groundStation.x as any)[name]
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.tipibot.manoeuverSpeed)
 		this.pen.penDrop()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed)
 		this.pen.penUp(undefined, undefined, undefined, callback)
+		this.pen.currentColor = null
 	}
 
-	openPen(callback:()=> any= null) {
+	openPen(force=false, callback:()=> any= null) {
+		if(!force && this.pen.opened) {
+			return
+		}
 		console.log('Open pen')
 		let x = Settings.groundStation.x.station
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.open)
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola)
+		if(Settings.groundStation.activateWhenOpening) {
+			this.activatePenCore()
+		}
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.drop, callback)
+		this.pen.opened = true
 	}
 
-	closePen(callback:()=> any= null) {
+	activatePenCore() {
+		let x = Settings.groundStation.x.station
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.cap), 0, Settings.tipibot.manoeuverSpeed)
+		this.moveGroundStation(Settings.groundStation.extruder.activate)
+		this.pause(1000)
+		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		this.moveGroundStation(Settings.groundStation.extruder.activate)
+		this.pause(1000)
+		this.moveGroundStation(Settings.groundStation.extruder.drop)
+	}
+
+	activatePen(callback:()=> any= null) {
+		console.log('Activate pen')
+		let x = Settings.groundStation.x.station
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
+		this.pen.penUp()
+		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		this.activatePenCore()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed, callback)
+	}
+
+	closePen(force=false, callback:()=> any= null) {
+		if(!force && !this.pen.opened) {
+			return
+		}
 		console.log('Open pen')
 		let x = Settings.groundStation.x.station
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.cap), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.cap), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.open)
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.groundStation.speeds.gondola)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.drop)
 		this.moveGroundStation(Settings.groundStation.extruder.close)
 		this.moveGroundStation(Settings.groundStation.extruder.drop)
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.groundStation.speeds.gondola, callback)
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed, callback)
+		this.pen.opened = false
+	}
+
+	changePen(name: string, callback:()=> any= null) {
+		if(this.pen.currentColor != null && Settings.groundStation.useColors) {
+			this.closePen()
+			this.dropPen(this.pen.currentColor)
+		}
+		if(Settings.groundStation.useColors) {
+			this.pickPen(name)
+		}
+		this.openPen(false, callback)
 	}
 
 	penPlus() {
@@ -414,6 +465,8 @@ export class Tipibot implements TipibotInterface {
 		// The pen will make me (tipibot) move :-)
 		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
 		this.moveDirect(homePoint, callback, false)
+
+		setTimeout(()=> this.disableMotors(true), 1000*60*2)
 	}
 
 	windowResize() {
