@@ -74,7 +74,8 @@ export class SettingsManager {
 		penFolder.add(Settings.tipibot, 'penWidth', 0.1, 20).name('Pen width')
 		penFolder.add(Settings.tipibot, 'penOffset', -200, 200, 1).name('Pen offset')
 		penFolder.add(Settings.servo, 'delta', 0, 45, 1).name('Angle delta')
-		penFolder.add(Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.')
+		// penFolder.add(Settings.servo, 'speed', 1, 360, 1).name('Servo speed deg/sec.')
+		penFolder.add(Settings.servo, 'speed', 1, 3000, 1).name('Servo travel time ms.')
 
 		this.anglesFolder = penFolder.addFolder('Angles')
 		this.anglesFolder.add(Settings.servo.position, 'invert').name('Invert')

@@ -43,7 +43,7 @@ export let Settings = {
 	},
 	servo: {
 		delta: 5,
-		speed: 100,
+		speed: 500,
 		position: {
 			invert: false,
 			up: 10,

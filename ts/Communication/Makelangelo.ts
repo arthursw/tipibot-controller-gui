@@ -250,8 +250,8 @@ export class Makelangelo extends Interpreter {
 	sendPenState(servoValue: number, delayBefore: number = 0, delayAfter: number = 0, callback: ()=> void = null) {
 		this.lastCommandWasMove = false
 		
-		let servoSpeed = Settings.servo.speed
-		let message = 'Move pen' + (servoValue == Settings.servo.position.up ? ' up' : servoValue == Settings.servo.position.down ? ' down' : '') + ': ' + servoValue + ' servo speed: ' + servoSpeed
+		let travelTimeMs = Settings.servo.speed
+		let message = 'Move pen' + (servoValue == Settings.servo.position.up ? ' up' : servoValue == Settings.servo.position.down ? ' down' : '') + ': ' + servoValue + ' servo speed: ' + travelTimeMs
 		// servoValue = this.convertServoValue(servoValue)
 		if(delayBefore > 0) {
 			this.sendPause(delayBefore)
@@ -261,7 +261,7 @@ export class Makelangelo extends Interpreter {
 		// this.queue('G0 F' + servoSpeed + ' Z' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
 		
 		// * M280 - Set servo position absolute: "M280 P<index> S<angle|µs>". (Requires servos)
-		this.queue('M280 P0 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
+		this.queue('M280 P0 S' + servoValue + ' T' + travelTimeMs + '\n', message, delayAfter <= 0 ? callback : undefined)
 
 		if(delayAfter > 0) {
 			this.sendPause(delayAfter, callback)
