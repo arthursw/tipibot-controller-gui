@@ -399,8 +399,14 @@ export class Tipibot implements TipibotInterface {
 		this.moveGroundStation(Settings.groundStation.extruder.open)
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		if(Settings.groundStation.penDownWhenClosing) {
+			this.pen.penDown()
+		}
 		this.moveGroundStation(Settings.groundStation.extruder.close)
 		this.moveGroundStation(Settings.groundStation.extruder.drop)
+		if(Settings.groundStation.penDownWhenClosing) {
+			this.pen.penUp()
+		}
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed, callback)
 		this.pen.opened = false
 	}

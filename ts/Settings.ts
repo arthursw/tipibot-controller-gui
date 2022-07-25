@@ -65,7 +65,8 @@ export let Settings = {
 	groundStation: {
 		speed: 7000,
 		useColors: false,
-		activateWhenOpening: true,
+		activateWhenOpening: false,
+		penDownWhenClosing: true,
 		y: {
 			above: 200,
 			cap: 100,

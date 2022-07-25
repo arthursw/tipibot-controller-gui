@@ -97,6 +97,7 @@ export class SettingsManager {
 		groundStationFolder.add(Settings.groundStation, 'speed', 0, 10000, 1).name('Station speed')
 		groundStationFolder.add(Settings.groundStation, 'useColors').name('Use colors')
 		groundStationFolder.add(Settings.groundStation, 'activateWhenOpening').name('Activate when opening')
+		groundStationFolder.add(Settings.groundStation, 'penDownWhenClosing').name('Pen down when closing')
 
 		let xFolder = groundStationFolder.addFolder('X')
 		for(let name in Settings.groundStation.x) {
