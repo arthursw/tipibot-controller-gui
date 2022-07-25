@@ -322,8 +322,8 @@ export class Tipibot implements TipibotInterface {
 	moveAboveStation(callback:()=> any= null) {
 		console.log('Move above station')
 		let x = Settings.groundStation.x.station
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
-		this.pen.penUp(undefined, undefined, undefined, callback)
+		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.maxSpeed, callback)
 	}
 
 	pickPen(name: string, force=false, callback:()=> any= null) {
@@ -332,6 +332,7 @@ export class Tipibot implements TipibotInterface {
 		}
 		console.log('Pick pen ' + name)
 		let x = (Settings.groundStation.x as any)[name]
+		this.pen.penUp()
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penDrop()
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.tipibot.manoeuverSpeed)
@@ -347,8 +348,8 @@ export class Tipibot implements TipibotInterface {
 		}
 		console.log('Drop pen ' + name)
 		let x = (Settings.groundStation.x as any)[name]
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.pen), 0, Settings.tipibot.manoeuverSpeed)
 		this.pen.penDrop()
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed)
@@ -362,8 +363,8 @@ export class Tipibot implements TipibotInterface {
 		}
 		console.log('Open pen')
 		let x = Settings.groundStation.x.station
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.open)
 		if(Settings.groundStation.activateWhenOpening) {
@@ -388,8 +389,8 @@ export class Tipibot implements TipibotInterface {
 	activatePen(callback:()=> any= null) {
 		console.log('Activate pen')
 		let x = Settings.groundStation.x.station
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.moveGroundStation(Settings.groundStation.extruder.drop)
 		this.activatePenCore()
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above), 0, Settings.tipibot.manoeuverSpeed, callback)
@@ -401,8 +402,8 @@ export class Tipibot implements TipibotInterface {
 		}
 		console.log('Open pen')
 		let x = Settings.groundStation.x.station
-		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.pen.penUp()
+		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.above))
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.cap), 0, Settings.tipibot.manoeuverSpeed)
 		this.moveGroundStation(Settings.groundStation.extruder.open)
 		this.move(MoveType.Direct, new paper.Point(x, Settings.groundStation.y.station), 0, Settings.tipibot.manoeuverSpeed)
