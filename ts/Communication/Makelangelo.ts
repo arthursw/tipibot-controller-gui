@@ -261,7 +261,11 @@ export class Makelangelo extends Interpreter {
 		// this.queue('G0 F' + servoSpeed + ' Z' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
 		
 		// * M280 - Set servo position absolute: "M280 P<index> S<angle|µs>". (Requires servos)
-		this.queue('M280 P0 S' + servoValue + ' T' + travelTimeMs + '\n', message, delayAfter <= 0 ? callback : undefined)
+		if(travelTimeMs>1) {
+			this.queue('M280 P0 S' + servoValue + ' T' + travelTimeMs + '\n', message, delayAfter <= 0 ? callback : undefined)
+		} else {
+			this.queue('M280 P0 S' + servoValue + '\n', message, delayAfter <= 0 ? callback : undefined)
+		}
 
 		if(delayAfter > 0) {
 			this.sendPause(delayAfter, callback)
