@@ -54,7 +54,7 @@ export class Interpreter {
 	}
 
 	serialPortConnectionOpened() {
-		this.initialize()
+		// this.initialize()
 	}
 
 	initialize(initializeAtHome=true) {
