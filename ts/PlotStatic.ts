@@ -690,8 +690,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 			return
 		}
 
-		let nextColor = this.getColorCSS(this.currentPath.strokeColor)
-		Tipibot.tipibot.changePen(nextColor)
+		// let nextColor = this.getColorCSS(this.currentPath.strokeColor)
+		// Tipibot.tipibot.changePen(nextColor)
 		
 		this.plotPath(this.currentPath)
 		this.nSegments += this.currentPath.segments.length
@@ -703,10 +703,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		while(this.currentPath != null) {
 			this.plotCurrentPath()
 		}
-		Tipibot.tipibot.closePen()
-		if(Settings.groundStation.useColors) {
-			Tipibot.tipibot.dropPen()
-		}
+		// Tipibot.tipibot.closePen()
+		// if(Settings.groundStation.useColors) {
+		// 	Tipibot.tipibot.dropPen()
+		// }
 	}
 
 	plotAll() {
@@ -716,10 +716,10 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		while(this.currentPath != null) {
 			this.plotCurrentPath()
 		}
-		Tipibot.tipibot.closePen()
-		if(Settings.groundStation.useColors) {
-			Tipibot.tipibot.dropPen()
-		}
+		// Tipibot.tipibot.closePen()
+		// if(Settings.groundStation.useColors) {
+		// 	Tipibot.tipibot.dropPen()
+		// }
 		Communication.interpreter.justQueueCommands = false
 		Communication.interpreter.startQueue()
 		let commandsIDs = []
