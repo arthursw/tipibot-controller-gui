@@ -238,10 +238,12 @@ export class SettingsManager {
 			if(name == 'width') {
 				this.tipibotPositionFolder.getController('x').max(value, false)
 				this.drawAreaDimensionsFolder.getController('width').max(value, changeFinished)
+				this.homeFolder.getController('homeX').max(Settings.tipibot.width)
 			} else if(name == 'height') {
 				this.tipibotPositionFolder.getController('y').max(value, false)
 				this.drawAreaDimensionsFolder.getController('height').max(value, changeFinished)
 				this.drawAreaDimensionsFolder.getController('y').max(value - Settings.drawArea.height, changeFinished)
+				this.homeFolder.getController('homeY').max(Settings.tipibot.height)
 			}
 			if(name == 'width' || name == 'height') {
 				this.updateHomePosition(this.homeFolder.getController('Position').getValue(), true)

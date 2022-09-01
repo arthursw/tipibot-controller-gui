@@ -659,8 +659,8 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		GUI.stopLoadingAnimation()
 
 		this.currentPath = <paper.Path>clone.firstChild
-		let currentColor = this.getColorCSS(this.currentPath.strokeColor)
-		Tipibot.tipibot.sendChangePen(currentColor, this.currentColorIndex++)
+		// let currentColor = this.getColorCSS(this.currentPath.strokeColor)
+		// Tipibot.tipibot.sendChangePen(currentColor, this.currentColorIndex++)
 
 		if(!gCode) {
 			// this.plotNext(()=> {
@@ -912,18 +912,18 @@ Optimizing trajectories and computing speeds (in full speed mode) will take some
 		this.plotPath(this.currentPath)
 		this.nSegments += this.currentPath.segments.length
 		let currentPath = <paper.Path>this.currentPath.nextSibling
-		if(currentPath != null) {
-			let currentColor = this.getColorCSS(this.currentPath.strokeColor)
-			let nextColor = this.getColorCSS(currentPath.strokeColor)
-			if(currentColor != null && nextColor != null && currentColor != nextColor) {
-				let wasPenUp = Tipibot.tipibot.pen.state == PenState.Up
-				Tipibot.tipibot.penUp()
-				Tipibot.tipibot.sendChangePen(nextColor, this.currentColorIndex++)
-				if(!wasPenUp) {
-					Tipibot.tipibot.penDown()
-				} 
-			}
-		}
+		// if(currentPath != null) {
+		// 	let currentColor = this.getColorCSS(this.currentPath.strokeColor)
+		// 	let nextColor = this.getColorCSS(currentPath.strokeColor)
+		// 	if(currentColor != null && nextColor != null && currentColor != nextColor) {
+		// 		let wasPenUp = Tipibot.tipibot.pen.state == PenState.Up
+		// 		Tipibot.tipibot.penUp()
+		// 		// Tipibot.tipibot.sendChangePen(nextColor, this.currentColorIndex++)
+		// 		if(!wasPenUp) {
+		// 			Tipibot.tipibot.penDown()
+		// 		} 
+		// 	}
+		// }
 		this.currentPath = currentPath
 	}
 
