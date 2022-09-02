@@ -236,8 +236,9 @@ export class CommeUnDessein {
 				}
 
 				let controlPath: paper.Path = <paper.Path>path.clone()
-
-				controlPath.flatten(Settings.plot.flattenPrecision)
+				if(controlPath.segments.length > 2 || controlPath.firstSegment.point.isClose(controlPath.lastSegment.point, 0.1)) {
+					controlPath.flatten(Settings.plot.flattenPrecision)
+				}
 				
 				// now that controlPath is flattened: convert in draw area coordinates
 				for(let segment of controlPath.segments) {
