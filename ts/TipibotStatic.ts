@@ -199,12 +199,12 @@ export class Tipibot implements TipibotInterface {
 
 		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
-			if(Settings.transformMatrix.apply) {
+			if(Settings.calibration.apply) {
 				target = Calibration.calibration.transform(target)
 			}
 			Communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
-			if(Settings.transformMatrix.apply) {
+			if(Settings.calibration.apply) {
 				Calibration.calibration.moveTipibot(target)
 			} else {
 				Communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback)

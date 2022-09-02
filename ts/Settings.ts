@@ -92,10 +92,6 @@ export let Settings = {
 		width: paperWidth,
 		height: paperHeight
 	},
-	transformMatrix: {
-		destinationPoints: new Array<number>(),
-		apply: false
-	},
 	calibration: {
 		grid: new Array<Array<number[]>>(),
 		apply: false,
