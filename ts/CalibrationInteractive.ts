@@ -37,6 +37,9 @@ export class CalibrationInteractive extends Calibration {
         this.gui.add(Settings.calibration, 'apply').name('Apply calibration').onFinishChange((value)=> {
             settingsManager.save(false)
         })
+        this.gui.add(Settings.calibration, 'applyOnHome').name('Apply calibration on home').onFinishChange((value)=> {
+            settingsManager.save(false)
+        })
 
         let testRectangleFolder = this.gui.addFolder('Rectangle test')
 		testRectangleFolder.add(this, 'previewRectangleWidth', 0, 5000, 1).name('Width').onChange(()=> this.updatePreviewRectangle())

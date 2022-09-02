@@ -77,8 +77,9 @@ export class Calibration {
         let rectangle = Tipibot.tipibot.computeDrawArea()
         return this.getPointsFromRectangle(rectangle)
     }
-
+    
     moveTipibot(end: paper.Point, moveCallback: ()=>any = null) {
+        let ignoreTransform = !Settings.calibration.applyOnHome && end.isClose(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), 0.01)
         let start = this.transform(Tipibot.tipibot.lastSentPosition)
         let delta = end.subtract(start)
         let length = delta.length
@@ -86,7 +87,7 @@ export class Calibration {
         let nSteps = Math.ceil(length / Settings.calibration.maxStepSize)
         for(let n=0 ; n<nSteps ; n++) {
             let point = start.add(delta.multiply(n*length/nSteps))
-            point = this.transform(point)
+            point = ignoreTransform ? point : this.transform(point)
             Communication.interpreter.sendMoveDirect(point, n==nSteps-1 ? moveCallback : null)
         }
     }
@@ -98,6 +99,9 @@ export class Calibration {
     }
 
     transform(point: paper.Point) {
+        if(!Settings.calibration.applyOnHome && point.isClose(new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY), 0.01)) {
+            return point
+        }
         let matrix = this.getMatrix(point)
         return matrix != null ? new paper.Point(matrix.transform(point.x, point.y)) : point
     }

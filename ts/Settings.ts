@@ -95,6 +95,7 @@ export let Settings = {
 	calibration: {
 		grid: new Array<Array<number[]>>(),
 		apply: false,
+		applyOnHome: false,
 		maxStepSize: 10
 	},
 	plot: {
