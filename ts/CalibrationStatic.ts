@@ -94,8 +94,21 @@ export class Calibration {
 
     getMatrix(point: paper.Point) {
         let drawArea = Tipibot.tipibot.computeDrawArea()
-        let cell = drawArea.size.divide(point.subtract(drawArea.topLeft) as any) as any
-        return this.matrices != null && this.matrices.length > cell.y && this.matrices[cell.y].length > cell.x ? this.matrices[cell.y][cell.x] : null
+        let cellWidth = drawArea.width / this.nCellsX
+        let cellHeight = drawArea.height / this.nCellsY
+        // let cell = drawArea.size.divide(point.subtract(drawArea.topLeft) as any) as any
+        if(point.x < drawArea.left) {
+            point.x = drawArea.left
+        } else if (point.x > drawArea.right) {
+            point.x = drawArea.right
+        }
+        if(point.y < drawArea.top) {
+            point.y = drawArea.top
+        } else if (point.y > drawArea.bottom) {
+            point.y = drawArea.bottom
+        }
+        let cell = new paper.Point(Math.floor((point.x-drawArea.left)/cellWidth), Math.floor((point.y-drawArea.top)/cellHeight))
+        return this.matrices != null && this.matrices.length > cell.y && this.matrices[cell.y].length > cell.x && cell.x >= 0 && cell.y >= 0 ? this.matrices[cell.y][cell.x] : null
     }
 
     transform(point: paper.Point) {
