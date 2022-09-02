@@ -159,10 +159,14 @@ export class SVGPlotStatic {
 			}
 			let path = <paper.Path>child
 			if(Settings.plot.flatten) {
-				path.flatten(Settings.plot.flattenPrecision)
+				if(path.segments.length > 2 || !path.firstSegment.point.isClose(path.lastSegment.point, 0.1)) {
+					path.flatten(Settings.plot.flattenPrecision)
+				}
 			}
 			if(Settings.plot.subdivide) {
-				this.subdividePath(path, Settings.plot.maxSegmentLength)
+				if(path.segments.length > 2 || !path.firstSegment.point.isClose(path.lastSegment.point, 0.1)) {
+					this.subdividePath(path, Settings.plot.maxSegmentLength)
+				}
 			}
 		}
 	}
