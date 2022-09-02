@@ -236,7 +236,7 @@ export class CommeUnDessein {
 				}
 
 				let controlPath: paper.Path = <paper.Path>path.clone()
-				if(controlPath.segments.length > 2 || controlPath.firstSegment.point.isClose(controlPath.lastSegment.point, 0.1)) {
+				if(controlPath.segments.length > 2 || !controlPath.firstSegment.point.isClose(controlPath.lastSegment.point, 0.1)) {
 					controlPath.flatten(Settings.plot.flattenPrecision)
 				}
 				
