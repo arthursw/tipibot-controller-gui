@@ -330,8 +330,8 @@ export class SettingsManager {
 				this.virtualKeyboard.enableArrowsController.show()
 			}
 		}
-		document.dispatchEvent(createEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
-		this.save(false)
+		// document.dispatchEvent(createEvent('SettingChanged', { detail: { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished } }))
+		this.save(false, { parentNames: parentNames, name: name, value: value, changeFinished: changeFinished })
 	}
 
 	// When loading settings (load from json file)
@@ -365,18 +365,19 @@ export class SettingsManager {
 		// this.tipibot.setY(Settings.tipibot.homeY, true)
 		this.tipibot.setHome(false)
 
-		document.dispatchEvent(createEvent('SettingChanged', { detail: { all: true } }))
-
 		// save to local storage
 		this.save(false)
 	}
 
-	save(saveFile=true) {
+	save(saveFile=true, settingsChangedEventDetail:any = { all: true }) {
 		let json = JSON.stringify(Settings, null, '\t')
 		localStorage.setItem('settings', json)
 		if(saveFile) {
 			var blob = new Blob([json], {type: "application/json"})
 			saveAs(blob, "settings.json")
+		}
+		if(settingsChangedEventDetail != null) {
+			document.dispatchEvent(createEvent('SettingChanged', { detail: settingsChangedEventDetail}))
 		}
 	}
 
@@ -414,12 +415,12 @@ export class SettingsManager {
 
 	loadJSONandOverwriteLocalStorage(settingsJsonString: string) {
 		copyObjectPropertiesFromJSON(Settings, settingsJsonString)
-		this.save(false)
+		this.save(false, null)
 	}
 
 	loadObjectandOverwriteLocalStorage(settings: any) {
 		copyObjectProperties(Settings, settings)
-		this.save(false)
+		this.save(false, null)
 	}
 }
 
