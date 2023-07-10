@@ -480,7 +480,8 @@ export class Tipibot implements TipibotInterface {
 		// The pen will make me (tipibot) move :-)
 		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
 		this.moveDirect(homePoint, callback, false)
-
+		
+		// clearTimeout(this.disableMotorsTimeout)
 		// this.disableMotorsTimeout = setTimeout(()=> this.disableMotors(true), 1000*60*2) as any
 	}
 
