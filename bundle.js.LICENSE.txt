@@ -1,6 +1,6 @@
 /*!
  * 
- *   simple-keyboard v2.32.131
+ *   simple-keyboard v2.32.68
  *   https://github.com/hodgef/simple-keyboard
  * 
  *   Copyright (c) Francisco Hodge (https://github.com/hodgef)
@@ -11,7 +11,7 @@
  */
 
 /*!
- * Paper.js v0.12.17 - The Swiss Army Knife of Vector Graphics Scripting.
+ * Paper.js v0.12.15 - The Swiss Army Knife of Vector Graphics Scripting.
  * http://paperjs.org/
  *
  * Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
@@ -21,7 +21,7 @@
  *
  * All rights reserved.
  *
- * Date: Thu Nov 3 21:15:36 2022 +0100
+ * Date: Wed Mar 17 10:49:48 2021 +0100
  *
  ***
  *
@@ -43,12 +43,26 @@
  */
 
 /*!
- * jQuery JavaScript Library v3.7.0
+ * Sizzle CSS Selector Engine v2.3.5
+ * https://sizzlejs.com/
+ *
+ * Copyright JS Foundation and other contributors
+ * Released under the MIT license
+ * https://js.foundation/
+ *
+ * Date: 2020-03-14
+ */
+
+/*!
+ * jQuery JavaScript Library v3.5.1
  * https://jquery.com/
  *
- * Copyright OpenJS Foundation and other contributors
+ * Includes Sizzle.js
+ * https://sizzlejs.com/
+ *
+ * Copyright JS Foundation and other contributors
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2023-05-11T18:29Z
+ * Date: 2020-05-04T22:49Z
  */
