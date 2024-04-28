@@ -160,7 +160,7 @@ export class LiveDrawing {
 
 	startLiveDrawing() {
 		// settingsManager.settingsFolder.getController('disableMouseInteractions').setValue(true)
-		settingsManager.settingsFolder.getController('disableCommandList').setValue(true)
+		// settingsManager.settingsFolder.getController('disableCommandList').setValue(true)
 
 		if(this.canvasJ == null) {
 			this.divJ = $('<div>')

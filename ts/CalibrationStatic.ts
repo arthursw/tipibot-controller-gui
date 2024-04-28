@@ -1,11 +1,13 @@
 import { Settings, paper, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
-import * as PerspT from 'perspective-transform'
+// import * as PerspT from 'perspective-transform'
+
 import { Communication } from "./Communication/CommunicationStatic";
 
-if (isServer) {
-    var ServerPerspT = require('perspective-transform');
-}
+const PerspT = require('perspective-transform');
+// if (isServer) {
+//     var ServerPerspT = require('perspective-transform');
+// }
 // Calibration will draw a width x height rectangle (at the center of the paper) with different settings 
 // to calibrate the y offset and the width of the machine
 
@@ -66,7 +68,8 @@ export class Calibration {
     }
     
     getTransformMatrix(srcCorners: number[], dstCorners: number[]) {
-        return isServer ? ServerPerspT(srcCorners, dstCorners) : PerspT(srcCorners, dstCorners)
+        // return isServer ? ServerPerspT(srcCorners, dstCorners) : PerspT(srcCorners, dstCorners)
+        return PerspT(srcCorners, dstCorners)
     }
 
     getTransformMatrixFromRectangles(sourceRectangle: paper.Rectangle, destinationRectangle: paper.Rectangle) {
