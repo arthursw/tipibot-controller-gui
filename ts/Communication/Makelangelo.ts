@@ -172,8 +172,8 @@ export class Makelangelo extends Interpreter {
 		// console.log(message)
 		// this.queue('M4 X' + tipibotWidth + ' E0.5 S' + (stepsPerRev*microstepResolution) + ' P' + mmPerRev + '\n', message)
 		let message = 'Set stepsPerMillimeter: ' + stepsPerMillimeter.toFixed(3);
-		let g92command = 'G92 X'+stepsPerMillimeter.toFixed(3)+ ' Y' +stepsPerMillimeter.toFixed(3) + '\n'
-		this.queue(g92command, message)
+		// let g92command = 'G92 X'+stepsPerMillimeter.toFixed(3)+ ' Y' +stepsPerMillimeter.toFixed(3) + '\n'
+		// this.queue(g92command, message)
 		this.lastCommandWasMove = false
 
 		let limitRight = tipibotWidth / 2;
