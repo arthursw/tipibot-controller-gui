@@ -69,7 +69,7 @@ export class Morpheeologie {
             Communication.interpreter.queue(`G0 Z${this.homeZ} F${this.speed}\n`)
         })
 		this.mgui.addButton('Start', ()=> this.start())
-		this.mgui.addButton('Drop', ()=> this.drop(this.posX, this.posY))
+		this.mgui.addButton('Drop', ()=> this.drop(this.posX, this.posY, true))
 
         // Not editable with the gamepad
         let settings = this.mgui.addFolder('Settings')
@@ -85,7 +85,7 @@ export class Morpheeologie {
         this.updateMenu()
 	}
     
-    drop(x: number, y: number) {
+    drop(x: number, y: number, send=false) {
         if(!this.homed) {
             console.log('Home the machine before moving it!')
             return
@@ -109,6 +109,11 @@ export class Morpheeologie {
         }
         this.posX = x
         this.posY = y
+        if(send) {
+            for(let command of commands) {
+                this.queue(command)
+            }
+        }
         return commands
     }
 
@@ -141,7 +146,7 @@ export class Morpheeologie {
         this.posY = this.homeY
 
         for(let command of commands) {
-            Communication.interpreter.queue(command, command)
+            Communication.interpreter.queue(command)
         }
     }
 
@@ -289,22 +294,26 @@ export class Morpheeologie {
         }
 
         if(gp.buttons[8].pressed) {
-            this.drop(this.posX, this.posY)
+            this.drop(this.posX, this.posY, true)
             activated = true
         }
 
         // Right Joystick
         if(this.equals(gp.axes[3], -1)) { // Left
+            console.log('left')
             if(this.distToCenter(this.posX - this.deltaXY, this.posY) < this.maxDistToCenter) {
+                console.log('drop left')
                 this.posX -= this.deltaXY
-                this.drop(this.posX, this.posY)
+                this.drop(this.posX, this.posY, true)
                 activated = true
             }
         }
         if(this.equals(gp.axes[3], 1)) { // Right
+            console.log('right')
             if(this.distToCenter(this.posX + this.deltaXY, this.posY) < this.maxDistToCenter) {
+                console.log('drop right')
                 this.posX += this.deltaXY
-                this.drop(this.posX, this.posY)
+                this.drop(this.posX, this.posY, true)
                 activated = true
             }
         }
