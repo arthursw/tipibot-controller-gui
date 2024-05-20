@@ -160,7 +160,10 @@ export class Interpreter {
 		}
 	}
 
-	queue(data: string, message: string, callback: () => any = null, specialCommand: SpecialCommandTypes = null) {
+	queue(data: string, message: string = null, callback: () => any = null, specialCommand: SpecialCommandTypes = null) {
+		if(message == null) {
+			message = data
+		}
 		let command = { id: this.commandID++, data: data, callback: callback, message: message, special: specialCommand }
 		if(this.justQueueCommands) {
 			this.commandQueue.push(command)

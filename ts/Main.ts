@@ -23,6 +23,7 @@ import { Telescreen } from "./Plugins/Telescreen"
 import { SVGSplitter } from "./Plugins/SVGSplitter"
 import { FileManager } from "./Plugins/FileManager"
 import { LiveDrawing } from "./Plugins/LiveDrawing"
+import { Morpheeologie } from "./Plugins/Morpheeologie"
 import { GCodeViewer } from "./Plugins/GCodeViewer"
 
 
@@ -103,9 +104,12 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 		liveDrawing.createGUI(pluginFolder)
 		liveDrawing.setRenderer(renderer)
 
+		let morpheeologie = new Morpheeologie()
+		morpheeologie.createGUI(pluginFolder)
+		
 		let gcodeViewer = new GCodeViewer()
 		gcodeViewer.createGUI(pluginFolder)
-
+		
 		// debug
 		w.tipibot = Tipibot.tipibot
 		w.settingsManager = settingsManager
@@ -120,6 +124,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 		w.commeUnDessein = commeUnDessein
 		w.telescreen = telescreen
 		w.paper = paper
+		w.morpheeologie = morpheeologie
 	}
 
 	initialize()
