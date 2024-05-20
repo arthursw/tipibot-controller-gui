@@ -11,6 +11,7 @@ export class CommunicationInteractive extends Communication {
 	autoConnectController: Controller
 	autoConnectIntervalID: NodeJS.Timeout = null
 	folderTitle: any
+	serialCommunicationSpeedController: Controller = null
 
 	constructor(gui:GUI) {
 		super(false)
@@ -18,7 +19,7 @@ export class CommunicationInteractive extends Communication {
 		this.createGUI(gui)
 		this.portController = null
 		this.initializeInterpreter(Settings.firmware)
-		this.connectToSerial()
+		this.connectToWebsocket()
 	}
 
 	createGUI(gui: GUI) {
@@ -107,16 +108,26 @@ export class CommunicationInteractive extends Communication {
 		return
 	}
 
-	connectToSerial() {
+	connectToWebsocket() {
 		let serverController = this.gui.add(Settings, 'websocketServerURL')
 		serverController.onFinishChange((value)=> {
 			settingsManager.save(false)
 		})
 		let firmwareController = this.gui.add( Settings, 'firmware', ['Tipibot', 'Polargraph', 'PenPlotter', 'Makelangelo', 'FredBot'] ).name('Firmware')
 		firmwareController.onFinishChange((value)=> {
+			this.serialCommunicationSpeedController.setValueNoCallback(`${this.interpreter.serialCommunicationSpeed}`)
 			settingsManager.save(false)
 			this.initializeInterpreter(value)
 		})
+		this.serialCommunicationSpeedController = this.gui.add(this, 'serialCommunicationSpeed', ['57600', '115200', '250000']).name('Baud-rate')
+		this.serialCommunicationSpeedController.onFinishChange((value)=> {
+			// Reconnect with new speed
+			this.serialCommunicationSpeed = parseInt(value)
+			let portPath = this.portController.object[this.portController.property]
+			this.disconnectSerialPort()
+			this.portController.setValue(portPath)
+		})
+		// When new firmware selected: set default com speed
 
 		this.autoConnectController = this.gui.add(Settings, 'autoConnect').name('Auto connect').onFinishChange((value)=> {
 			settingsManager.save(false)
@@ -137,7 +148,7 @@ export class CommunicationInteractive extends Communication {
 
 		this.initializePortController(['Disconnected'])
 
-		super.connectToSerial()
+		super.connectToWebsocket()
 	}
 
 	onWebSocketOpen(event: any) {

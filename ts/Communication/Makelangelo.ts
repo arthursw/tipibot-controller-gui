@@ -1,5 +1,4 @@
-import { Settings, paper, autoHomePosition, mmPerSteps, servoUpAngle, servoDownAngle } from "../Settings"
-import { MoveType } from "../TipibotInterface"
+import { Settings, paper, autoHomePosition, servoUpAngle, servoDownAngle } from "../Settings"
 import { Interpreter, Communication } from "./Interpreter"
 
 export class Makelangelo extends Interpreter {

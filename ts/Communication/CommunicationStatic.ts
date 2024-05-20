@@ -24,6 +24,7 @@ export class Communication {
 	interpreter: Interpreter
 	serialPortConnectionOpened = false
 	autoConnectController:any = null
+	serialCommunicationSpeed: number = null
 	static communication: Communication
 	static interpreter: Interpreter
 
@@ -32,7 +33,7 @@ export class Communication {
 		this.socket = null
 		if(intialize) {
 			this.initializeInterpreter(Settings.firmware)
-			this.connectToSerial()
+			this.connectToWebsocket()
 		}
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
@@ -63,6 +64,7 @@ export class Communication {
 		}
 		Communication.interpreter = this.interpreter
 		this.interpreter.setTipibot(tipibot)
+		this.serialCommunicationSpeed = this.interpreter.serialCommunicationSpeed
 		console.log('initialize '+interpreterName)
 	}
 
@@ -115,7 +117,7 @@ export class Communication {
 		return messageObject
 	}
 
-	connectToSerial() {
+	connectToWebsocket() {
 		this.socket = new WebSocket(`ws://${Settings.websocketServerURL}`)
 
 		this.socket.addEventListener('message',  (event:any)=> this.onJSONMessage(event))
@@ -152,7 +154,7 @@ export class Communication {
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(createEvent('Connect', { detail: portName }))
 			console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed)
-			this.send('open', { name: portName, baudRate: this.interpreter.serialCommunicationSpeed })
+			this.send('open', { name: portName, baudRate: this.serialCommunicationSpeed })
 		}
 	}
 
