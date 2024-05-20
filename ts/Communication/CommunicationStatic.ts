@@ -153,7 +153,7 @@ export class Communication {
 		} else if(portName != 'Disconnected') {
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(createEvent('Connect', { detail: portName }))
-			console.log('open: ' + portName + ', at: ' + this.interpreter.serialCommunicationSpeed)
+			console.log('open: ' + portName + ', at: ' + this.serialCommunicationSpeed)
 			this.send('open', { name: portName, baudRate: this.serialCommunicationSpeed })
 		}
 	}

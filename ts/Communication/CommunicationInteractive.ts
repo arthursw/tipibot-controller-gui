@@ -122,10 +122,13 @@ export class CommunicationInteractive extends Communication {
 		this.serialCommunicationSpeedController = this.gui.add(this, 'serialCommunicationSpeed', ['57600', '115200', '250000']).name('Baud-rate')
 		this.serialCommunicationSpeedController.onFinishChange((value)=> {
 			// Reconnect with new speed
+			
 			this.serialCommunicationSpeed = parseInt(value)
 			let portPath = this.portController.object[this.portController.property]
-			this.disconnectSerialPort()
-			this.portController.setValue(portPath)
+			if(portPath != 'Disconnected') {
+				this.disconnectSerialPort()
+				this.portController.setValue(portPath)
+			}
 		})
 		// When new firmware selected: set default com speed
 
