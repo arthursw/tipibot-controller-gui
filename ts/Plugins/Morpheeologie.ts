@@ -5,12 +5,12 @@ export class Morpheeologie {
 
     homeX = 150
     homeY = 80
-    homeZ = 101
+    homeZ = 102
 
     radius = 20
     nDrops = 20.0
-    zUp = 101
-    zDown = 101
+    zUp = 102
+    zDown = 102
     injectAmount = -1
     speed = 3000
     injectSpeed = 3000
@@ -25,7 +25,7 @@ export class Morpheeologie {
     deltaE = 0.1
 
     maxDistToCenter = 30
-    minZ = 101
+    minZ = 102
     maxZ = 110
 
     selectedMenuItem = 0
