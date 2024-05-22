@@ -5,12 +5,12 @@ export class Morpheeologie {
 
     homeX = 150
     homeY = 80
-    homeZ = 100
+    homeZ = 101
 
     radius = 20
     nDrops = 20.0
-    zUp = 100
-    zDown = 100
+    zUp = 101
+    zDown = 101
     injectAmount = -1
     speed = 3000
     injectSpeed = 3000
@@ -25,7 +25,7 @@ export class Morpheeologie {
     deltaE = 0.1
 
     maxDistToCenter = 30
-    minZ = 100
+    minZ = 101
     maxZ = 110
 
     selectedMenuItem = 0
@@ -199,15 +199,15 @@ export class Morpheeologie {
 
         // Arrows
         if(this.equals(gp.axes[0], 0.714)) { // Left
-            if(this.distToCenter(this.posX - this.deltaXY, this.posY) < this.maxDistToCenter) {
-                this.posX -= this.deltaXY
-                this.queue(`G0 X${this.posX}\n F${this.speed}`)
+            if(this.distToCenter(this.posX + this.deltaXY, this.posY) < this.maxDistToCenter) {
+                this.posX += this.deltaXY
+                this.queue(`G0 X${this.posX} F${this.speed}\n`)
                 activated = true
             }
         }
         if(this.equals(gp.axes[0], -0.428)) { // Right
-            if(this.distToCenter(this.posX + this.deltaXY, this.posY) < this.maxDistToCenter) {
-                this.posX += this.deltaXY;
+            if(this.distToCenter(this.posX - this.deltaXY, this.posY) < this.maxDistToCenter) {
+                this.posX -= this.deltaXY;
                 this.queue(`G0 X${this.posX} F${this.speed}\n`)
                 activated = true
             }
