@@ -10,18 +10,20 @@ export class Morpheeologie {
     radius = 20
     nDrops = 20.0
     zUp = 102
-    zDown = 102
-    injectAmount = -1
+    zDown = 107
+    injectAmount = 1
+    vacuumAmount = -0.98
     speed = 3000
     injectSpeed = 3000
     skipUp = false
     injectWhileMoving = true
+    injectAndVacuum = true
 
     posX = this.homeX
     posY = this.homeY
     posZ = this.zUp
     deltaXY = 3
-    deltaZ = 1
+    deltaZ = 5
     deltaE = 0.1
 
     maxDistToCenter = 30
@@ -29,7 +31,7 @@ export class Morpheeologie {
     maxZ = 110
 
     selectedMenuItem = 0
-    nMenuItems = 12
+    nMenuItems = 14
     refreshRate = 200
     mgui: GUI = null
     lastStarted = 0
@@ -49,10 +51,12 @@ export class Morpheeologie {
         this.mgui.add(this, 'zUp', 0, 150, 1).name('Z up')
         this.mgui.add(this, 'zDown', 0, 150, 1).name('Z down')
         this.mgui.add(this, 'injectAmount', -50, 50, 0.01).name('Inject Amount')
+        this.mgui.add(this, 'vacuumAmount', -50, 50, 0.01).name('Vacuum Amount')
         this.mgui.add(this, 'speed', 100, 8000, 10).name('Speed')
         this.mgui.add(this, 'injectSpeed', 100, 8000, 10).name('Injection speed')
 		this.mgui.add(this, 'skipUp').name('Skip Up / Down')
         this.mgui.add(this, 'injectWhileMoving').name('Inject while moving')
+        this.mgui.add(this, 'injectAndVacuum').name('Inject and vacuum')
         this.mgui.add(this, 'deltaXY', 0, 20, 0.01).name('Delta X/Y')
         this.mgui.add(this, 'deltaZ', 0, 20, 0.01).name('Delta Z')
         this.mgui.add(this, 'deltaE', 0, 20, 0.01).name('Delta E')
@@ -102,6 +106,12 @@ export class Morpheeologie {
             }
             // inject
             commands.push(`G0 E${this.injectAmount} F${this.injectSpeed.toFixed(2)}\n`);
+            
+            // vacuum
+            if (this.injectAndVacuum) {
+                commands.push(`G0 E${this.vacuumAmount} F${this.injectSpeed.toFixed(2)}\n`);
+            }
+
             if (!this.skipUp) {
                 // up
                 commands.push(`G0 Z${this.zUp} F${this.speed.toFixed(2)}\n`);
