@@ -1,6 +1,7 @@
 import { paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
+import { Communication } from "../Communication/CommunicationStatic"
 
 class Move {
 	
@@ -117,12 +118,16 @@ class DirectionMove extends Move {
 
 export class Telescreen {
 	
+	serialCommunicationSpeed = 9600
+	port: string = null
+
 	speed: number = 1
 	position: paper.Point
 	moves: Map<string, Move>
 
 	move: Move = null
 	modeController: Controller
+	portController: any
 
 	constructor() {
 		this.moves = new Map<string, Move>()
@@ -130,18 +135,54 @@ export class Telescreen {
 		this.moves.set('Polar', new PolarMove(this))
 		this.moves.set('Direction', new DirectionMove(this))
 
-		document.addEventListener('Disconnect', ()=> this.disconnect(), false)
-		document.addEventListener('Connect', (event: CustomEvent)=> this.connect(event.detail), false)
-		document.addEventListener('MessageReceived', (event: CustomEvent)=> this.messageReceived(event.detail), false)
+		// document.addEventListener('Disconnect', ()=> this.disconnect(), false)
+		// document.addEventListener('Connect', (event: CustomEvent)=> this.connect(event.detail), false)
+		// document.addEventListener('MessageReceived', (event: CustomEvent)=> this.messageReceived(event.detail), false)
+
+		document.addEventListener('ServerMessage', (event: CustomEvent)=> this.messageReceived(event.detail), false)
+
 		this.move = this.moves.get('Orthographic')
 		this.position = Tipibot.tipibot.getPosition()
 	}
 
 	createGUI(gui: GUI) {
 		let telescreenGUI = gui.addFolder('Telescreen')
+
+		this.portController = gui.add( {'Connection': 'Disconnected'}, 'Connection' )
+		gui.addButton('Disconnect', ()=> this.disconnectSerialPort() )
+
 		telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value)=> this.speed = value)
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
 		// telescreenGUI.open()
+	}
+
+	initializePortController(options: string[]) {
+
+		this.portController = this.portController.options(options)
+		
+		// $(this.portController.domElement.parentElement.parentElement).mousedown( (event)=> {})
+
+		this.portController.onFinishChange( (value: any) => this.serialConnectionPortChanged(value) )
+	}
+
+	serialConnectionPortChanged(portName: string) {
+		if(portName == 'Disconnected' && this.port != null) {
+			this.disconnectSerialPort()
+		} else if(portName != 'Disconnected') {
+			this.port = portName
+			console.log('open: ' + portName + ', at: ' + this.serialCommunicationSpeed)
+			Communication.communication.send('open', { name: portName, baudRate: this.serialCommunicationSpeed }, portName)
+		}
+	}
+	setPortName(port:string) {
+		this.portController.object[this.portController.property] = port
+		this.portController.updateDisplay()
+	}
+
+	disconnectSerialPort() {
+		Communication.communication.send('close', null, this.port)
+		this.portController.setValue('Disconnected')
+		this.port = null
 	}
 
 	changeMode(mode: string) {
@@ -172,23 +213,56 @@ export class Telescreen {
 		this.modeController.updateDisplay()
 	}
 
-	connect(port: string) {
-		// for(let serialPort of communication.serialPorts) {
-		// 	if(serialPort != port) {
-		// 		communication.socket.emit('command', 'open ' + serialPort + ' ' + SERIAL_COMMUNICATION_SPEED)
-		// 	}
-		// }
+	// connect(port: string) {
+	// 	// for(let serialPort of communication.serialPorts) {
+	// 	// 	if(serialPort != port) {
+	// 	// 		communication.socket.emit('command', 'open ' + serialPort + ' ' + SERIAL_COMMUNICATION_SPEED)
+	// 	// 	}
+	// 	// }
+	// }
+
+	// disconnect() {
+	// 	// for(let serialPort of communication.serialPorts) {
+	// 	// 	if(serialPort != Communication.interpreter.serialPort) {
+	// 	// 		communication.socket.emit('command', 'close ' + serialPort)
+	// 	// 	}
+	// 	// }
+	// }
+
+	messageReceived(messageObject: {type: string, data:any, port: string}) {
+
+		let type = messageObject.type
+		let data = messageObject.data
+		let port = messageObject.port
+
+		if(type == 'opened') {
+			this.port = port
+		} else if(type == 'closed') {
+			this.port = null
+		} else if(type == 'list') {
+			let options = ['Disconnected']
+			for(let port of data) {
+				options.push(port.path)
+			}
+			this.initializePortController(options)
+		} else if(type == 'connected') {
+
+		} else if(type == 'not-connected') {
+			
+		} else if(type == 'connected-to-simulator') {
+
+		} else if(type == 'data') {
+			if(port == this.port) {
+				this.processMessage(data)
+			}
+		} else if(type == 'sent') {
+			if(port == this.port) {
+			}
+		}
 	}
 
-	disconnect() {
-		// for(let serialPort of communication.serialPorts) {
-		// 	if(serialPort != Communication.interpreter.serialPort) {
-		// 		communication.socket.emit('command', 'close ' + serialPort)
-		// 	}
-		// }
-	}
+	processMessage(message: string) {
 
-	messageReceived(message: string) {
 		let position = Tipibot.tipibot.getPosition()
 		if(message.indexOf('left') == 0) {
 			if(message.indexOf('+') > 0) {

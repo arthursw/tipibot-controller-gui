@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 		liveDrawing.createGUI(pluginFolder)
 		liveDrawing.setRenderer(renderer)
 
-		let morpheeologie = new Morpheeologie()
+		let morpheeologie = new Morpheeologie(commandDisplay)
 		morpheeologie.createGUI(pluginFolder)
 		
 		let gcodeViewer = new GCodeViewer()

@@ -25,6 +25,7 @@ export class Communication {
 	serialPortConnectionOpened = false
 	autoConnectController:any = null
 	serialCommunicationSpeed: number = null
+	port: string = null
 	static communication: Communication
 	static interpreter: Interpreter
 
@@ -68,23 +69,28 @@ export class Communication {
 		console.log('initialize '+interpreterName)
 	}
 
-	onSerialPortConnectionOpened(port: {path: string, isOpened: boolean, baudRate: number} = null) {
+	onSerialPortConnectionOpened(port:string) {
 		this.serialPortConnectionOpened = true
+		this.port = port
 	}
 
-	onSerialPortConnectionClosed() {
-		this.serialPortConnectionOpened = false
+	onSerialPortConnectionClosed(port:string) {
+		if(port == this.port) {
+			this.serialPortConnectionOpened = false
+			this.port = null
+		}
 	}
 
 	onMessage(messageObject: any) {
 
 		let type = messageObject.type
 		let data = messageObject.data
+		let port = messageObject.port
 
 		if(type == 'opened') {
-			this.onSerialPortConnectionOpened()
+			this.onSerialPortConnectionOpened(port)
 		} else if(type == 'closed') {
-			this.onSerialPortConnectionClosed()
+			this.onSerialPortConnectionClosed(port)
 		} else if(type == 'list') {
 
 		} else if(type == 'connected') {
@@ -94,15 +100,19 @@ export class Communication {
 		} else if(type == 'connected-to-simulator') {
 
 		} else if(type == 'data') {
-			this.interpreter.messageReceived(messageObject)
+			if(port == this.port) {
+				this.interpreter.messageReceived(messageObject)
+			}
 		} else if(type == 'sent') {
-			this.interpreter.messageSent(messageObject)
+			if(port == this.port) {
+				this.interpreter.messageSent(messageObject)
+			}
 		} else if(type == 'info') {
 			console.info(data)
 		} else if(type == 'warning') {
 			console.warn(data)
 		} else if(type == 'already-opened') {
-			this.onSerialPortConnectionOpened(data)
+			this.onSerialPortConnectionOpened(port)
 		} else if(type == 'error') {
 			console.error(data)
 		} else if(type == 'load-settings') {
@@ -142,8 +152,8 @@ export class Communication {
 	disconnectSerialPort() {
 		this.interpreter.clearQueue()
 		this.interpreter.sendStop(true)
-		this.onSerialPortConnectionClosed()
-		this.send('close')
+		this.onSerialPortConnectionClosed(this.port)
+		this.send('close', null, this.port)
 		document.dispatchEvent(createEvent('Disconnect'))
 	}
 
@@ -154,7 +164,7 @@ export class Communication {
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(createEvent('Connect', { detail: portName }))
 			console.log('open: ' + portName + ', at: ' + this.serialCommunicationSpeed)
-			this.send('open', { name: portName, baudRate: this.serialCommunicationSpeed })
+			this.send('open', { name: portName, baudRate: this.serialCommunicationSpeed }, portName)
 		}
 	}
 
@@ -165,8 +175,8 @@ export class Communication {
 		this.send('list')
 	}
 
-	send(type: string, data: any = null) {
-		let message = { type: type, data: data }
+	send(type: string, data: any = null, port: string = null) {
+		let message = { type: type, data: data, port: port || this.port }
 		this.socket.send(JSON.stringify(message))
 		// console.log('Send ', type, data)
 		// console.log('Wait for "ready"...')

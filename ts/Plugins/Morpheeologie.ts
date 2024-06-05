@@ -1,22 +1,23 @@
 import { GUI, Controller } from "../GUI"
 import { Communication } from "../Communication/CommunicationStatic"
+import { CommandDisplay } from "../Communication/CommandDisplay"
 
 export class Morpheeologie {
 
     homeX = 150
     homeY = 80
-    homeZ = 102
+    homeZ = 112
 
     radius = 20
     nDrops = 20.0
-    zUp = 102
-    zDown = 107
+    zUp = 117
+    zDown = 112
     injectAmount = 1
     vacuumAmount = -0.98
     speed = 3000
     injectSpeed = 3000
     skipUp = false
-    injectWhileMoving = true
+    injectWhileMoving = false
     injectAndVacuum = true
 
     posX = this.homeX
@@ -27,8 +28,8 @@ export class Morpheeologie {
     deltaE = 0.1
 
     maxDistToCenter = 30
-    minZ = 102
-    maxZ = 110
+    minZ = 112
+    maxZ = 140
 
     selectedMenuItem = 0
     nMenuItems = 14
@@ -36,9 +37,11 @@ export class Morpheeologie {
     mgui: GUI = null
     lastStarted = 0
 
-    homed = false
+    // homed = false
+    commandDisplay: CommandDisplay = null
 
-	constructor() {
+	constructor(commandDisplay:CommandDisplay) {
+        this.commandDisplay = commandDisplay
         // requestAnimationFrame(()=>this.update())
         setTimeout(()=>this.update(), 250)
 	}
@@ -66,7 +69,7 @@ export class Morpheeologie {
             Communication.interpreter.queue(`M83\n`) // Set E to relative
             Communication.interpreter.queue(`G28 X Y\n`)
             Communication.interpreter.queue(`G0 X${this.homeX} Y${this.homeY} F${this.speed}\n`)
-            this.homed = true
+            // this.homed = true
         })
         this.mgui.addButton('Home Z', ()=> {
             Communication.interpreter.queue(`G28 Z\n`)
@@ -74,6 +77,8 @@ export class Morpheeologie {
         })
 		this.mgui.addButton('Start', ()=> this.start())
 		this.mgui.addButton('Drop', ()=> this.drop(this.posX, this.posY, true))
+
+        this.mgui.addFileSelectorButton('Load GCode and pause', 'text/*', false, (event)=> this.loadGCodeAndPause(event))
 
         // Not editable with the gamepad
         let settings = this.mgui.addFolder('Settings')
@@ -90,10 +95,10 @@ export class Morpheeologie {
 	}
     
     drop(x: number, y: number, send=false) {
-        if(!this.homed) {
-            console.log('Home the machine before moving it!')
-            return
-        }
+        // if(!this.homed) {
+        //     console.log('Home the machine before moving it!')
+        //     return
+        // }
         let commands = []
         if (this.injectWhileMoving) {
             commands.push(`G0 X${x.toFixed(2)} Y${y.toFixed(2)} E${this.injectAmount} F${this.speed.toFixed(2)}\n`);
@@ -128,14 +133,19 @@ export class Morpheeologie {
     }
 
     start() {
-        if(Date.now() - this.lastStarted < 10000) {
-            console.log('Wait 10 seconds before starting again')
+        if(Date.now() - this.lastStarted < 3000) {
+            console.log('Wait 3 seconds before starting again')
             return
         }
-        if(!this.homed) {
-            console.log('Home the machine before moving it!')
+        // if(!this.homed) {
+        //     console.log('Home the machine before moving it!')
+        //     return
+        // }
+        if(Communication.interpreter.pause) {
+            this.commandDisplay.pauseButton.setValue(false)
             return
         }
+
         this.lastStarted = Date.now()
 
         let commands = []
@@ -158,6 +168,27 @@ export class Morpheeologie {
         for(let command of commands) {
             Communication.interpreter.queue(command)
         }
+    }
+
+	loadGCodeAndPause(event: any) {
+
+		let files: FileList = event.dataTransfer != null ? event.dataTransfer.files : event.target.files
+
+		for (let i = 0 ; i < files.length ; i++) {
+			let file = files[i] != null ? files[i] : files.item(i)
+			let reader = new FileReader()
+			reader.onload = (event: any)=> {
+                let gcode = event.target.result.split('\n')
+                this.commandDisplay.pauseButton.setValue(true)
+                Communication.interpreter.justQueueCommands = true
+                for(let line of gcode) {
+                    Communication.interpreter.queue(line + '\n')
+                }
+                Communication.interpreter.justQueueCommands = false
+            }
+			reader.readAsText(file)
+			break
+		}
     }
 
     equals(a:number, b:number, tolerance=0.01) {
@@ -187,10 +218,10 @@ export class Morpheeologie {
     }
 
     queue(command: string) {
-        if(!this.homed) {
-            console.log('Home the machine before moving it!')
-            return
-        }
+        // if(!this.homed) {
+        //     console.log('Home the machine before moving it!')
+        //     return
+        // }
         Communication.interpreter.queue(command)
     }
 

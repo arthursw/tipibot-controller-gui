@@ -3,9 +3,9 @@
 !node_modules/file-saver/FileSaver.min.js
 !node_modules/jquery/dist/jquery.min.js
 !node_modules/socket.io-client/dist/socket.io.slim.js
-
 node_modules/*
-
+bundle.js
+.vscode/
 .DS_Store
 *.sublime-workspace
 package-lock.json

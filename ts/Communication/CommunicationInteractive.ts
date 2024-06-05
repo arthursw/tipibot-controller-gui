@@ -38,12 +38,12 @@ export class CommunicationInteractive extends Communication {
 		this.autoConnectIntervalID = null
 	}
 
-	setPortName(port: {path: string, isOpened: boolean, baudRate: number}) {
-		this.portController.object[this.portController.property] = port.path
+	setPortName(port:string) {
+		this.portController.object[this.portController.property] = port
 		this.portController.updateDisplay()
 	}
 
-	onSerialPortConnectionOpened(port: {path: string, isOpened: boolean, baudRate: number} = null) {
+	onSerialPortConnectionOpened(port:string) {
 		super.onSerialPortConnectionOpened(port)
 		if(port != null) {
 			this.setPortName(port)
@@ -54,8 +54,8 @@ export class CommunicationInteractive extends Communication {
 		this.folderTitle.find('.serial').addClass('connected')
 	}
 
-	onSerialPortConnectionClosed() {
-		super.onSerialPortConnectionClosed()
+	onSerialPortConnectionClosed(port: string) {
+		super.onSerialPortConnectionClosed(port)
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
 		}
@@ -77,6 +77,7 @@ export class CommunicationInteractive extends Communication {
 		super.onMessage(messageObject)
 		let type = messageObject.type
 		let data = messageObject.data
+		let port = messageObject.port
 
 		if(type == 'list') {
 			let options = ['Disconnected']
@@ -94,7 +95,7 @@ export class CommunicationInteractive extends Communication {
 				}
 			}
 		} else if(type == 'connected') {
-			this.setPortName(data)
+			this.setPortName(port)
 		} else if(type == 'not-connected') {
 			this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
 			if(Settings.autoConnect) {
