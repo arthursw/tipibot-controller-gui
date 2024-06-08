@@ -151,9 +151,9 @@ export class Communication {
 
 	disconnectSerialPort() {
 		this.interpreter.clearQueue()
+		this.send('close', null, this.port)
 		this.interpreter.sendStop(true)
 		this.onSerialPortConnectionClosed(this.port)
-		this.send('close', null, this.port)
 		document.dispatchEvent(createEvent('Disconnect'))
 	}
 

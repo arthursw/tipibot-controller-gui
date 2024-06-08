@@ -231,11 +231,14 @@ export class Morpheeologie {
             // requestAnimationFrame(()=>this.update())
             setTimeout(()=>this.update(), 0)
             return
-        }
-        
+        }        
         let activated = false
 
         const gp = gamepads[0]
+        if(gp == null) {
+            setTimeout(()=>this.update(), 0)
+            return
+        }
         // console.log('gamepad', gp)
 
         // Arrows
