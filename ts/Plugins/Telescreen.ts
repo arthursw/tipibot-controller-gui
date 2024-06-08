@@ -23,7 +23,7 @@ class Move {
 
 	moveTipibotDeferred(moveType: string) {
 		this.clearTimeout()
-		this.timeoutID = setTimeout(()=> this.moveTipibot(moveType), 500)
+		this.timeoutID = setTimeout(()=> this.moveTipibot(moveType), 0)
 	}
 
 	clearTimeout() {
@@ -148,8 +148,8 @@ export class Telescreen {
 	createGUI(gui: GUI) {
 		let telescreenGUI = gui.addFolder('Telescreen')
 
-		this.portController = gui.add( {'Connection': 'Disconnected'}, 'Connection' )
-		gui.addButton('Disconnect', ()=> this.disconnectSerialPort() )
+		this.portController = telescreenGUI.add( {'Connection': 'Disconnected'}, 'Connection' )
+		telescreenGUI.addButton('Disconnect', ()=> this.disconnectSerialPort() )
 
 		telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value)=> this.speed = value)
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
@@ -207,7 +207,7 @@ export class Telescreen {
 			movesList.push(m[0])
 			i++
 		}
-		let newMove = movesList[ i+1 < movesList.length ? i+1 : 0]
+		let newMove = movesList[ currentMoveIndex+1 < movesList.length ? currentMoveIndex + 1 : 0]
 		this.changeMode(newMove)
 		this.modeController.setValue(<any>newMove)
 		this.modeController.updateDisplay()
@@ -263,21 +263,20 @@ export class Telescreen {
 
 	processMessage(message: string) {
 
-		let position = Tipibot.tipibot.getPosition()
-		if(message.indexOf('left') == 0) {
-			if(message.indexOf('+') > 0) {
+		if(message.indexOf('Button 1') == 0) {
+			if(message.indexOf('left') > 0) {
 				this.move.positiveLeft()
-			} else if(message.indexOf('-') > 0) {
+			} else if(message.indexOf('right') > 0) {
 				this.move.negativeLeft()
-			} else if(message.indexOf('OFF') > 0) {
+			} else if(message.indexOf('clicked') > 0) {
 				Tipibot.tipibot.togglePenState()
 			}
-		} else if(message.indexOf('right') == 0) {
-			if(message.indexOf('+') > 0) {
+		} else if(message.indexOf('Button 2') == 0) {
+			if(message.indexOf('left') > 0) {
 				this.move.positiveRight()
-			} else if(message.indexOf('-') > 0) {
+			} else if(message.indexOf('right') > 0) {
 				this.move.negativeRight()
-			} else if(message.indexOf('OFF') > 0) {
+			} else if(message.indexOf('clicked') > 0) {
 				this.cycleMode()
 			}
 		}

@@ -8,11 +8,10 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     for terminal in "$TERMINAL" x-terminal-emulator mate-terminal gnome-terminal terminator xfce4-terminal urxvt rxvt termit Eterm aterm uxterm xterm roxterm termite lxterminal terminology st qterminal lilyterm tilix terminix konsole kitty guake tilda alacritty hyper wezterm rio; do
         if command -v "$terminal" > /dev/null 2>&1; then
             exec "$terminal" "$SERIAL_WEBSOCKET_CMD"
+            exec "$terminal" "$SERVE_CONTROLLER_CMD"
             if [[ $1 == "dev" ]] ; then
                 exec "$terminal" "$BUILD_CONTROLLER_CMD"
-                break
             fi
-            exec "$terminal" "$SERVE_CONTROLLER_CMD"
             chromium --kiosk http://localhost:8000
         fi
     done
@@ -24,18 +23,17 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     # Start serial-websocket
     osascript -e "tell app \"Terminal\" to do script \"$SERIAL_WEBSOCKET_CMD\""
 
-    # Build tipibot-controller-gui if in dev mode
-    if [[ $1 == "dev" ]] ; then
-        osascript -e "tell app \"Terminal\" to do script \"$BUILD_CONTROLLER_CMD\""
-        break
-    fi
-
     # Launch a server to serve tipibot-controller-gui on localhost:8000
     osascript -e "tell app \"Terminal\" to do script \"$SERVE_CONTROLLER_CMD\""
 
-    # Open chromium windows @ localhost:8000
-    chromium --kiosk http://localhost:8000
-
+    # Build tipibot-controller-gui if in dev mode
+    if [[ $1 == "dev" ]] ; then
+        osascript -e "tell app \"Terminal\" to do script \"$BUILD_CONTROLLER_CMD\""
+        # Open chromium windows @ localhost:8000
+        chromium --kiosk http://localhost:8000
+    else
+        open -n -a "Firefox" --args "localhost:8000"
+    fi
 
 elif [[ "$OSTYPE" == "cygwin" ]]; then
         # POSIX compatibility layer and Linux environment emulation for Windows
