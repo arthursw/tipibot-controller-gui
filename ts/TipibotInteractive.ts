@@ -14,12 +14,19 @@ export class TipibotInteractive extends Tipibot {
 	motorsEnableButton: Controller = null
 
 	static tipibot: TipibotInteractive
+	ACCELERATION = 10000
+	speed = 0
+	lastUpdateTime:number = null
+	lastCommandSent:number = null
+	pressedKeys:Set<string> = new Set()
+	amount = 1
 
 	constructor() {
 		super()
 		document.addEventListener('ZoomChanged', (event: CustomEvent)=> this.onZoomChanged(), false)
 		Tipibot.tipibot = this
 		TipibotInteractive.tipibot = this
+		setInterval(()=>this.updateMoves(), 100)
 	}
 
 	setPositionSliders(point: paper.Point) {
@@ -173,19 +180,20 @@ export class TipibotInteractive extends Tipibot {
 			console.log('Focus on the draw area to move the bot with arrows')
 			return
 		}
-		let amount = event.shiftKey ? 25 : event.ctrlKey ? 5 : event.altKey ? 1 : 0.25
+		this.amount = event.shiftKey ? 25 : event.ctrlKey ? 5 : event.altKey ? 1 : 0.25
+		this.pressedKeys.add(code)
 		switch (code) {
 			case 'ArrowLeft': 			// left arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
+				// this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
 				break;
 			case 'ArrowUp': 			// up arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)))
+				// this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)))
 				break;
 			case 'ArrowRight': 			// right arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)))
+				// this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)))
 				break;
 			case 'ArrowDown': 			// down arrow
-				this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
+				// this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
 				break;
 			case 'p':
 			case 'Add':
@@ -212,6 +220,63 @@ export class TipibotInteractive extends Tipibot {
 	}
 
 	keyUp(event:KeyboardEvent) {
+		this.pressedKeys.delete(event.key)
+	}
+
+	arrowPressed() {
+		for(let key of this.pressedKeys) {
+			if (key.startsWith('Arrow')) {
+				return true
+			}
+		}
+		return false
+	}
+
+	updateMoves() {
+		let now = Date.now()
+		if (this.lastUpdateTime == null) {
+			this.lastUpdateTime = now
+		}
+		if (this.lastCommandSent == null) {
+			this.lastCommandSent = now
+		}
+		if(this.arrowPressed()) {
+			this.speed = Math.min(this.speed + this.ACCELERATION * (now - this.lastUpdateTime) / 1000, Settings.tipibot.maxSpeed)
+		} else {
+			this.speed = 0;//Math.max(this.speed - this.ACCELERATION * (now - this.lastUpdateTime) / 1000, 0)
+		}
+		this.lastUpdateTime = now
+
+		// let amount = this.speed < 100 ? 1 : this.speed < 1000 ? 3 : this.speed < 5000 ? 10 : 100
+		let amount = this.speed / 250
+
+		// let amount = 100
+		// let speed = 100
+		if ( now - this.lastCommandSent > 250) {
+			for(let code of this.pressedKeys) {
+				for(let n=0 ; n<3 ; n++) {
+					switch (code) {
+						case 'ArrowLeft': 			// left arrow
+							// this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
+							this.moveLinear(this.getPosition().add(new paper.Point(-amount, 0)), this.speed, this.speed)
+							break;
+						case 'ArrowUp': 			// up arrow
+							// this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)))
+							this.moveLinear(this.getPosition().add(new paper.Point(0, -amount)), this.speed, this.speed)
+							break;
+						case 'ArrowRight': 			// right arrow
+							// this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)))
+							this.moveLinear(this.getPosition().add(new paper.Point(amount, 0)), this.speed, this.speed)
+							break;
+						case 'ArrowDown': 			// down arrow
+							// this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
+							this.moveLinear(this.getPosition().add(new paper.Point(0, amount)), this.speed, this.speed)
+							break;
+					}
+				}
+			}
+			this.lastCommandSent = now
+		}
 	}
 }
 let tipibot = new TipibotInteractive()

@@ -125,9 +125,21 @@ export class TipibotInterpreter extends Interpreter {
 		
 		// let speedInStepsPerSec = speed
 		// let message = 'Set speed: ' + speed.toFixed(2) + ', set acceleration: ' + acceleration.toFixed(2)
-		let message = 'Set acceleration: ' + acceleration.toFixed(2)
-		let speedParameters = 'M201 X' + acceleration.toFixed(2) + ' Y' + acceleration.toFixed(2) + ' Z' + acceleration.toFixed(2) + '\n'
+		let message = 'Set speed: ' + speed.toFixed(2)
+		let speedParameters = 'M203 X' + speed.toFixed(2) + ' Y' + speed.toFixed(2) + ' Z' + speed.toFixed(2) + '\n'
+
 		this.queue(speedParameters, message)
+
+		message = 'Set acceleration: ' + acceleration.toFixed(2)
+		let accParameters = 'M201 X' + acceleration.toFixed(2) + ' Y' + acceleration.toFixed(2) + ' Z' + acceleration.toFixed(2) + ' F200' + '\n'
+
+		this.queue(accParameters, message)
+
+		message = 'Set starting acceleration: ' + acceleration.toFixed(2)
+		accParameters = 'M204 T' + acceleration.toFixed(2) + '\n'
+
+		this.queue(accParameters, message)
+		
 	}
 
 	sendInvertXY(invertMotorLeft: boolean=Settings.tipibot.invertMotorLeft, invertMotorRight: boolean=Settings.tipibot.invertMotorRight) {
