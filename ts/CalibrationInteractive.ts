@@ -28,14 +28,14 @@ export class CalibrationInteractive extends Calibration {
         this.gui.add(this, 'nCellsY', 1, 10, 1).name('N cells Y').onFinishChange(()=> this.initializeGrid(true))
         
         this.gui.addButton('Apply current handle', ()=> this.applyHandle())
-        this.gui.addButton('Reset calibration', ()=> this.initializeGrid(true))
+        this.gui.addButton('Reset calibration', ()=> this.initializeGrid(true, true))
 
         this.previewTransformController = this.gui.add(this, 'previewTransform').name('Preview transform').onFinishChange((value)=> {
             this.handleGroup.visible = value
             this.gridGroup.visible = value
         })
         this.gui.add(Settings.calibration, 'apply').name('Apply calibration').onFinishChange((value)=> {
-            settingsManager.save(false)
+            // settingsManager.save(false) // not necessary anymore, now things are saved as soon as changed
         })
 
         let testRectangleFolder = this.gui.addFolder('Rectangle test')
@@ -56,5 +56,10 @@ export class CalibrationInteractive extends Calibration {
         this.saveHandles()
         this.updateGrid()
         this.previewTransformController.setValue(true, true)
+    }
+
+    saveHandles() {
+        super.saveHandles()
+        settingsManager.save(false)
     }
 }

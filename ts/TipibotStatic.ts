@@ -147,6 +147,8 @@ export class Tipibot implements TipibotInterface {
 	checkInitialized() {
 		if(Settings.forceInitialization && !this.initializedCommunication) {
 			Communication.interpreter.initialize()
+			this.lastSentPosition = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY - Settings.tipibot.penOffset)
+			this.setPosition(this.lastSentPosition, false, true)
 		}
 	}
 
@@ -180,6 +182,18 @@ export class Tipibot implements TipibotInterface {
 		clearTimeout(this.disableMotorsTimeout)
 	}
 
+	getClampedTarget(target: paper.Point) {
+		target.x = paper.Numerical.clamp(target.x, - Settings.tipibot.width / 2 + Settings.tipibot.limitH, Settings.tipibot.width / 2 - Settings.tipibot.limitH)
+		target.y = paper.Numerical.clamp(target.y, - Settings.tipibot.height / 2 + Settings.tipibot.limitV, Settings.tipibot.height / 2 - Settings.tipibot.limitV)
+		return target
+	}
+
+	targetIsValid(target: paper.Point) {
+		let validH = target.x > Settings.tipibot.limitH && target.x < Settings.tipibot.width - Settings.tipibot.limitH
+		let validV = target.y > Settings.tipibot.limitV && target.y < Settings.tipibot.height - Settings.tipibot.limitV
+		return validH && validV
+	}
+
 	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null, movePen=true) {
 		this.clearDisableMotorsTimeout()
 		this.checkInitialized()
@@ -190,28 +204,46 @@ export class Tipibot implements TipibotInterface {
 				callback()
 			}
 		}
-
-		this.lastSentPosition = point
 		
 		if(!this.motorsEnabled) {
 			this.enableMotors(true)
 		}
 
 		let target = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
+		
 		if(moveType == MoveType.Direct && !Settings.forceLinearMoves) {
-			if(Settings.transformMatrix.apply) {
+			if(Settings.calibration.apply) {
 				target = Calibration.calibration.transform(target)
+			}
+			if(!this.targetIsValid(target)){
+				console.log('invalid target position: ignore move to ', target.x, target.y)
+				return
 			}
 			Communication.interpreter.sendMoveDirect(target, moveCallback)
 		} else {
-			if(Settings.transformMatrix.apply) {
-				Calibration.calibration.moveTipibot(target)
+			if(Settings.calibration.apply) {
+				let trajectory = Calibration.calibration.getTrajectory(target)
+				for(let n=0 ; n<trajectory.length ; n++) {
+					target = trajectory[n]
+					if(!this.targetIsValid(target)){
+						console.log('invalid target position: ignore move to ', target.x, target.y)
+						return
+					}
+					Communication.interpreter.sendMoveDirect(target, n==trajectory.length-1 ? moveCallback : null)
+				}
 			} else {
+				if(!this.targetIsValid(target)){
+					console.log('invalid target position: ignore move to ', target.x, target.y)
+					return
+				}
 				Communication.interpreter.sendMoveLinear(target, minSpeed, maxSpeed, moveCallback)
 			}
 		}
+		// last sent position must not be calibrated, nor offset ; since it will be used to check if move was already sent 
+		this.lastSentPosition = point.clone()
 
 		if(movePen) {
+			// The pen will take penOffset into account ; both tipibot and pen positions are set to point
 			this.pen.setPosition(point, true, false)
 		}
 	}

@@ -102,10 +102,10 @@ export class Pen {
 			}
 		}
 		let center = new paper.Point(point.x, point.y - Settings.tipibot.penOffset)
-		this.circle.position = point
+		this.circle.position = point.clone()
 		this.lines.segments[1].point = center
 		this.offsetLine.segments[0].point = center
-		this.offsetLine.segments[1].point = point
+		this.offsetLine.segments[1].point = point.clone()
 	}
 
 	tipibotWidthChanged() {

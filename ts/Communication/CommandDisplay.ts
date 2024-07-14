@@ -188,6 +188,7 @@ export class CommandDisplay {
 		this.emergencyStopButton = this.gui.addButton('Emergency stop', () => {
 			this.pauseButton.setValue(true)
 			Communication.interpreter.sendStop(true)
+			this.connectButton.click()
 		})
 		this.saveCommandsButton = this.gui.addButton('Save commands', () => this.saveCommands() )
 		this.clearCommandsButton = this.gui.addButton('Clear commands', () => Communication.interpreter.clearQueue() )
@@ -202,7 +203,7 @@ export class CommandDisplay {
 		
 		this.goHomeButton.hide()
 		this.initializeButton.hide()
-		this.emergencyStopButton.hide()
+		// this.emergencyStopButton.hide()
 		this.saveCommandsButton.hide()
 		this.clearCommandsButton.hide()
 		// this.commandList.hide()
@@ -219,7 +220,7 @@ export class CommandDisplay {
 			this.initializeButton.show()
 			this.saveCommandsButton.show()
 			this.clearCommandsButton.show()
-			this.emergencyStopButton.show()
+			// this.emergencyStopButton.show()
 			// this.commandList.show()
 			
 			$('body').addClass('advancedLayout')
@@ -237,7 +238,7 @@ export class CommandDisplay {
 			this.initializeButton.hide()
 			this.saveCommandsButton.hide()
 			this.clearCommandsButton.hide()
-			this.emergencyStopButton.hide()
+			// this.emergencyStopButton.hide()
 			// this.commandList.hide()
 			
 			$('body').removeClass('advancedLayout')

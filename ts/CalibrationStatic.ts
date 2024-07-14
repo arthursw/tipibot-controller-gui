@@ -34,7 +34,7 @@ export class Calibration {
     previewTransformItem: paper.Path = null
     cornersOnly = false
     points: number[] = []
-    transformMatrix: any = null
+    // trajectory: paper.Path = new paper.Path()
     
     static calibration: Calibration = null
 
@@ -81,30 +81,44 @@ export class Calibration {
         return this.getPointsFromRectangle(rectangle)
     }
 
-    moveTipibot(end: paper.Point, moveCallback: ()=>any = null) {
-        let start = this.transform(Tipibot.tipibot.lastSentPosition)
+    getTrajectory(end: paper.Point, moveCallback: ()=>any = null) {
+        let lastSentPosition = new paper.Point(Tipibot.tipibot.lastSentPosition.x, Tipibot.tipibot.lastSentPosition.y - Settings.tipibot.penOffset)
+        let start = lastSentPosition
         let delta = end.subtract(start)
         let length = delta.length
         delta = delta.divide(length)
         let nSteps = Math.ceil(length / Settings.calibration.maxStepSize)
-        for(let n=0 ; n<nSteps ; n++) {
+        let targets = []
+        // this.trajectory.removeSegments()
+        for(let n=1 ; n<=nSteps ; n++) {
             let point = start.add(delta.multiply(n*length/nSteps))
             point = this.transform(point)
-            Communication.interpreter.sendMoveDirect(point, n==nSteps-1 ? moveCallback : null)
+            targets.push(point)
+            // this.trajectory.add(point)
         }
+        return targets
     }
 
     getMatrix(point: paper.Point) {
+        if (this.matrices == null) {
+            return null
+        }
         let drawArea = Tipibot.tipibot.computeDrawArea()
-        let cell = drawArea.size.divide(point.subtract(drawArea.topLeft) as any) as any
-        return this.matrices != null && this.matrices.length > cell.y && this.matrices[cell.y].length > cell.x ? this.matrices[cell.y][cell.x] : null
+        // let cell = new paper.Point(drawArea.width, drawArea.height).divide(point.subtract(drawArea.topLeft) as any)
+        let positionFromTopLeft = point.subtract(drawArea.topLeft)
+        let cellWidth = drawArea.width / this.nCellsX
+        let cellHeight = drawArea.height / this.nCellsY
+        let cell = positionFromTopLeft.divide(new paper.Point(cellWidth, cellHeight)).floor()
+        let cellY = paper.Numerical.clamp(cell.y, 0, this.matrices.length - 1)
+        let cellX = paper.Numerical.clamp(cell.x, 0, this.matrices[cellY].length - 1)
+        return this.matrices[cellY][cellX]
     }
 
     transform(point: paper.Point) {
         let matrix = this.getMatrix(point)
         return matrix != null ? new paper.Point(matrix.transform(point.x, point.y)) : point
     }
-
+    
     createHandle(point: paper.Point, x: number, y: number) {
         let handle = new paper.Path.Rectangle(new paper.Rectangle(point.x-HANDLE_SIZE/2, point.y-HANDLE_SIZE/2, HANDLE_SIZE, HANDLE_SIZE))
         handle.strokeColor = new paper.Color(('black'))
@@ -119,20 +133,49 @@ export class Calibration {
         return handle
     }
 
-    initializeGrid(save=false) {
+    getInterpolation(x:number, y:number) {
+        if(this.handles == null || this.handles.length<2) {
+            return null
+        }
+        let xi = x / this.nCellsX
+        let yi = y / this.nCellsY
+        let oldNCellsY = this.handles.length - 1
+        let oldNCellsX = this.handles[0].length - 1
+        let nx = Math.floor(xi*oldNCellsX)
+        let ny = Math.floor(yi*oldNCellsY)
+        let oldXi = nx / oldNCellsX
+        let oldYi = ny / oldNCellsY
+        let alphaX = (xi - oldXi) * oldNCellsX
+        let alphaY = (yi - oldYi) * oldNCellsY
+        let px1y1 = this.handles[ny][nx].position
+        let px2y1 = this.handles[ny][Math.min(nx+1, oldNCellsX)].position
+        let px2y2 = this.handles[Math.min(ny+1, oldNCellsY)][Math.min(nx+1, oldNCellsX)].position
+        let px1y2 = this.handles[Math.min(ny+1, oldNCellsY)][nx].position
+        let xf = (px1y1.x * (1-alphaX) + px2y1.x * alphaX) * (1-alphaY) + (px1y2.x * (1-alphaX) + px2y2.x * alphaX) * alphaY
+        let yf = (px1y1.y * (1-alphaY) + px1y2.y * alphaY) * (1-alphaX) + (px2y1.y * (1-alphaY) + px2y2.y * alphaY) * alphaX
+        return new paper.Point(xf, yf)
+    }
+
+    initializeGrid(save=false, reset=false) {
         this.gridGroup.removeChildren()
         this.handleGroup.removeChildren()
+        if(reset) {
+            this.handles = []
+        }
         let drawArea = Tipibot.tipibot.computeDrawArea()
         let cellWidth = drawArea.width / this.nCellsX
         let cellHeight = drawArea.height / this.nCellsY
-        this.handles = []
+        let newHandles = []
         for(let y=0 ; y<this.nCellsY+1 ; y++) {
-            let handlesRow = []
+            let newHandlesRow = []
             for(let x=0 ; x<this.nCellsX+1 ; x++) {
-                handlesRow.push(this.createHandle(new paper.Point(drawArea.left+x*cellWidth, drawArea.top+y*cellHeight), x, y))
+                let interpolation  = this.getInterpolation(x, y)
+                let position = interpolation == null ? new paper.Point(drawArea.left+x*cellWidth, drawArea.top+y*cellHeight) : interpolation
+                newHandlesRow.push(this.createHandle(position, x, y))
             }
-            this.handles.push(handlesRow)
+            newHandles.push(newHandlesRow)
         }
+        this.handles = newHandles
         this.updateGrid()
         if(save) {
             this.saveHandles()
@@ -140,7 +183,7 @@ export class Calibration {
     }
 
     onHandleDrag(event:paper.MouseEvent, x: number, y: number) {
-        if(event.modifiers.shiftKey) {
+        if(event.modifiers.shift) {
             this.handles[y][x].position = event.point
             this.updateGrid()
         }
@@ -155,7 +198,7 @@ export class Calibration {
     }
 
     onHandleClick(event: paper.MouseEvent, x:number, y: number) {
-        if(!event.modifiers.shiftKey) {
+        if(!event.modifiers.shift) {
             Tipibot.tipibot.moveDirect(this.handles[y][x].position)
             this.currentHandle.x = x
             this.currentHandle.y = y
@@ -190,7 +233,7 @@ export class Calibration {
             for(let x=0 ; x<this.nCellsX ; x++) {
                 let point = new paper.Point(x*cellWidth, y*cellHeight)
                 let topLeft = drawArea.topLeft.add(point)
-                let bottomRight = drawArea.topLeft.add(new paper.Point((x+1)*cellWidth, (y+1)*cellHeight))
+                let bottomRight = topLeft.add(new paper.Point(cellWidth, cellHeight))
                 let cellRectangle = new paper.Rectangle(topLeft, bottomRight)
                 let path = new paper.Path()
                 path.add(this.handles[y][x].position)
@@ -200,6 +243,17 @@ export class Calibration {
                 path.strokeColor = new paper.Color('orange')
                 path.strokeWidth = 1
                 matricesRow.push(this.getTransformMatrix(this.getPointsFromRectangle(cellRectangle), this.getPointListFromPath(path)))
+                // for(let pn of ['topLeft', 'topRight', 'bottomLeft', 'bottomRight']) {
+                //     let point = cellRectangle[pn]
+                //     console.log('source point:', point.x, point.y)
+                //     console.log('transformed source point:', matricesRow[matricesRow.length - 1].transform(point.x, point.y))
+                //     // console.log('inverse-transformed source point:', matricesRow[matricesRow.length - 1].transformInverse(point.x, point.y))
+                // }
+                // for(let segment of path.segments) {
+                //     console.log('destination point:', segment.point)
+                //     // console.log('transformed source point:', matricesRow[matricesRow.length - 1].transform(segment.point.x, segment.point.y))
+                //     console.log('inverse-transformed source point:', matricesRow[matricesRow.length - 1].transformInverse(segment.point.x, segment.point.y))
+                // }
                 path.closed = true
                 this.gridGroup.addChild(path)
                 gridRow.push(path)

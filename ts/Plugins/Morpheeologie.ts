@@ -43,11 +43,13 @@ export class Morpheeologie {
 	constructor(commandDisplay:CommandDisplay) {
         this.commandDisplay = commandDisplay
         // requestAnimationFrame(()=>this.update())
-        setTimeout(()=>this.update(), 250)
+        // setTimeout(()=>this.update(), 250)
 	}
 
 	createGUI(gui: GUI) {
 		this.mgui = gui.addFolder('Morphéeologie')
+        
+        this.mgui.addButton('Listen Gamepad', ()=> this.update())
 
 		this.mgui.add(this, 'radius', 1, 35, 1).name('Radius')
         this.mgui.add(this, 'nDrops', 1, 100, 1).name('N Drops')

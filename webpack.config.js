@@ -11,7 +11,8 @@ module.exports = {
             },
             {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
+                // `.swcrc` can be used to configure swc
+                loader: "swc-loader",
                 exclude: /node_modules/,
             },
         ],

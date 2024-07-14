@@ -26,6 +26,8 @@ export let Settings = {
 		width: tipibotWidth,
 		height: tipibotHeight,
 		stringLength: tipibotStringLength,
+		limitH: 250,
+		limitV: 500,
 		homeX: tipibotWidth / 2,
 		homeY: paperHeight + homeY,
 		invertMotorLeft: false,
@@ -91,10 +93,6 @@ export let Settings = {
 		y: homeY,
 		width: paperWidth,
 		height: paperHeight
-	},
-	transformMatrix: {
-		destinationPoints: new Array<number>(),
-		apply: false
 	},
 	calibration: {
 		grid: new Array<Array<number[]>>(),

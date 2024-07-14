@@ -26,6 +26,7 @@ export class Communication {
 	autoConnectController:any = null
 	serialCommunicationSpeed: number = null
 	port: string = null
+	openingPort: string = null
 	static communication: Communication
 	static interpreter: Interpreter
 
@@ -69,15 +70,20 @@ export class Communication {
 		console.log('initialize '+interpreterName)
 	}
 
+	setPort(port:string) {
+		this.port = port
+	}
+
 	onSerialPortConnectionOpened(port:string) {
 		this.serialPortConnectionOpened = true
-		this.port = port
+		this.setPort(port)
+		this.openingPort = null
 	}
 
 	onSerialPortConnectionClosed(port:string) {
 		if(port == this.port) {
 			this.serialPortConnectionOpened = false
-			this.port = null
+			this.setPort(null)
 		}
 	}
 
@@ -88,15 +94,27 @@ export class Communication {
 		let port = messageObject.port
 
 		if(type == 'opened') {
-			this.onSerialPortConnectionOpened(port)
+			if(port == this.openingPort) {
+				this.onSerialPortConnectionOpened(port)
+			}
+		} else if(type == 'already-opened') {
+			if(port == this.openingPort) {
+				this.onSerialPortConnectionOpened(port)
+			}
 		} else if(type == 'closed') {
-			this.onSerialPortConnectionClosed(port)
+			if(port == this.port) {
+				this.onSerialPortConnectionClosed(port)
+			}
 		} else if(type == 'list') {
 
 		} else if(type == 'connected') {
-
+			if(port == this.openingPort) {
+				this.onSerialPortConnectionOpened(port)
+			}
 		} else if(type == 'not-connected') {
-			
+			if(port == this.openingPort) {
+				this.onSerialPortConnectionClosed(port)
+			}
 		} else if(type == 'connected-to-simulator') {
 
 		} else if(type == 'data') {
@@ -111,8 +129,6 @@ export class Communication {
 			console.info(data)
 		} else if(type == 'warning') {
 			console.warn(data)
-		} else if(type == 'already-opened') {
-			this.onSerialPortConnectionOpened(port)
 		} else if(type == 'error') {
 			console.error(data)
 		} else if(type == 'load-settings') {
@@ -137,6 +153,7 @@ export class Communication {
 	}
 
 	onWebSocketOpen(event: any) {
+		this.openingPort = this.port
 		this.send('is-connected')
 	}
 
@@ -161,6 +178,7 @@ export class Communication {
 		if(portName == 'Disconnected' && this.serialPortConnectionOpened) {
 			this.disconnectSerialPort()
 		} else if(portName != 'Disconnected') {
+			this.openingPort = portName
 			this.interpreter.setSerialPort(portName);
 			document.dispatchEvent(createEvent('Connect', { detail: portName }))
 			console.log('open: ' + portName + ', at: ' + this.serialCommunicationSpeed)
@@ -173,6 +191,15 @@ export class Communication {
 			return
 		}
 		this.send('list')
+	}
+
+	// Can be used to send a custom command from the navigator console, like so:
+	// communication.sendCustomCommandNow('M410') // quick stop (emergency)
+	sendCustomCommandNow(command: string) {
+		if(!command.endsWith('\n')) {
+			command += '\n'
+		}
+		this.send('data', command)
 	}
 
 	send(type: string, data: any = null, port: string = null) {

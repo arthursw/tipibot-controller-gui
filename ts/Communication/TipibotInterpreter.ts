@@ -326,11 +326,10 @@ export class TipibotInterpreter extends Interpreter {
 
 	sendStop(force = true) {
 		if(force) {
-			this.communication.send('data', 'M0\n')
+			this.communication.send('data', 'M112\n')
 			return
 		}
-		let message = 'Stop'
-		this.queue('M0\n', message)
-		console.log('error: command not implemented')
+		this.queue('M112\n', 'Stop')
+		// console.log('error: command not implemented')
 	}
 }

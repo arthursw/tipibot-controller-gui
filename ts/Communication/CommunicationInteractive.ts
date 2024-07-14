@@ -19,6 +19,7 @@ export class CommunicationInteractive extends Communication {
 		this.createGUI(gui)
 		this.portController = null
 		this.initializeInterpreter(Settings.firmware)
+		this.port = localStorage.getItem('port')
 		this.connectToWebsocket()
 	}
 
@@ -59,7 +60,7 @@ export class CommunicationInteractive extends Communication {
 		if(Settings.autoConnect) {
 			this.startAutoConnection()
 		}
-		this.folderTitle.find('.serial').removeClass('connected')
+		this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
 	}
 
 	initializePortController(options: string[]) {
@@ -78,7 +79,7 @@ export class CommunicationInteractive extends Communication {
 		let type = messageObject.type
 		let data = messageObject.data
 		let port = messageObject.port
-
+		
 		if(type == 'list') {
 			let options = ['Disconnected']
 			for(let port of data) {
@@ -93,13 +94,6 @@ export class CommunicationInteractive extends Communication {
 						break
 					}
 				}
-			}
-		} else if(type == 'connected') {
-			this.setPortName(port)
-		} else if(type == 'not-connected') {
-			this.folderTitle.find('.serial').removeClass('connected').removeClass('simulator')
-			if(Settings.autoConnect) {
-				this.startAutoConnection()
 			}
 		} else if(type == 'connected-to-simulator') {
 			this.folderTitle.find('.serial').removeClass('connected').addClass('simulator')
@@ -171,4 +165,12 @@ export class CommunicationInteractive extends Communication {
 		this.portController.setValue('Disconnected')
 	}
 
+	setPort(port:string) {
+		super.setPort(port)
+		if(port != null){
+			localStorage.setItem('port', port)
+		} else {
+			localStorage.removeItem('port')
+		}
+	}
 }
