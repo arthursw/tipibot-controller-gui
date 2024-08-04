@@ -8,6 +8,7 @@ class Move {
 	
 	telescreen: Telescreen
 	timeoutID: NodeJS.Timeout = null
+
 	
 	constructor(telescreen: Telescreen) {
 		this.telescreen = telescreen
@@ -44,19 +45,19 @@ class Move {
 class OrthographicMove extends Move {
 	
 	button1cw() {
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.telescreen.speed, 0)))
+		this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.telescreen.speed, 0)))
 	}
 
 	button1ccw() {
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(-this.telescreen.speed, 0)))
+		this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(-this.telescreen.speed, 0)))
 	}
 
 	button2cw() {
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.telescreen.speed)))
+		this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.telescreen.speed)))
 	}
 
 	button2ccw() {
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, -this.telescreen.speed)))
+		this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, -this.telescreen.speed)))
 	}
 }
 
@@ -65,25 +66,25 @@ class PolarMove extends Move {
 	button1cw() {
 		let lengths = Tipibot.tipibot.cartesianToLengths(Tipibot.tipibot.getPosition())
 		lengths.x += this.telescreen.speed
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
+		this.telescreen.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
 	}
 
 	button1ccw() {
 		let lengths = Tipibot.tipibot.cartesianToLengths(Tipibot.tipibot.getPosition())
 		lengths.x -= this.telescreen.speed
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
+		this.telescreen.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
 	}
 
 	button2cw() {
 		let lengths = Tipibot.tipibot.cartesianToLengths(Tipibot.tipibot.getPosition())
 		lengths.y += this.telescreen.speed
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
+		this.telescreen.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
 	}
 
 	button2ccw() {
 		let lengths = Tipibot.tipibot.cartesianToLengths(Tipibot.tipibot.getPosition())
 		lengths.y -= this.telescreen.speed
-		Tipibot.tipibot.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
+		this.telescreen.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
 	}
 }
 
@@ -102,18 +103,18 @@ class DirectionMove extends Move {
 	}
 
 	button2cw() {
-		// Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(this.direction.multiply(this.telescreen.speed)))
+		// this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(this.direction.multiply(this.telescreen.speed)))
 		this.speed = Math.min(5, this.speed + this.acceleration)
 	}
 
 	button2ccw() {
-		// Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().subtract(this.direction.multiply(this.telescreen.speed)))
+		// this.telescreen.moveLinear(Tipibot.tipibot.getPosition().subtract(this.direction.multiply(this.telescreen.speed)))
 		this.speed = Math.max(0, this.speed - this.acceleration)
 	}
 
 	update(): void {
 		if(this.speed > 0 && Communication.interpreter.commandQueue.length < 2) {
-			Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(this.direction.multiply(this.speed)))
+			this.telescreen.moveLinear(Tipibot.tipibot.getPosition().add(this.direction.multiply(this.speed)))
 		}
 	}
 }
@@ -139,13 +140,18 @@ export class Telescreen {
 	portController: any
 	choosingPort = false // User is choosing a port with the portController: do not update the portController or it will unselect it
 	mustRefreshPortList = false
+	
 
 	lastMessages:any[] = []
 	axes:number[] = []
 	buttons:boolean[] = []
 	
+	lastCommandSent:number = null
+
 	midi: MIDIAccess = null
 	lastMidiMessages: any[] = []
+
+	drawing: paper.Path = null
 
 	constructor() {
 		this.moves = new Map<string, Move>()
@@ -161,8 +167,10 @@ export class Telescreen {
 
 		this.move = this.moves.get('Orthographic')
 
+		this.drawing = new paper.Path()
 		setInterval(()=> this.move.update(), 50)
-
+		
+		requestAnimationFrame(()=>this.updateMoves())
 	}
 
 	getItem(key:string) {
@@ -187,6 +195,7 @@ export class Telescreen {
 		
 		telescreenGUI.addButton('Listen Gamepad', ()=> this.updateGamepads())
 		telescreenGUI.addButton('Listen Midi', ()=> this.initializeMidi() )
+
 		telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value)=> this.speed = value)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
@@ -196,6 +205,8 @@ export class Telescreen {
 		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=>this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
 
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
+		
+		telescreenGUI.addButton('Print drawing', ()=> this.print() )
 		// telescreenGUI.open()
 	}
 
@@ -464,6 +475,46 @@ export class Telescreen {
         return Math.abs(b-a) < tolerance
     }
 
+	updateMoves() {
+		let now = Date.now()
+		if (this.lastCommandSent == null) {
+			this.lastCommandSent = now
+		}
+		
+		let amount = 1
+		this.speed = 5000
+		let delta = new paper.Point()
+		if ( now - this.lastCommandSent > 10) {
+			for(let code of Tipibot.tipibot.pressedKeys) {
+				switch (code) {
+					case 'ArrowLeft': 			// left arrow
+						// this.moveDirect(this.getPosition().add(new paper.Point(-amount, 0)))
+						// this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(-amount, 0)))
+						delta.x -= amount
+						break;
+					case 'ArrowUp': 			// up arrow
+						// this.moveDirect(this.getPosition().add(new paper.Point(0, -amount)))
+						// this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, -amount)))
+						delta.y -= amount
+						break;
+					case 'ArrowRight': 			// right arrow
+						// this.moveDirect(this.getPosition().add(new paper.Point(amount, 0)))
+						// this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(amount, 0)))
+						delta.x += amount
+						break;
+					case 'ArrowDown': 			// down arrow
+						// this.moveDirect(this.getPosition().add(new paper.Point(0, amount)))
+						// this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, amount)))
+						delta.y += amount
+						break;
+				}
+			}
+			this.moveLinear(Tipibot.tipibot.getPosition().add(delta))
+			this.lastCommandSent = now
+		}
+		requestAnimationFrame(()=>this.updateMoves())
+	}
+
     updateGamepads() {
         const gamepads = navigator.getGamepads()
         if (!gamepads || gamepads.length == 0) {
@@ -519,36 +570,36 @@ export class Telescreen {
 		if(this.gamepadMode == 1) {
 			if(Math.abs(gp.axes[1]) > epsilon || Math.abs(gp.axes[2]) > epsilon) { // Up & down
 				activated = true
-				Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], this.speed * gp.axes[2])))
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], this.speed * gp.axes[2])))
 			}
 		} else if (this.gamepadMode == 2) {
 			// Left Joystick: Menu selection and actions
 			// if(gp.axes[1] < -epsilon) { // Left
 			// 	activated = true
-			// 	Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
+			// 	this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
 			// }
 			// if(gp.axes[1] > epsilon) { // Right
 			// 	activated = true
-			// 	Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
+			// 	this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
 			// }
 	
 			// if(gp.axes[2] < -epsilon) { // Up
 			// 	activated = true
-			// 	Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
+			// 	this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
 			// }
 			// if(gp.axes[2] > epsilon) { // Down (z axis is inverted)
 			// 	activated = true
-			// 	Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
+			// 	this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
 			// }
 			// Left Joystick: Menu selection and actions
 			if(Math.abs(gp.axes[1]) > epsilon) { // Left & Right
 				activated = true
-				Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(this.speed * gp.axes[1], 0)))
 			}
 	
 			if(Math.abs(gp.axes[2]) > epsilon) { // Up & down
 				activated = true
-				Tipibot.tipibot.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, this.speed * gp.axes[2])))
 			}
 		}
 
@@ -609,6 +660,65 @@ export class Telescreen {
         // requestAnimationFrame(()=>this.update())
         setTimeout(()=>this.updateGamepads(), activated ? this.refreshRate : 0)
     }
+
+	moveLinear(point: paper.Point) {
+		Tipibot.tipibot.moveLinear(point)
+		this.drawing.add(point)
+	}
+
+	print() {
+		let mainProject = paper.project
+		
+		let drawingBounds = Tipibot.tipibot.drawArea.bounds
+		let canvas = document.createElement('canvas')
+		canvas.width = drawingBounds.width
+		canvas.height = drawingBounds.height
+
+		let project = new paper.Project(canvas)
+		project.activeLayer.addChild(this.drawing)
+		
+		project.view.center = drawingBounds.center
+		let frame = new paper.Path.Rectangle(drawingBounds)
+		frame.strokeWidth = 3
+		frame.strokeColor = new paper.Color('black')
+		frame.position = drawingBounds.center
+
+		this.drawing.strokeWidth = 10
+		this.drawing.strokeColor = new paper.Color('black')
+		project.view.draw()
+		project.view.update()
+		// let canvasTemp = document.createElement('canvas')
+		// canvasTemp.width = drawingBounds.width
+		// canvasTemp.height = drawingBounds.height
+		// let contextTemp = canvasTemp.getContext('2d')
+		// contextTemp.putImageData(project.view.context.getImageData(drawingBounds.x, drawingBounds.y, drawingBounds.width, drawingBounds.height), 0, 0)
+
+		let url = canvas.toDataURL("image/png")
+
+		// let svg = project.exportSVG({asString:true, bounds: Tipibot.tipibot.drawArea.bounds})
+
+		// let blob = new Blob([svg], {type: "image/svg"})
+		// let url  = URL.createObjectURL(blob)
+		
+		// let rectangle = new paper.Path.Rectangle(Tipibot.tipibot.drawArea)
+		// rectangle.strokeWidth = 1
+		// rectangle.strokeColor = 'black'
+
+		let link = document.createElement("a");
+		document.body.appendChild(link);
+		// link.download = 'drawing.svg';
+		link.download = 'drawing.png';
+		link.href = url;
+		link.click();
+		document.body.removeChild(link);
+
+		this.drawing.removeSegments()
+		mainProject.activate()
+		mainProject.activeLayer.addChild(this.drawing)
+
+		// Communication.communication.send('write-file', svg)
+		Communication.communication.send('write-file', url)
+	}
 }
 
 // Charly
