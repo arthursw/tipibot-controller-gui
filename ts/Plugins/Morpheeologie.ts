@@ -242,6 +242,11 @@ export class Morpheeologie {
             return
         }
         // console.log('gamepad', gp)
+        
+        if(gp.axes == null || gp.buttons == null){
+            setTimeout(()=>this.update(), 1000)
+            return
+        }
 
         // Arrows
         if(this.equals(gp.axes[0], 0.714)) { // Left
