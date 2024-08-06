@@ -30,7 +30,8 @@ export class Renderer {
 
 		this.dragging = false
 		this.previousPosition = new paper.Point(0, 0)
-
+		
+		paper.view.draw()
 		document.addEventListener('SettingChanged', (event: CustomEvent)=> this.onSettingChanged(event), false)
 	}
 

@@ -204,6 +204,10 @@ export class Communication {
 
 	send(type: string, data: any = null, port: string = null) {
 		let message = { type: type, data: data, port: port || this.port }
+		if (this.socket.readyState != WebSocket.OPEN) {
+			console.log('Trying to send', message, 'while Websocket is not opened, socket.readyState is:', this.socket.readyState)
+			return
+		}
 		this.socket.send(JSON.stringify(message))
 		// console.log('Send ', type, data)
 		// console.log('Wait for "ready"...')
