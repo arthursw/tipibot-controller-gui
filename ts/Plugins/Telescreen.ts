@@ -417,8 +417,14 @@ export class Telescreen {
 			}
 		}
 	}
-
 	processMessage(message: string) {
+		let now = Date.now()
+		// console.log(message, now-this.lastUpdateTime)
+		let x, y = message.split(',')
+
+	}
+
+	processMessageKY40(message: string) {
 		let now = Date.now()
 		// console.log(message, now-this.lastUpdateTime)
 		let buttonId = parseInt(message[0])
@@ -704,20 +710,20 @@ export class Telescreen {
 		// rectangle.strokeWidth = 1
 		// rectangle.strokeColor = 'black'
 
-		let link = document.createElement("a");
-		document.body.appendChild(link);
-		// link.download = 'drawing.svg';
-		link.download = 'drawing.png';
-		link.href = url;
-		link.click();
-		document.body.removeChild(link);
+		// let link = document.createElement("a");
+		// document.body.appendChild(link);
+		// // link.download = 'drawing.svg';
+		// link.download = 'drawing.png';
+		// link.href = url;
+		// link.click();
+		// document.body.removeChild(link);
 
 		this.drawing.removeSegments()
 		mainProject.activate()
 		mainProject.activeLayer.addChild(this.drawing)
 
 		// Communication.communication.send('write-file', svg)
-		Communication.communication.send('write-file', url)
+		Communication.communication.send('print-file', {content: url.split(',')[1]})
 	}
 }
 
