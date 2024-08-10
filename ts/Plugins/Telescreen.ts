@@ -127,6 +127,7 @@ export class Telescreen {
 	lastUpdateTime = 0
 
 	speed: number = 1
+
 	threshold1: number = 150
 	threshold2: number = 400
 	gamepadMode: number = 1
