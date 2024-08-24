@@ -24,6 +24,9 @@ body {
 body.advancedLayout {
   grid-template-columns: auto 325px 325px;
 }
+body.noGui {
+  grid-template-columns: auto 0 0;
+}
 #gui{
   display: none;
 }

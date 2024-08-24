@@ -222,7 +222,7 @@ export class CommandDisplay {
 			this.clearCommandsButton.show()
 			// this.emergencyStopButton.show()
 			// this.commandList.show()
-			
+			$('body').removeClass('noGui')
 			$('body').addClass('advancedLayout')
 			$('#gui').show()
 		} else {
@@ -240,7 +240,7 @@ export class CommandDisplay {
 			this.clearCommandsButton.hide()
 			// this.emergencyStopButton.hide()
 			// this.commandList.hide()
-			
+			$('body').removeClass('noGui')
 			$('body').removeClass('advancedLayout')
 			$('#gui').hide()
 		}

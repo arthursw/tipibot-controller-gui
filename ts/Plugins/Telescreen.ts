@@ -3,6 +3,7 @@ import { Settings, paper } from "../Settings"
 import { GUI, Controller } from "../GUI"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 import { Communication } from "../Communication/CommunicationStatic"
+import { Renderer } from "../Renderer"
 
 class Move {
 	
@@ -121,12 +122,16 @@ class DirectionMove extends Move {
 
 export class Telescreen {
 	
-	serialCommunicationSpeed = 9600
+	serialCommunicationSpeed = 115200
+	serialInput: string = ''
 	port: string = null
 	openingPort: string = null
 	lastUpdateTime = 0
 
-	speed: number = 1
+	speed: number = 0.1
+	angle: number = 0
+	position: paper.Point = null
+	margin = 0						// The margin inside the draw area where the pen can't go
 
 	threshold1: number = 150
 	threshold2: number = 400
@@ -152,7 +157,18 @@ export class Telescreen {
 	midi: MIDIAccess = null
 	lastMidiMessages: any[] = []
 
+	// Draw Telescreen:
+	renderer: Renderer
+	toggleFullTelescreenButton: Controller
+	fullTelescreen = false
+	canvasJ: any
+	divJ: any
+	project: paper.Project
+
 	drawing: paper.Path = null
+	group: paper.Group = null
+	directionPath: paper.Path = null
+	modeText: paper.PointText = null
 
 	constructor() {
 		this.moves = new Map<string, Move>()
@@ -165,12 +181,39 @@ export class Telescreen {
 		// document.addEventListener('MessageReceived', (event: CustomEvent)=> this.messageReceived(event.detail), false)
 
 		document.addEventListener('ServerMessage', (event: CustomEvent)=> this.messageReceived(event.detail), false)
-
-		this.move = this.moves.get('Orthographic')
+		let currentMode = 'Orthographic'
+		this.move = this.moves.get(currentMode)
+		
+		let directionLength = Math.min(Tipibot.tipibot.drawArea.bounds.width, Tipibot.tipibot.drawArea.bounds.height)
+		this.group = new paper.Group()
+		let arrowSize = new paper.Size(directionLength/8, directionLength)
+		let arrowHead = new paper.Path.RegularPolygon(Tipibot.tipibot.drawArea.bounds.center.add(new paper.Point(0, -directionLength/2)), 3, directionLength/4)
+		this.directionPath = new paper.CompoundPath({children: [
+			new paper.Path.Rectangle(Tipibot.tipibot.drawArea.bounds.center.subtract(arrowSize.divide(2)), arrowSize),
+			arrowHead
+		], fillColor: 'black'})
+		this.directionPath.rotation = 90
+		let directionBackground = paper.Path.Rectangle(Tipibot.tipibot.tipibotArea.bounds)
+		directionBackground.fillColor = 'white'
+		this.group.addChild(directionBackground)
+		this.group.addChild(this.directionPath)
+		
+		this.modeText = new paper.PointText({
+			point: Tipibot.tipibot.drawArea.bounds.bottomCenter.add(new paper.Point(0, 25)),
+			content: 'Mode: ' + currentMode,
+			fillColor: 'black',
+			fontFamily: 'Courier New',
+			fontWeight: 'bold',
+			justification: 'center',
+			fontSize: 25
+		})
+		this.group.addChild(this.modeText)
+		this.group.visible = false
 
 		this.drawing = new paper.Path()
 		setInterval(()=> this.move.update(), 50)
 		
+		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
 		requestAnimationFrame(()=>this.updateMoves())
 	}
 
@@ -197,7 +240,8 @@ export class Telescreen {
 		telescreenGUI.addButton('Listen Gamepad', ()=> this.updateGamepads())
 		telescreenGUI.addButton('Listen Midi', ()=> this.initializeMidi() )
 
-		telescreenGUI.addSlider('Speed', 1, 1, 100, 1).onChange((value)=> this.speed = value)
+		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
+		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
@@ -206,6 +250,10 @@ export class Telescreen {
 		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=>this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
 
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
+		
+		telescreenGUI.add( {'Show direction': this.group.visible }, 'Show direction' ).onFinishChange((value)=>this.group.visible = value )
+
+		this.toggleFullTelescreenButton = telescreenGUI.addButton('Start', (value)=> this.toggleFullTelescreen())
 		
 		telescreenGUI.addButton('Print drawing', ()=> this.print() )
 		// telescreenGUI.open()
@@ -339,11 +387,18 @@ export class Telescreen {
 		// for(let m of this.moves) {
 		// 	m[1].clearTimeout()
 		// }
+		this.modeText.content = 'Mode: ' + mode
 		this.move = this.moves.get(mode)
 	}
 
 	modeChanged(mode: string) {
 		this.changeMode(mode)
+	}
+
+	setMode(mode: string) {
+		this.changeMode(mode)
+		this.modeController.setValue(<any>mode)
+		this.modeController.updateDisplay()
 	}
 
 	cycleMode() {
@@ -358,9 +413,7 @@ export class Telescreen {
 			i++
 		}
 		let newMove = movesList[ currentMoveIndex+1 < movesList.length ? currentMoveIndex + 1 : 0]
-		this.changeMode(newMove)
-		this.modeController.setValue(<any>newMove)
-		this.modeController.updateDisplay()
+		this.setMode(newMove)
 	}
 
 	// connect(port: string) {
@@ -411,18 +464,90 @@ export class Telescreen {
 
 		} else if(type == 'data') {
 			if(port == this.port) {
-				this.processMessage(data)
+				this.processRawMessage(data)
 			}
 		} else if(type == 'sent') {
 			if(port == this.port) {
 			}
 		}
 	}
-	processMessage(message: string) {
-		let now = Date.now()
-		// console.log(message, now-this.lastUpdateTime)
-		let x, y = message.split(',')
 
+	getClampedPositionInDrawArea(target: paper.Point) {
+		target.x = paper.Numerical.clamp(target.x, Tipibot.tipibot.drawArea.bounds.left + this.margin, Tipibot.tipibot.drawArea.bounds.right - this.margin)
+		target.y = paper.Numerical.clamp(target.y, Tipibot.tipibot.drawArea.bounds.top + this.margin, Tipibot.tipibot.drawArea.bounds.bottom - this.margin)
+		return target
+	}
+
+	moveLinear(point: paper.Point) {
+		point = this.getClampedPositionInDrawArea(point)
+		Tipibot.tipibot.moveLinear(point)
+		this.drawing.add(point)
+	}
+
+	processRawMessage(data: string) {
+
+		this.serialInput += data
+		
+		let messages = this.serialInput.split('\n')
+		this.serialInput = this.serialInput.endsWith('\n') ? '' : messages[messages.length-1]
+
+		// process all messages except the last one (it is either empty if the serial input ends with '\n', or it is not a finished message)
+		for(let i=0 ; i<messages.length-1 ; i++) {
+			this.processMessage(messages[i])
+		}
+	}
+
+	processMessage(message: string) {
+		// let now = Date.now()
+		// console.log(message, now-this.lastUpdateTime)
+
+		let parts = message.split(':')
+		let name = parts[0]
+		let value = parts[1]
+		if(name == null || value == null) {
+			return
+		}
+		if(name.startsWith('Button5') && parseInt(value)>0) {
+			return Tipibot.tipibot.togglePenState()
+		}
+		if(name.startsWith('Button4') && parseInt(value)>0) {
+			return this.setMode('Orthographic')
+		}
+		if(name.startsWith('Button3') && parseInt(value)>0) {
+			return this.setMode('Polar')
+		}
+		if(name.startsWith('Button2') && parseInt(value)>0) {
+			return this.setMode('Direction')
+		}
+		if(name.startsWith('Button1') && parseInt(value)>0) {
+			return this.print()
+		}
+		if(!name.startsWith('Encoders')) {
+			return
+		}
+		let values = value.trim().split(',')
+		if(values.length<2){
+			return
+		}
+		let newPosition = new paper.Point(parseFloat(values[0]), parseFloat(values[1]))
+		if(this.position == null) {
+			this.position = newPosition
+		}
+		let delta = newPosition.subtract(this.position).multiply(360 / 600)
+		delta = delta.multiply(this.isButtonInverted(1) ? 1 : -1, this.isButtonInverted(2) ? 1 : -1)
+		if(this.modeController.getValue() == 'Orthographic') {
+			this.moveLinear(Tipibot.tipibot.getPosition().add(delta.multiply(this.speed)))
+		} else if(this.modeController.getValue() == 'Polar') {
+			let lengths = Tipibot.tipibot.cartesianToLengths(Tipibot.tipibot.getPosition()).add(delta.multiply(this.speed))
+			this.moveLinear(Tipibot.tipibot.lengthsToCartesian(lengths))
+		} else if(this.modeController.getValue() == 'Direction') {
+			let displacement = new paper.Point(delta.y * this.speed, 0)
+			this.angle += delta.x
+			displacement.angle = this.angle
+			this.directionPath.rotate(delta.x)
+			this.moveLinear(Tipibot.tipibot.getPosition().add(displacement.multiply(delta.y > 0 ? -1 : 1)))
+		}
+		this.position = newPosition
 	}
 
 	processMessageKY40(message: string) {
@@ -489,7 +614,6 @@ export class Telescreen {
 		}
 		
 		let amount = 1
-		this.speed = 5000
 		let delta = new paper.Point()
 		if ( now - this.lastCommandSent > 10) {
 			for(let code of Tipibot.tipibot.pressedKeys) {
@@ -516,8 +640,10 @@ export class Telescreen {
 						break;
 				}
 			}
-			this.moveLinear(Tipibot.tipibot.getPosition().add(delta))
-			this.lastCommandSent = now
+			if(!delta.isZero()) {
+				this.moveLinear(Tipibot.tipibot.getPosition().add(delta))
+				this.lastCommandSent = now
+			}
 		}
 		requestAnimationFrame(()=>this.updateMoves())
 	}
@@ -668,11 +794,6 @@ export class Telescreen {
         setTimeout(()=>this.updateGamepads(), activated ? this.refreshRate : 0)
     }
 
-	moveLinear(point: paper.Point) {
-		Tipibot.tipibot.moveLinear(point)
-		this.drawing.add(point)
-	}
-
 	print() {
 		let mainProject = paper.project
 		
@@ -726,7 +847,64 @@ export class Telescreen {
 		// Communication.communication.send('write-file', svg)
 		Communication.communication.send('print-file', {content: url.split(',')[1]})
 	}
-}
 
-// Charly
-// Tester manette de jeu
+
+	setRenderer(renderer: Renderer) {
+		this.renderer = renderer
+	}
+
+	// windowResize(event: Event = null){
+
+	// 	if(this.canvasJ == null) {
+	// 		return
+	// 	}
+
+	// 	let width = window.innerWidth
+	// 	let height = window.innerHeight
+	// 	this.canvasJ.width(width)
+	// 	this.canvasJ.height(height)
+	// 	// paper.project.view.viewSize = new paper.Size(width, height)
+	// 	// this.renderer.centerOnTipibot(this.drawArea.bounds, true, this.canvasJ.get(0))
+	// 	// this.project.view.center = this.drawArea.bounds.center
+	// }
+
+	startFullTelescreen() {
+		$('body').removeClass('advancedLayout')
+		$('#gui').hide()
+		$('body').addClass('noGui')
+		window.dispatchEvent(new Event('resize'));
+	}
+
+	stopFullTelescreen() {
+		$('body').removeClass('noGui')
+		$('body').addClass('advancedLayout')
+		$('#gui').show()
+		window.dispatchEvent(new Event('resize'));
+	}
+
+	toggleFullTelescreen() {
+
+		this.fullTelescreen = !this.fullTelescreen
+		this.toggleFullTelescreenButton.setName(this.fullTelescreen ? 'Stop' : 'Start')
+		
+		if(this.fullTelescreen) {
+			this.startFullTelescreen()
+		} else {
+			this.stopFullTelescreen()
+		}
+
+	}
+
+	onKeyDown(event: KeyboardEvent) {
+		if(!this.fullTelescreen) {
+			return
+		}
+		switch (event.code) {
+			case 'Escape':
+				this.toggleFullTelescreen()
+				break;
+			default:
+				break;
+		}
+	}
+}

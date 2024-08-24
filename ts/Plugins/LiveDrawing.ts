@@ -230,7 +230,8 @@ export class LiveDrawing {
 
 		Tipibot.tipibot.ignoreKeyEvents = false
 		this.renderer.ignoreWindowResize = false
-		this.renderer.windowResize()
+		// this.renderer.windowResize()
+		window.dispatchEvent(new Event('resize'))
 	}
 
 	toggleLiveDrawing() {
@@ -546,6 +547,9 @@ export class LiveDrawing {
 	queueCommand(command: Command) {
 		if(!this.liveDrawing || !this.undoRedo) {
 			return
+		}
+		if(this.commandQueues.length == 0) {
+			this.createNewCommandQueue()
 		}
 		this.commandQueues[this.commandQueues.length-1].commands.push(command)
 	}

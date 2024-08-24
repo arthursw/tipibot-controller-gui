@@ -191,7 +191,7 @@ export class Tipibot implements TipibotInterface {
 	targetIsValid(target: paper.Point) {
 		let validH = target.x > Settings.tipibot.limitH && target.x < Settings.tipibot.width - Settings.tipibot.limitH
 		let validV = target.y > Settings.tipibot.limitV && target.y < Settings.tipibot.height - Settings.tipibot.limitV
-		return validH && validV
+		return !Settings.tipibot.enableLimits || validH && validV
 	}
 
 	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null, movePen=true) {

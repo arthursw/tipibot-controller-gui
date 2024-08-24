@@ -63,6 +63,7 @@ export class SettingsManager {
 		tipibotDimensionsFolder.add(Settings.tipibot, 'width', 100, 10000, 1).name('Width')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'height', 100, 10000, 1).name('Height')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'stringLength', 100, 10000, 1).name('String length')
+		tipibotDimensionsFolder.add(Settings.tipibot, 'enableLimits').name('Discard moves beyond limits')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'limitH', 0, 10000, 1).name('Horizontal limit')
 		tipibotDimensionsFolder.add(Settings.tipibot, 'limitV', 0, 10000, 1).name('Vertical limit')
 

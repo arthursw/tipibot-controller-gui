@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 
 		let telescreen = new Telescreen()
 		telescreen.createGUI(pluginFolder)
+		telescreen.setRenderer(renderer)
 
 		let svgSplitter = new SVGSplitter()
 		svgSplitter.createGUI(pluginFolder)
@@ -123,6 +124,7 @@ document.addEventListener("DOMContentLoaded", function (event:any) {
 		w.SVGPlot = SVGPlot
 		w.commeUnDessein = commeUnDessein
 		w.telescreen = telescreen
+		w.liveDrawing = liveDrawing
 		w.paper = paper
 		w.morpheeologie = morpheeologie
 	}

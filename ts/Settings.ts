@@ -26,6 +26,7 @@ export let Settings = {
 		width: tipibotWidth,
 		height: tipibotHeight,
 		stringLength: tipibotStringLength,
+		enableLimits: true,
 		limitH: 250,
 		limitV: 500,
 		homeX: tipibotWidth / 2,
