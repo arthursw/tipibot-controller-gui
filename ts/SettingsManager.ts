@@ -154,8 +154,8 @@ export class SettingsManager {
 		settingsFolder.add(Settings, 'forceLinearMoves').name('Force linear moves')
 		settingsFolder.add(Settings, 'forceInitialization').name('Force initialization')
 		// settingsFolder.add(Settings, 'disableMouseInteractions').name('Disable mouse interactions')
-		// settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
-		settingsFolder.add(Settings, 'enableTouchKeyboard').name('Touch Keyboard')
+		settingsFolder.add(Settings, 'disableCommandList').name('Disable command list')
+		settingsFolder.add(Settings, 'enableTouchKeyboard').name('Touch keyboard')
 
 		let controllers = this.getControllers()
 

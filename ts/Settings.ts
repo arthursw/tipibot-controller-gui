@@ -20,7 +20,7 @@ export let Settings = {
 	forceLinearMoves: true,
 	forceInitialization: true,
 	// disableMouseInteractions: false,
-	// disableCommandList: false,
+	disableCommandList: false,
 	enableTouchKeyboard: false,
 	tipibot: {
 		width: tipibotWidth,

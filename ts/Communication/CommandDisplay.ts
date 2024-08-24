@@ -277,6 +277,9 @@ export class CommandDisplay {
 	}
 
 	queueCommands(commandIDs: number[]): any {
+		if(Settings.disableCommandList) {
+			return
+		}
 		let id = (''+Math.random()).replace('.','')
 		let liJ = $('<li id="'+id+'" class="commands">')
 		let nCommands = commandIDs.length
@@ -311,9 +314,9 @@ export class CommandDisplay {
 	}
 
 	queueCommand(command: Command) {
-		// if(Settings.disableCommandList) {
-		// 	return
-		// }
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.listJ.append(this.createCommandItem(command))
 		this.updateName()
 		document.dispatchEvent(createEvent('CommandListChanged'))
@@ -324,9 +327,9 @@ export class CommandDisplay {
 			this.pauseButton.setValue(true)
 			return
 		}
-		// if(Settings.disableCommandList) {
-		// 	return
-		// }
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.listJ.find('#'+command.id).addClass('sent')
 	}
 

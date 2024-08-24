@@ -1,5 +1,6 @@
 import $ = require("jquery");
 import { GUI } from "./GUI"
+import { Settings } from "./Settings";
 declare var dat: any
 
 export class Console {
@@ -32,7 +33,9 @@ export class Console {
 			if (typeof logger === 'function') {
 				logger.apply(console, args);
 			}
-
+			if(Settings.disableCommandList) {
+				return
+			}
 			let div = $('<li>')
 
 			if(type == 'table') {
@@ -102,6 +105,9 @@ export class Console {
 	}
 
 	scrollToBottom(consoleJ = this.listJ) {
+		if(Settings.disableCommandList) {
+			return
+		}
 		this.updateMaxHeight()
 		if(this.skipScrollToBottom) {
 			return
