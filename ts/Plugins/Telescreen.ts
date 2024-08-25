@@ -4,6 +4,7 @@ import { GUI, Controller } from "../GUI"
 import { TipibotInteractive as Tipibot } from "../TipibotInteractive"
 import { Communication } from "../Communication/CommunicationStatic"
 import { Renderer } from "../Renderer"
+import { PenState } from "../Pen";
 
 class Move {
 	
@@ -123,6 +124,7 @@ class DirectionMove extends Move {
 export class Telescreen {
 	
 	serialCommunicationSpeed = 115200
+	nStepsPerTurn = 1200
 	serialInput: string = ''
 	port: string = null
 	openingPort: string = null
@@ -136,28 +138,28 @@ export class Telescreen {
 	threshold1: number = 150
 	threshold2: number = 400
 	gamepadMode: number = 1
-
+	
 	refreshRate = 20
-
+	
 	moves: Map<string, Move>
-
+	
 	move: Move = null
 	maxDistance = 5 			// Ignore moves farther than maxDistance to tipibot position (> 0), or move exactly where the optical encoders are (0)
+	nCommandsMax = 2 			// Ignore moves when n commands in queue is greate than nCommandsMax (> 0), or do not ignore any command
 	modeController: Controller
 	portController: any
 	choosingPort = false 		// User is choosing a port with the portController: do not update the portController or it will unselect it
 	mustRefreshPortList = false
 	
-
 	lastMessages:any[] = []
 	axes:number[] = []
 	buttons:boolean[] = []
 	
 	lastCommandSent:number = null
-
+	
 	midi: MIDIAccess = null
 	lastMidiMessages: any[] = []
-
+	
 	// Draw Telescreen:
 	renderer: Renderer
 	toggleFullTelescreenButton: Controller
@@ -165,11 +167,14 @@ export class Telescreen {
 	canvasJ: any
 	divJ: any
 	project: paper.Project
-
-	drawing: paper.Path = null
+	
+	drawing: paper.Group = null
+	drawingMaxPoints: number = 500 // When the drawing has more than drawingMaxPoints points, the first points are removed
 	group: paper.Group = null
 	directionPath: paper.Path = null
 	modeText: paper.PointText = null
+
+	printDrawingOnly = true // Only print the drawing, not the entire drawing area (true), or the entire drawing area (false)
 
 	constructor() {
 		this.moves = new Map<string, Move>()
@@ -211,9 +216,11 @@ export class Telescreen {
 		this.group.addChild(this.modeText)
 		this.group.visible = false
 
-		this.drawing = new paper.Path()
-		this.drawing.strokeWidth = 10
+		this.drawing = new paper.Group()
+		this.drawing.strokeWidth = 5
 		this.drawing.strokeColor = new paper.Color('black')
+		this.drawing.strokeCap = 'round'
+		this.drawing.strokeJoin = 'round'
 		setInterval(()=> this.move.update(), 50)
 		
 		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
@@ -247,10 +254,15 @@ export class Telescreen {
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
 		
 		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01)
+		telescreenGUI.addSlider('N commands max', this.nCommandsMax, 0, 100, 1)
+		telescreenGUI.addSlider('Path width', this.drawing.strokeWidth, 0, 50, 0.01)
+		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 1000, 1)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
 		
+		telescreenGUI.add( {'Print drawing only': this.printDrawingOnly }, 'Print drawing only' )
+
 		telescreenGUI.add( {'Invert button 1': this.isButtonInverted(1) }, 'Invert button 1' ).onFinishChange(()=> this.setItem('invertButton1', String(!this.isButtonInverted(1)) ))
 		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=> this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
 
@@ -483,8 +495,23 @@ export class Telescreen {
 		return target
 	}
 
+	drawingLength() {
+		let length = 0
+		for(let path of this.drawing.children) {
+			length += (<paper.Path>path).segments.length
+		}
+		return length
+	}
+
 	moveLinear(point: paper.Point) {
 		point = this.getClampedPositionInDrawArea(point)
+		console.log(Tipibot.tipibot.pen.state)
+		if(Tipibot.tipibot.pen.state == PenState.Changing) {
+			return
+		}
+		if(this.nCommandsMax > 0 && Communication.interpreter.commandQueue.length > this.nCommandsMax) {
+			return
+		}
 		if(this.maxDistance > 0) {
 			let delta = point.subtract(Tipibot.tipibot.getPosition())
 			if(delta.length > this.maxDistance) {
@@ -492,8 +519,22 @@ export class Telescreen {
 				point = Tipibot.tipibot.getPosition().add(delta)
 			}
 		}
-		Tipibot.tipibot.moveLinear(point)
-		this.drawing.add(point)
+		Tipibot.tipibot.moveLinear(point, 0, Settings.tipibot.maxSpeed, null, false)
+		
+		if(Tipibot.tipibot.pen.state == PenState.Down) {
+			if(this.drawing.lastChild == null) {
+				let path = new paper.Path()
+				path.style = this.drawing.style
+				this.drawing.addChild(path)
+			}
+			(<paper.Path>this.drawing.lastChild).add(point)
+			while(this.drawingMaxPoints > 0 && this.drawingLength() > this.drawingMaxPoints) {
+				(<paper.Path>this.drawing.firstChild).removeSegment(0);
+				if((<paper.Path>this.drawing.firstChild).segments.length == 0) {
+					this.drawing.firstChild.remove()
+				}
+			}
+		}
 	}
 
 	processRawMessage(data: string) {
@@ -520,7 +561,13 @@ export class Telescreen {
 			return
 		}
 		if(name.startsWith('Button5') && parseInt(value)>0) {
-			return Tipibot.tipibot.togglePenState()
+			if(Tipibot.tipibot.pen.state == PenState.Up) {
+				let path = new paper.Path()
+				path.style = this.drawing.style
+				path.add(Tipibot.tipibot.getPosition())
+				this.drawing.addChild(path)
+			}
+			return Tipibot.tipibot.togglePenState(false)
 		}
 		if(name.startsWith('Button4') && parseInt(value)>0) {
 			return this.setMode('Orthographic')
@@ -545,7 +592,7 @@ export class Telescreen {
 		if(this.position == null) {
 			this.position = newPosition
 		}
-		let delta = newPosition.subtract(this.position).multiply(360 / 600)
+		let delta = newPosition.subtract(this.position).multiply(360 / this.nStepsPerTurn)
 		delta = delta.multiply(this.isButtonInverted(1) ? 1 : -1, this.isButtonInverted(2) ? 1 : -1)
 		if(this.modeController.getValue() == 'Orthographic') {
 			this.moveLinear(Tipibot.tipibot.getPosition().add(delta.multiply(this.speed)))
@@ -809,7 +856,7 @@ export class Telescreen {
 	print() {
 		let mainProject = paper.project
 		
-		let drawingBounds = Tipibot.tipibot.drawArea.bounds
+		let drawingBounds = this.printDrawingOnly ? this.drawing.strokeBounds.expand(10) : Tipibot.tipibot.drawArea.bounds
 		let canvas = document.createElement('canvas')
 		canvas.width = drawingBounds.width
 		canvas.height = drawingBounds.height
@@ -850,7 +897,7 @@ export class Telescreen {
 		// link.click();
 		// document.body.removeChild(link);
 
-		this.drawing.removeSegments()
+		this.drawing.removeChildren()
 		mainProject.activate()
 		mainProject.activeLayer.addChild(this.drawing)
 

@@ -2,12 +2,14 @@ import { Communication } from "./Communication/CommunicationStatic"
 import { Settings, paper, servoDownAngle, servoUpAngle, isServer } from "./Settings"
 import { Tipibot } from "./TipibotStatic"
 import { MoveType } from "./TipibotInterface"
+import { State } from "./Plugins/CommeUnDesseinStatic"
 
 export enum PenState {
 	Up,
 	Down,
 	Dropped,
 	Closed,
+	Changing, 	// The state is changing (pen is being lift up, or dropped, or other)
 }
 
 export class Pen {
@@ -140,7 +142,7 @@ export class Pen {
 		// Communication.interpreter.sendMovePen(this.angle, penMoveCallback);
 	}
 
-	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null) {
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, changeStateImmediately=true) {
 		let penUpCallback = ()=> {
 			this.state = PenState.Up
 			this.angle = Settings.servo.position.up
@@ -151,11 +153,15 @@ export class Pen {
 		Tipibot.tipibot.clearDisableMotorsTimeout()
 		Communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.circle.fillColor = Pen.UP_COLOR
-		this.state = PenState.Up
-		this.angle = Settings.servo.position.up
+		if(changeStateImmediately) {
+			this.state = PenState.Up
+			this.angle = Settings.servo.position.up
+		} else {
+			this.state = PenState.Changing
+		}
 	}
 	
-	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null) {
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, changeStateImmediately=true) {
 		let penDownCallback = ()=> {
 			this.state = PenState.Down
 			this.angle = Settings.servo.position.down
@@ -166,11 +172,15 @@ export class Pen {
 		Tipibot.tipibot.clearDisableMotorsTimeout()
 		Communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.circle.fillColor = Pen.DOWN_COLOR
-		this.state = PenState.Down
-		this.angle = Settings.servo.position.down
+		if(changeStateImmediately) {
+			this.state = PenState.Down
+			this.angle = Settings.servo.position.down
+		} else {
+			this.state = PenState.Changing
+		}
 	}
 
-	penClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null) {
+	penClose(servoCloseValue: number = Settings.servo.position.close, callback: ()=> void = null, changeStateImmediately=true) {
 		let penCloseCallback = ()=> {
 			this.state = PenState.Closed
 			this.angle = Settings.servo.position.close
@@ -181,11 +191,15 @@ export class Pen {
 		Tipibot.tipibot.clearDisableMotorsTimeout()
 		Communication.interpreter.sendPenClose(servoCloseValue, penCloseCallback)
 		this.circle.fillColor = Pen.CLOSED_COLOR
-		this.state = PenState.Closed
-		this.angle = Settings.servo.position.close
+		if(changeStateImmediately) {
+			this.state = PenState.Closed
+			this.angle = Settings.servo.position.close
+		} else {
+			this.state = PenState.Changing
+		}
 	}
 	
-	penDrop(servoDropValue: number = Settings.servo.position.drop, callback: ()=> void = null) {
+	penDrop(servoDropValue: number = Settings.servo.position.drop, callback: ()=> void = null, changeStateImmediately=true) {
 		let penDropCallback = ()=> {
 			this.state = PenState.Dropped
 			this.angle = Settings.servo.position.drop
@@ -196,7 +210,11 @@ export class Pen {
 		Tipibot.tipibot.clearDisableMotorsTimeout()
 		Communication.interpreter.sendPenDrop(servoDropValue, penDropCallback)
 		this.circle.fillColor = Pen.DROP_COLOR
-		this.state = PenState.Dropped
-		this.angle = Settings.servo.position.drop
+		if(changeStateImmediately) {
+			this.state = PenState.Dropped
+			this.angle = Settings.servo.position.drop
+		} else {
+			this.state = PenState.Changing
+		}
 	}
 }

@@ -471,20 +471,29 @@ export class Tipibot implements TipibotInterface {
 		this.pen.minus()
 	}
 
-	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false, changeStateImmediately=true) {
 		let liftPen = this.pen.state != PenState.Up || force
 		if(liftPen) {
-			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback)
+			this.pen.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback, changeStateImmediately)
 		}
 		return liftPen
 	}
 
-	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false, changeStateImmediately=true) {
 		let lowerPen = this.pen.state == PenState.Up || force
 		if(lowerPen) {
-			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback)
+			this.pen.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback, changeStateImmediately)
 		}
 		return lowerPen
+	}
+	
+	togglePenState(changeStateImmediately=true) {
+		let callback = ()=> console.log('pen state changed')
+		if(this.pen.state == PenState.Up) {
+			this.penDown(servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true, changeStateImmediately)
+		} else {
+			this.penUp(servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true, changeStateImmediately)
+		}
 	}
 
 	setHome(setPosition=true, updateSliders=true) {

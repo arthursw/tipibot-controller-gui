@@ -44,20 +44,11 @@ export class TipibotInteractive extends Tipibot {
 			if(cancel) {
 				this.setPositionSliders(this.initialPosition)
 			}
-		} else {
+		} else {
 			settingsManager.tipibotPositionFolder.getController('Set position with mouse').setName('Cancel')
 			this.initialPosition = this.getPosition()
 		}
 		this.settingPosition = setPosition
-	}
-	
-	togglePenState() {
-		let callback = ()=> console.log('pen state changed')
-		if(this.pen.state == PenState.Up) {
-			this.penDown(servoDownAngle(), Settings.servo.delay.down.before, Settings.servo.delay.down.after, callback, true)
-		} else {
-			this.penUp(servoUpAngle(), Settings.servo.delay.up.before, Settings.servo.delay.up.after, callback, true)
-		}
 	}
 
 	createTarget(x: number, y: number, radius: number) {
@@ -156,16 +147,16 @@ export class TipibotInteractive extends Tipibot {
 		this.motorsEnableButton.setName('Disable motors')
 	}
 
-	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false) {
-		let liftPen = super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback, force)
+	penUp(servoUpValue: number = servoUpAngle(), servoUpTempoBefore: number = Settings.servo.delay.up.before, servoUpTempoAfter: number = Settings.servo.delay.up.after, callback: ()=> void = null, force=false, changeStateImmediately=true) {
+		let liftPen = super.penUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, callback, force, changeStateImmediately)
 		if(liftPen) {
 			this.penStateButton.setName('Pen down')
 		}
 		return liftPen
 	}
 
-	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false) {
-		let lowerPen = super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback, force)
+	penDown(servoDownValue: number = servoDownAngle(), servoDownTempoBefore: number = Settings.servo.delay.down.before, servoDownTempoAfter: number = Settings.servo.delay.down.after, callback: ()=> void = null, force=false, changeStateImmediately=true) {
+		let lowerPen = super.penDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, callback, force, changeStateImmediately)
 		if(lowerPen) {
 			this.penStateButton.setName('Pen up')
 		}
