@@ -511,7 +511,7 @@ export class Telescreen {
 
 	processMessage(message: string) {
 		// let now = Date.now()
-		// console.log(message, now-this.lastUpdateTime)
+		console.log(message)//, now-this.lastUpdateTime)
 
 		let parts = message.split(':')
 		let name = parts[0]
