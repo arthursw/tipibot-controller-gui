@@ -485,10 +485,15 @@ export class Telescreen {
 
 	moveLinear(point: paper.Point) {
 		point = this.getClampedPositionInDrawArea(point)
-		if(this.maxDistance <= 0 || point.getDistance(Tipibot.tipibot.getPosition()) < this.maxDistance) {
-			Tipibot.tipibot.moveLinear(point)
-			this.drawing.add(point)
+		if(this.maxDistance > 0) {
+			let delta = point.subtract(Tipibot.tipibot.getPosition())
+			if(delta.length > this.maxDistance) {
+				delta.length = this.maxDistance
+				point = Tipibot.tipibot.getPosition().add(delta)
+			}
 		}
+		Tipibot.tipibot.moveLinear(point)
+		this.drawing.add(point)
 	}
 
 	processRawMessage(data: string) {
