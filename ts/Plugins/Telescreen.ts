@@ -142,9 +142,10 @@ export class Telescreen {
 	moves: Map<string, Move>
 
 	move: Move = null
+	maxDistance = 5 			// Ignore moves farther than maxDistance to tipibot position (> 0), or move exactly where the optical encoders are (0)
 	modeController: Controller
 	portController: any
-	choosingPort = false // User is choosing a port with the portController: do not update the portController or it will unselect it
+	choosingPort = false 		// User is choosing a port with the portController: do not update the portController or it will unselect it
 	mustRefreshPortList = false
 	
 
@@ -211,6 +212,8 @@ export class Telescreen {
 		this.group.visible = false
 
 		this.drawing = new paper.Path()
+		this.drawing.strokeWidth = 10
+		this.drawing.strokeColor = new paper.Color('black')
 		setInterval(()=> this.move.update(), 50)
 		
 		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
@@ -242,12 +245,14 @@ export class Telescreen {
 
 		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
+		
+		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
 		
-		telescreenGUI.add( {'Invert button 1': this.isButtonInverted(1) }, 'Invert button 1' ).onFinishChange(()=>this.setItem('invertButton1', String(!this.isButtonInverted(1)) ))
-		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=>this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
+		telescreenGUI.add( {'Invert button 1': this.isButtonInverted(1) }, 'Invert button 1' ).onFinishChange(()=> this.setItem('invertButton1', String(!this.isButtonInverted(1)) ))
+		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=> this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
 
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
 		
@@ -480,8 +485,10 @@ export class Telescreen {
 
 	moveLinear(point: paper.Point) {
 		point = this.getClampedPositionInDrawArea(point)
-		Tipibot.tipibot.moveLinear(point)
-		this.drawing.add(point)
+		if(this.maxDistance <= 0 || point.getDistance(Tipibot.tipibot.getPosition()) < this.maxDistance) {
+			Tipibot.tipibot.moveLinear(point)
+			this.drawing.add(point)
+		}
 	}
 
 	processRawMessage(data: string) {
@@ -811,8 +818,6 @@ export class Telescreen {
 		frame.strokeColor = new paper.Color('black')
 		frame.position = drawingBounds.center
 
-		this.drawing.strokeWidth = 10
-		this.drawing.strokeColor = new paper.Color('black')
 		project.view.draw()
 		project.view.update()
 		// let canvasTemp = document.createElement('canvas')
@@ -887,12 +892,22 @@ export class Telescreen {
 		this.fullTelescreen = !this.fullTelescreen
 		this.toggleFullTelescreenButton.setName(this.fullTelescreen ? 'Stop' : 'Start')
 		
+
 		if(this.fullTelescreen) {
 			this.startFullTelescreen()
 		} else {
 			this.stopFullTelescreen()
 		}
 
+		paper.project.view.center = Tipibot.tipibot.drawArea.position
+		let viewRatio = paper.project.view.bounds.width / paper.project.view.bounds.height
+		let drawAreaRatio = Tipibot.tipibot.drawArea.bounds.width / Tipibot.tipibot.drawArea.bounds.height
+
+		if (viewRatio > drawAreaRatio) {
+			paper.project.view.scale(paper.project.view.bounds.height / (Tipibot.tipibot.drawArea.bounds.height * 1.15) )
+		} else {
+			paper.project.view.scale(paper.project.view.bounds.width / (Tipibot.tipibot.drawArea.bounds.width * 1.15) )
+		}
 	}
 
 	onKeyDown(event: KeyboardEvent) {
