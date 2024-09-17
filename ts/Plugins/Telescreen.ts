@@ -133,6 +133,7 @@ export class Telescreen {
 	speed: number = 0.1
 	angle: number = 0
 	position: paper.Point = null
+	previousDelta: paper.Point = null
 	margin = 0						// The margin inside the draw area where the pen can't go
 
 	threshold1: number = 150
@@ -145,7 +146,7 @@ export class Telescreen {
 	
 	move: Move = null
 	maxDistance = 5 			// Ignore moves farther than maxDistance to tipibot position (> 0), or move exactly where the optical encoders are (0)
-	nCommandsMax = 2 			// Ignore moves when n commands in queue is greate than nCommandsMax (> 0), or do not ignore any command
+	nCommandsMax = 0 			// Ignore moves when n commands in queue is greate than nCommandsMax (> -1), or do not ignore any command
 	modeController: Controller
 	portController: any
 	choosingPort = false 		// User is choosing a port with the portController: do not update the portController or it will unselect it
@@ -253,10 +254,10 @@ export class Telescreen {
 		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
 		
-		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01)
-		telescreenGUI.addSlider('N commands max', this.nCommandsMax, 0, 100, 1)
-		telescreenGUI.addSlider('Path width', this.drawing.strokeWidth, 0, 50, 0.01)
-		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 1000, 1)
+		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01).onChange((value)=> this.maxDistance = value)
+		telescreenGUI.addSlider('N commands max', this.nCommandsMax, -1, 100, 1).onChange((value)=> this.nCommandsMax = value)
+		telescreenGUI.addSlider('Path width', this.drawing.strokeWidth, 0, 50, 0.01).onChange((value)=> this.drawing.strokeWidth = value)
+		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 1000, 1).onChange((value)=> this.drawingMaxPoints = value)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
@@ -509,7 +510,7 @@ export class Telescreen {
 		if(Tipibot.tipibot.pen.state == PenState.Changing) {
 			return
 		}
-		if(this.nCommandsMax > 0 && Communication.interpreter.commandQueue.length > this.nCommandsMax) {
+		if(this.nCommandsMax >= 0 && Communication.interpreter.commandQueue.length > this.nCommandsMax) {
 			return
 		}
 		if(this.maxDistance > 0) {
@@ -593,6 +594,16 @@ export class Telescreen {
 			this.position = newPosition
 		}
 		let delta = newPosition.subtract(this.position).multiply(360 / this.nStepsPerTurn)
+		if(this.previousDelta == null) {
+			this.previousDelta = delta
+		}
+		if(Math.abs(this.previousDelta.x) > 0 && Math.sign(delta.x) != Math.sign(this.previousDelta.x)) {
+			delta.x = 0
+		}
+		if(Math.abs(this.previousDelta.y) > 0 && Math.sign(delta.y) != Math.sign(this.previousDelta.y)) {
+			delta.y = 0
+		}
+		this.previousDelta = delta
 		delta = delta.multiply(this.isButtonInverted(1) ? 1 : -1, this.isButtonInverted(2) ? 1 : -1)
 		if(this.modeController.getValue() == 'Orthographic') {
 			this.moveLinear(Tipibot.tipibot.getPosition().add(delta.multiply(this.speed)))
@@ -862,14 +873,15 @@ export class Telescreen {
 		canvas.height = drawingBounds.height
 
 		let project = new paper.Project(canvas)
-		project.activeLayer.addChild(this.drawing)
 		
 		project.view.center = drawingBounds.center
 		let frame = new paper.Path.Rectangle(drawingBounds)
 		frame.strokeWidth = 3
 		frame.strokeColor = new paper.Color('black')
+		frame.fillColor = new paper.Color('white')
 		frame.position = drawingBounds.center
-
+		
+		project.activeLayer.addChild(this.drawing)
 		project.view.draw()
 		project.view.update()
 		// let canvasTemp = document.createElement('canvas')
