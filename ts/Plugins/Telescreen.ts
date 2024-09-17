@@ -865,6 +865,9 @@ export class Telescreen {
     }
 
 	print() {
+		if(this.drawing.children.length == 0) {
+			return
+		}
 		let mainProject = paper.project
 		
 		let drawingBounds = this.printDrawingOnly ? this.drawing.strokeBounds.expand(10) : Tipibot.tipibot.drawArea.bounds
