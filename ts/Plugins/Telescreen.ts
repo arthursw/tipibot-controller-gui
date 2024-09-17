@@ -875,7 +875,9 @@ export class Telescreen {
 		let project = new paper.Project(canvas)
 		
 		project.view.center = drawingBounds.center
-		let frame = new paper.Path.Rectangle(drawingBounds)
+		// let frame = new paper.Path.Rectangle(drawingBounds)
+		let size = Math.max(drawingBounds.width, drawingBounds.height)
+		let frame = new paper.Path.Rectangle(drawingBounds.center.subtract(new paper.Size(size/2, size/2)), new paper.Size(size, size))
 		frame.strokeWidth = 3
 		frame.strokeColor = new paper.Color('black')
 		frame.fillColor = new paper.Color('white')
