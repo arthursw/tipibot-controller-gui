@@ -170,7 +170,7 @@ export class Telescreen {
 	project: paper.Project
 	
 	drawing: paper.Group = null
-	drawingMaxPoints: number = 500 // When the drawing has more than drawingMaxPoints points, the first points are removed
+	drawingMaxPoints: number = 5000 // When the drawing has more than drawingMaxPoints points, the first points are removed
 	group: paper.Group = null
 	directionPath: paper.Path = null
 	modeText: paper.PointText = null
