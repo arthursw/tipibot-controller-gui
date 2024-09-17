@@ -869,14 +869,16 @@ export class Telescreen {
 		
 		let drawingBounds = this.printDrawingOnly ? this.drawing.strokeBounds.expand(10) : Tipibot.tipibot.drawArea.bounds
 		let canvas = document.createElement('canvas')
-		canvas.width = drawingBounds.width
-		canvas.height = drawingBounds.height
+		let size = Math.max(drawingBounds.width, drawingBounds.height)
+		// canvas.width = drawingBounds.width
+		// canvas.height = drawingBounds.height
+		canvas.width = size
+		canvas.height = size
 
 		let project = new paper.Project(canvas)
 		
 		project.view.center = drawingBounds.center
 		// let frame = new paper.Path.Rectangle(drawingBounds)
-		let size = Math.max(drawingBounds.width, drawingBounds.height)
 		let frame = new paper.Path.Rectangle(drawingBounds.center.subtract(new paper.Size(size/2, size/2)), new paper.Size(size, size))
 		frame.strokeWidth = 3
 		frame.strokeColor = new paper.Color('black')
