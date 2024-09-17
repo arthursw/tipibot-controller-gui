@@ -257,7 +257,7 @@ export class Telescreen {
 		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01).onChange((value)=> this.maxDistance = value)
 		telescreenGUI.addSlider('N commands max', this.nCommandsMax, -1, 100, 1).onChange((value)=> this.nCommandsMax = value)
 		telescreenGUI.addSlider('Path width', this.drawing.strokeWidth, 0, 50, 0.01).onChange((value)=> this.drawing.strokeWidth = value)
-		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 1000, 1).onChange((value)=> this.drawingMaxPoints = value)
+		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 50000, 10).onChange((value)=> this.drawingMaxPoints = value)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
