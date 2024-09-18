@@ -129,6 +129,8 @@ export class Telescreen {
 	port: string = null
 	openingPort: string = null
 	lastUpdateTime = 0
+	goHomeTimeout:NodeJS.Timeout = null
+	goHomeDelay:number = 60
 
 	speed: number = 0.1
 	angle: number = 0
@@ -253,6 +255,7 @@ export class Telescreen {
 
 		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
+		telescreenGUI.addSlider('Go Home Delay', this.goHomeDelay, 0, 3600, 1).onChange((value)=> this.goHomeDelay = value)
 		
 		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01).onChange((value)=> this.maxDistance = value)
 		telescreenGUI.addSlider('N commands max', this.nCommandsMax, -1, 100, 1).onChange((value)=> this.nCommandsMax = value)
@@ -505,6 +508,7 @@ export class Telescreen {
 	}
 
 	moveLinear(point: paper.Point) {
+		clearTimeout(this.goHomeTimeout)
 		point = this.getClampedPositionInDrawArea(point)
 		console.log(Tipibot.tipibot.pen.state)
 		if(Tipibot.tipibot.pen.state == PenState.Changing) {
@@ -536,6 +540,14 @@ export class Telescreen {
 				}
 			}
 		}
+		if(this.goHomeDelay > 0) {
+			this.goHomeTimeout = setTimeout(()=>this.goHomeAndDisableMotors(), this.goHomeDelay * 1000)
+		}
+	}
+
+	goHomeAndDisableMotors() {
+		Tipibot.tipibot.goHome()
+		Tipibot.tipibot.disableMotors(true)
 	}
 
 	processRawMessage(data: string) {
@@ -554,7 +566,7 @@ export class Telescreen {
 	processMessage(message: string) {
 		// let now = Date.now()
 		console.log(message)//, now-this.lastUpdateTime)
-
+		clearTimeout(this.goHomeTimeout)
 		let parts = message.split(':')
 		let name = parts[0]
 		let value = parts[1]
