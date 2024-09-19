@@ -25,7 +25,7 @@ export class Tipibot implements TipibotInterface {
 	motorsEnabled = true
 
 	ignoreKeyEvents = false
-	disableMotorsTimeout: number = null
+	actionsTimeout: any = null
 
 	static tipibot: Tipibot = null
 	constructor() {
@@ -178,10 +178,6 @@ export class Tipibot implements TipibotInterface {
 		Communication.interpreter.sendProgressiveMicrosteps()
 	}
 
-	clearDisableMotorsTimeout() {
-		clearTimeout(this.disableMotorsTimeout)
-	}
-
 	getClampedTarget(target: paper.Point) {
 		target.x = paper.Numerical.clamp(target.x, - Settings.tipibot.width / 2 + Settings.tipibot.limitH, Settings.tipibot.width / 2 - Settings.tipibot.limitH)
 		target.y = paper.Numerical.clamp(target.y, - Settings.tipibot.height / 2 + Settings.tipibot.limitV, Settings.tipibot.height / 2 - Settings.tipibot.limitV)
@@ -195,7 +191,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	move(moveType: MoveType, point: paper.Point, minSpeed: number=0, maxSpeed: number=Settings.tipibot.maxSpeed, callback: () => any = null, movePen=true) {
-		this.clearDisableMotorsTimeout()
+		this.clearActionsTimeout()
 		this.checkInitialized()
 
 		let moveCallback = movePen ? callback : ()=> {
@@ -327,7 +323,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	enableMotors(send: boolean) {
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		this.clearActionsTimeout()
 		if(send) {
 			Communication.interpreter.sendMotorOn()
 		}
@@ -347,7 +343,7 @@ export class Tipibot implements TipibotInterface {
 	}
 
 	moveGroundStation(position: number, callback:()=> any= null) {
-		this.clearDisableMotorsTimeout()
+		this.clearActionsTimeout()
 		Communication.interpreter.sendMoveExtruder(position, callback)
 	}
 
@@ -510,7 +506,7 @@ export class Tipibot implements TipibotInterface {
 		Communication.interpreter.sendAutoHome(callback)
 	}
 
-	goHome(callback: ()=> any = null) {
+	goHome(callback: ()=> any = null, disableMotorsDelay = -1) {
 		let homePoint = new paper.Point(Settings.tipibot.homeX, Settings.tipibot.homeY)
 		// let goHomeCallback = ()=> {
 		// 	this.pen.setPosition(homePoint, true, false)
@@ -522,8 +518,21 @@ export class Tipibot implements TipibotInterface {
 		// this.pen.setPosition(homePoint, true, true, MoveType.Direct, goHomeCallback)
 		this.moveDirect(homePoint, callback, false)
 		
-		// clearTimeout(this.disableMotorsTimeout)
-		// this.disableMotorsTimeout = setTimeout(()=> this.disableMotors(true), 1000*60*2) as any
+		this.clearActionsTimeout()
+		if(disableMotorsDelay >= 0) {
+			this.planActions(()=>this.disableMotors(true), disableMotorsDelay)
+		}
+	}
+
+	clearActionsTimeout() {
+		clearTimeout(this.actionsTimeout)
+	}
+
+	planActions(action: ()=> any, actionsDelay: number=-1) {
+		this.clearActionsTimeout()
+		if(actionsDelay >= 0) {
+			this.actionsTimeout = setTimeout(action, actionsDelay)
+		}
 	}
 
 	windowResize() {

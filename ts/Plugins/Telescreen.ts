@@ -129,7 +129,6 @@ export class Telescreen {
 	port: string = null
 	openingPort: string = null
 	lastUpdateTime = 0
-	goHomeTimeout:NodeJS.Timeout = null
 	goHomeDelay:number = 60
 
 	speed: number = 0.1
@@ -508,7 +507,6 @@ export class Telescreen {
 	}
 
 	moveLinear(point: paper.Point) {
-		clearTimeout(this.goHomeTimeout)
 		point = this.getClampedPositionInDrawArea(point)
 		console.log(Tipibot.tipibot.pen.state)
 		if(Tipibot.tipibot.pen.state == PenState.Changing) {
@@ -541,7 +539,7 @@ export class Telescreen {
 			}
 		}
 		if(this.goHomeDelay > 0) {
-			this.goHomeTimeout = setTimeout(()=>this.goHomeAndDisableMotors(), this.goHomeDelay * 1000)
+			Tipibot.tipibot.planActions(()=>this.goHomeAndDisableMotors(), this.goHomeDelay * 1000)
 		}
 	}
 
@@ -566,7 +564,6 @@ export class Telescreen {
 	processMessage(message: string) {
 		// let now = Date.now()
 		console.log(message)//, now-this.lastUpdateTime)
-		clearTimeout(this.goHomeTimeout)
 		let parts = message.split(':')
 		let name = parts[0]
 		let value = parts[1]
@@ -880,6 +877,7 @@ export class Telescreen {
 		if(this.drawing.children.length == 0) {
 			return
 		}
+		Tipibot.tipibot.goHome(null, this.goHomeDelay * 1000)
 		let mainProject = paper.project
 		
 		let drawingBounds = this.printDrawingOnly ? this.drawing.strokeBounds.expand(10) : Tipibot.tipibot.drawArea.bounds
