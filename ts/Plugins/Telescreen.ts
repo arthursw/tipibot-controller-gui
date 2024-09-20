@@ -236,8 +236,12 @@ export class Telescreen {
 		return localStorage.setItem('Telescreen:' + key, value)
 	}
 
-	isButtonInverted(id:number) {
-		return this.getItem('invertButton'+id) === 'true'
+	// isButtonInverted(id:number) {
+	// 	return this.getItem('invertButton'+id) === 'true'
+	// }
+
+	isButtonInverted(name:string) {
+		return this.getItem('invertButton'+name) === 'true'
 	}
 
 	createGUI(gui: GUI) {
@@ -264,8 +268,18 @@ export class Telescreen {
 		
 		telescreenGUI.add( {'Print drawing only': this.printDrawingOnly }, 'Print drawing only' )
 
-		telescreenGUI.add( {'Invert button 1': this.isButtonInverted(1) }, 'Invert button 1' ).onFinishChange(()=> this.setItem('invertButton1', String(!this.isButtonInverted(1)) ))
-		telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=> this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
+		// telescreenGUI.add( {'Invert button 1': this.isButtonInverted(1) }, 'Invert button 1' ).onFinishChange(()=> this.setItem('invertButton1', String(!this.isButtonInverted(1)) ))
+		// telescreenGUI.add( {'Invert button 2': this.isButtonInverted(2) }, 'Invert button 2' ).onFinishChange(()=> this.setItem('invertButton2', String(!this.isButtonInverted(2)) ))
+
+		telescreenGUI.add( {'Invert button 1 Orthographic': this.isButtonInverted('Orthographic1') }, 'Invert button 1 Orthographic' ).onFinishChange(()=> this.setItem('invertButtonOrthographic1', String(!this.isButtonInverted('Orthographic1')) ))
+		telescreenGUI.add( {'Invert button 2 Orthographic': this.isButtonInverted('Orthographic2') }, 'Invert button 2 Orthographic' ).onFinishChange(()=> this.setItem('invertButtonOrthographic2', String(!this.isButtonInverted('Orthographic2')) ))
+		telescreenGUI.add( {'Invert button 1 Polar': this.isButtonInverted('Polar1') }, 'Invert button 1 Polar' ).onFinishChange(()=> this.setItem('invertButtonPolar1', String(!this.isButtonInverted('Polar1')) ))
+		telescreenGUI.add( {'Invert button 2 Polar': this.isButtonInverted('Polar2') }, 'Invert button 2 Polar' ).onFinishChange(()=> this.setItem('invertButtonPolar2', String(!this.isButtonInverted('Polar2')) ))
+		telescreenGUI.add( {'Invert button 1 Direction': this.isButtonInverted('Direction1') }, 'Invert button 1 Direction' ).onFinishChange(()=> this.setItem('invertButtonDirection1', String(!this.isButtonInverted('Direction1')) ))
+		telescreenGUI.add( {'Invert button 2 Direction': this.isButtonInverted('Direction2') }, 'Invert button 2 Direction' ).onFinishChange(()=> this.setItem('invertButtonDirection2', String(!this.isButtonInverted('Direction2')) ))
+		telescreenGUI.add( {'Switch Orthographic': this.isButtonInverted('Orthographic') }, 'Switch Orthographic' ).onFinishChange(()=> this.setItem('invertButtonOrthographic', String(!this.isButtonInverted('Orthographic')) ))
+		telescreenGUI.add( {'Switch Polar': this.isButtonInverted('Polar') }, 'Switch Polar' ).onFinishChange(()=> this.setItem('invertButtonPolar', String(!this.isButtonInverted('Polar')) ))
+		telescreenGUI.add( {'Switch Direction': this.isButtonInverted('Direction') }, 'Switch Direction' ).onFinishChange(()=> this.setItem('invertButtonDirection', String(!this.isButtonInverted('Direction')) ))
 
 		this.modeController = telescreenGUI.add({ 'Mode': 'Orthographic' }, 'Mode', <any>['Orthographic', 'Polar', 'Direction']).onFinishChange((value: string)=> this.modeChanged(value))
 		
@@ -604,7 +618,10 @@ export class Telescreen {
 			delta.y = 0
 		}
 		this.previousDelta = delta
-		delta = delta.multiply(this.isButtonInverted(1) ? 1 : -1, this.isButtonInverted(2) ? 1 : -1)
+		delta = delta.multiply(this.isButtonInverted(this.modeController.getValue() + '1') ? 1 : -1, this.isButtonInverted(this.modeController.getValue() + '2') ? 1 : -1)
+		if(this.isButtonInverted(this.modeController.getValue())) {
+			delta = new paper.Point(delta.y, delta.x)
+		}
 		if(this.modeController.getValue() == 'Orthographic') {
 			this.moveLinear(Tipibot.tipibot.getPosition().add(delta.multiply(this.speed)))
 		} else if(this.modeController.getValue() == 'Polar') {
@@ -641,7 +658,7 @@ export class Telescreen {
 					break
 				}
 			}
-			if(this.isButtonInverted(buttonId)) {
+			if(this.isButtonInverted(''+buttonId)) {
 				action = action == '-' ? '+' : '-'
 			}
 		}
