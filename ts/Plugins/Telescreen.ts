@@ -129,6 +129,8 @@ export class Telescreen {
 	port: string = null
 	openingPort: string = null
 	lastUpdateTime = 0
+	goHomeDelay:number = 60
+	awakePrinterFrequency:number = 10 * 60
 
 	speed: number = 0.1
 	angle: number = 0
@@ -228,6 +230,10 @@ export class Telescreen {
 		requestAnimationFrame(()=>this.updateMoves())
 	}
 
+	awakePrinter() {
+		Communication.communication.send('awake-printer', {})
+	}
+
 	getItem(key:string) {
 		return localStorage.getItem('Telescreen:' + key)
 	}
@@ -257,11 +263,13 @@ export class Telescreen {
 
 		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
+		telescreenGUI.addSlider('Go Home Delay', this.goHomeDelay, 0, 3600, 1).onChange((value)=> this.goHomeDelay = value)
 		
 		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01).onChange((value)=> this.maxDistance = value)
 		telescreenGUI.addSlider('N commands max', this.nCommandsMax, -1, 100, 1).onChange((value)=> this.nCommandsMax = value)
 		telescreenGUI.addSlider('Path width', this.drawing.strokeWidth, 0, 50, 0.01).onChange((value)=> this.drawing.strokeWidth = value)
 		telescreenGUI.addSlider('Drawing max points', this.drawingMaxPoints, 0, 50000, 10).onChange((value)=> this.drawingMaxPoints = value)
+		telescreenGUI.addSlider('Awake printer freq (sec)', this.awakePrinterFrequency, 0, 3600, 10).onChange((value)=> this.awakePrinterFrequency = value)
 
 		telescreenGUI.addSlider('Threshold 1', 1, 1, 1000, 1).onChange((value)=> this.threshold1 = value)
 		telescreenGUI.addSlider('Threshold 2', 1, 1, 1000, 1).onChange((value)=> this.threshold2 = value)
@@ -287,6 +295,7 @@ export class Telescreen {
 
 		this.toggleFullTelescreenButton = telescreenGUI.addButton('Start', (value)=> this.toggleFullTelescreen())
 		
+		telescreenGUI.addButton('Start awake printer', ()=> setInterval(()=>this.awakePrinter(), this.awakePrinterFrequency * 1000) )
 		telescreenGUI.addButton('Print drawing', ()=> this.print() )
 		// telescreenGUI.open()
 	}
@@ -550,6 +559,14 @@ export class Telescreen {
 				}
 			}
 		}
+		if(this.goHomeDelay > 0) {
+			Tipibot.tipibot.planActions(()=>this.goHomeAndDisableMotors(), this.goHomeDelay * 1000)
+		}
+	}
+
+	goHomeAndDisableMotors() {
+		Tipibot.tipibot.goHome()
+		Tipibot.tipibot.disableMotors(true)
 	}
 
 	processRawMessage(data: string) {
@@ -568,7 +585,6 @@ export class Telescreen {
 	processMessage(message: string) {
 		// let now = Date.now()
 		console.log(message)//, now-this.lastUpdateTime)
-
 		let parts = message.split(':')
 		let name = parts[0]
 		let value = parts[1]
@@ -885,6 +901,7 @@ export class Telescreen {
 		if(this.drawing.children.length == 0) {
 			return
 		}
+		Tipibot.tipibot.goHome(null, this.goHomeDelay * 1000)
 		let mainProject = paper.project
 		
 		let drawingBounds = this.printDrawingOnly ? this.drawing.strokeBounds.expand(10) : Tipibot.tipibot.drawArea.bounds

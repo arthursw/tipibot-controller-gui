@@ -117,7 +117,7 @@ export class Pen {
 	plus(callback: ()=> void = null) {
 		let newAngle = this.angle + Settings.servo.delta;
 		this.angle = newAngle;
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendMovePen(this.angle, callback);
 		// let penMoveCallback = ()=> {
 		// 	this.angle = newAngle
@@ -131,7 +131,7 @@ export class Pen {
 	minus(callback: ()=> void = null) {
 		let newAngle = this.angle - Settings.servo.delta;
 		this.angle = newAngle;
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendMovePen(this.angle, callback);
 		// let penMoveCallback = ()=> {
 		// 	this.angle = newAngle
@@ -150,7 +150,7 @@ export class Pen {
 				callback()
 			}
 		}
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendPenUp(servoUpValue, servoUpTempoBefore, servoUpTempoAfter, penUpCallback)
 		this.circle.fillColor = Pen.UP_COLOR
 		if(changeStateImmediately) {
@@ -169,7 +169,7 @@ export class Pen {
 				callback()
 			}
 		}
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendPenDown(servoDownValue, servoDownTempoBefore, servoDownTempoAfter, penDownCallback)
 		this.circle.fillColor = Pen.DOWN_COLOR
 		if(changeStateImmediately) {
@@ -188,7 +188,7 @@ export class Pen {
 				callback()
 			}
 		}
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendPenClose(servoCloseValue, penCloseCallback)
 		this.circle.fillColor = Pen.CLOSED_COLOR
 		if(changeStateImmediately) {
@@ -207,7 +207,7 @@ export class Pen {
 				callback()
 			}
 		}
-		Tipibot.tipibot.clearDisableMotorsTimeout()
+		Tipibot.tipibot.clearActionsTimeout()
 		Communication.interpreter.sendPenDrop(servoDropValue, penDropCallback)
 		this.circle.fillColor = Pen.DROP_COLOR
 		if(changeStateImmediately) {
