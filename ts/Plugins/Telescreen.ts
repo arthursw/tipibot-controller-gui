@@ -228,7 +228,7 @@ export class Telescreen {
 		
 		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
 		requestAnimationFrame(()=>this.updateMoves())
-		
+
 		this.checkGoHomeAndDisableMotors()
 	}
 	
@@ -351,7 +351,7 @@ export class Telescreen {
 			Settings.tipibot.maxSpeed += Math.abs(d[2]-64) * 1000
 			this.speed *= Math.abs(d[2]-64)
 
-			if(this.isButtonInverted(buttonId)) {
+			if(this.isButtonInverted(''+buttonId)) {
 				action = action == '-' ? '+' : '-'
 			}
 		}
@@ -944,15 +944,14 @@ export class Telescreen {
 
 		let url = canvas.toDataURL("image/png")
 
-		// let svg = project.exportSVG({asString:true, bounds: Tipibot.tipibot.drawArea.bounds})
-
+		
 		// let blob = new Blob([svg], {type: "image/svg"})
 		// let url  = URL.createObjectURL(blob)
 		
 		// let rectangle = new paper.Path.Rectangle(Tipibot.tipibot.drawArea)
 		// rectangle.strokeWidth = 1
 		// rectangle.strokeColor = 'black'
-
+		
 		// let link = document.createElement("a");
 		// document.body.appendChild(link);
 		// // link.download = 'drawing.svg';
@@ -960,13 +959,16 @@ export class Telescreen {
 		// link.href = url;
 		// link.click();
 		// document.body.removeChild(link);
+		
+		
+		Communication.communication.send('print-file', {content: url.split(',')[1]})
+		
+		let svg = project.exportSVG({asString:true, bounds: Tipibot.tipibot.drawArea.bounds})
+		Communication.communication.send('write-file', {content: svg})
 
 		this.drawing.removeChildren()
 		mainProject.activate()
 		mainProject.activeLayer.addChild(this.drawing)
-
-		// Communication.communication.send('write-file', svg)
-		Communication.communication.send('print-file', {content: url.split(',')[1]})
 	}
 
 
@@ -1030,9 +1032,23 @@ export class Telescreen {
 		if(!this.fullTelescreen) {
 			return
 		}
+		let amount = 1;
 		switch (event.code) {
 			case 'Escape':
 				this.toggleFullTelescreen()
+				break;
+
+			case 'ArrowLeft': 			// left arrow
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(-amount, 0)))
+			break;
+			case 'ArrowUp': 			// up arrow
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, -amount)))
+				break;
+			case 'ArrowRight': 			// right arrow
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(amount, 0)))
+				break;
+			case 'ArrowDown': 			// down arrow
+				this.moveLinear(Tipibot.tipibot.getPosition().add(new paper.Point(0, amount)))
 				break;
 			default:
 				break;
