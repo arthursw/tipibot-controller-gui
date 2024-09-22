@@ -228,7 +228,17 @@ export class Telescreen {
 		
 		document.body.addEventListener('keydown', (event)=> this.onKeyDown(event))
 		requestAnimationFrame(()=>this.updateMoves())
+		
+		this.checkGoHomeAndDisableMotors()
 	}
+	
+	checkGoHomeAndDisableMotors() {
+        var now = new Date();
+        if (now.getHours() == 21 && now.getMinutes() == 0) {
+            this.goHomeAndDisableMotors()
+        }
+        setTimeout(()=>this.checkGoHomeAndDisableMotors(), 50000);
+    }
 
 	awakePrinter() {
 		Communication.communication.send('awake-printer', {})
@@ -259,7 +269,7 @@ export class Telescreen {
 
 		telescreenGUI.addSlider('Speed', 0.1, 0.01, 10, 0.01).onChange((value)=> this.speed = value)
 		telescreenGUI.addSlider('Margin', 1, -500, 500, 1).onChange((value)=> this.margin = value)
-		telescreenGUI.addSlider('Go Home Delay', this.goHomeDelay, 0, 3600, 1).onChange((value)=> this.goHomeDelay = value)
+		telescreenGUI.addSlider('Go Home Delay', this.goHomeDelay, -1, 3600, 1).onChange((value)=> this.goHomeDelay = value)
 		
 		telescreenGUI.addSlider('Max distance', this.maxDistance, 0, 10, 0.01).onChange((value)=> this.maxDistance = value)
 		telescreenGUI.addSlider('N commands max', this.nCommandsMax, -1, 100, 1).onChange((value)=> this.nCommandsMax = value)
@@ -284,6 +294,7 @@ export class Telescreen {
 		telescreenGUI.addButton('Start awake printer', ()=> setInterval(()=>this.awakePrinter(), this.awakePrinterFrequency * 1000) )
 		telescreenGUI.addButton('Print drawing', ()=> this.print() )
 		// telescreenGUI.open()
+		
 	}
 
 	initializeMidi() {
