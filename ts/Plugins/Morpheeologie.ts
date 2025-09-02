@@ -12,10 +12,12 @@ export class Morpheeologie {
     nDrops = 20.0
     zUp = 117
     zDown = 112
-    injectAmount = 1
+    // injectAmount1 = 1
+    // injectAmount2 = 1
     vacuumAmount = -0.98
     speed = 3000
-    injectSpeed = 3000
+    injectSpeed1 = 3000
+    injectSpeed2 = 3000
     skipUp = false
     injectWhileMoving = false
     injectAndVacuum = true
@@ -25,7 +27,8 @@ export class Morpheeologie {
     posZ = this.zUp
     deltaXY = 3
     deltaZ = 5
-    deltaE = 0.1
+    deltaE1 = 0.1
+    deltaE2 = 0.1
 
     maxDistToCenter = 30
     minZ = 112
@@ -55,16 +58,19 @@ export class Morpheeologie {
         this.mgui.add(this, 'nDrops', 1, 100, 1).name('N Drops')
         this.mgui.add(this, 'zUp', 0, 150, 1).name('Z up')
         this.mgui.add(this, 'zDown', 0, 150, 1).name('Z down')
-        this.mgui.add(this, 'injectAmount', -50, 50, 0.01).name('Inject Amount')
+        // this.mgui.add(this, 'injectAmount1', -50, 50, 0.01).name('Inject Amount 1')
+        // this.mgui.add(this, 'injectAmount2', -50, 50, 0.01).name('Inject Amount 2')
         this.mgui.add(this, 'vacuumAmount', -50, 50, 0.01).name('Vacuum Amount')
         this.mgui.add(this, 'speed', 100, 8000, 10).name('Speed')
-        this.mgui.add(this, 'injectSpeed', 100, 8000, 10).name('Injection speed')
+        this.mgui.add(this, 'injectSpeed1', 100, 8000, 10).name('Injection speed 1')
+        this.mgui.add(this, 'injectSpeed2', 100, 8000, 10).name('Injection speed 2')
 		this.mgui.add(this, 'skipUp').name('Skip Up / Down')
         this.mgui.add(this, 'injectWhileMoving').name('Inject while moving')
         this.mgui.add(this, 'injectAndVacuum').name('Inject and vacuum')
         this.mgui.add(this, 'deltaXY', 0, 20, 0.01).name('Delta X/Y')
         this.mgui.add(this, 'deltaZ', 0, 20, 0.01).name('Delta Z')
-        this.mgui.add(this, 'deltaE', 0, 20, 0.01).name('Delta E')
+        this.mgui.add(this, 'deltaE1', 0, 20, 0.01).name('Delta E 1')
+        this.mgui.add(this, 'deltaE2', 0, 20, 0.01).name('Delta E 2')
         
         this.mgui.addButton('Home XY', ()=> {
             Communication.interpreter.queue(`G90\n`) // Set XYZ axis to absolute
@@ -103,7 +109,11 @@ export class Morpheeologie {
         // }
         let commands = []
         if (this.injectWhileMoving) {
-            commands.push(`G0 X${x.toFixed(2)} Y${y.toFixed(2)} E${this.injectAmount} F${this.speed.toFixed(2)}\n`);
+            commands.push(`T0 F${this.injectSpeed1.toFixed(2)}`)
+            commands.push(`G0 X${x.toFixed(2)} Y${y.toFixed(2)} E${this.deltaE1} F${this.speed.toFixed(2)}\n`);
+
+            commands.push(`T1 F${this.injectSpeed2.toFixed(2)}`)
+            commands.push(`G0 E${this.deltaE2} F${this.injectSpeed2.toFixed(2)}\n`);
         } else {
             // go to position
             commands.push(`G0 X${x.toFixed(2)} Y${y.toFixed(2)} F${this.speed.toFixed(2)}\n`);
@@ -112,11 +122,15 @@ export class Morpheeologie {
                 commands.push(`G0 Z${this.zDown} F${this.speed.toFixed(2)}\n`);
             }
             // inject
-            commands.push(`G0 E${this.injectAmount} F${this.injectSpeed.toFixed(2)}\n`);
+            commands.push(`T0 F${this.injectSpeed1.toFixed(2)}`)
+            commands.push(`G0 E${this.deltaE1} F${this.injectSpeed1.toFixed(2)}\n`);
+
+            commands.push(`T1 F${this.injectSpeed2.toFixed(2)}`)
+            commands.push(`G0 E${this.deltaE2} F${this.injectSpeed2.toFixed(2)}\n`);
             
             // vacuum
             if (this.injectAndVacuum) {
-                commands.push(`G0 E${this.vacuumAmount} F${this.injectSpeed.toFixed(2)}\n`);
+                commands.push(`G0 E${this.vacuumAmount} F${this.injectSpeed1.toFixed(2)}\n`);
             }
 
             if (!this.skipUp) {
@@ -326,17 +340,25 @@ export class Morpheeologie {
         }
         
         if(gp.buttons[0].pressed) {
-            Communication.interpreter.queue(`G0 E${this.deltaE} F${this.injectSpeed}\n`)
+            Communication.interpreter.queue(`T0 F${this.injectSpeed1}\n`)
+            Communication.interpreter.queue(`G0 E${this.deltaE1} F${this.injectSpeed1}\n`)
             activated = true
         }
         if(gp.buttons[1].pressed) {
-            Communication.interpreter.queue(`G0 E-${this.deltaE} F${this.injectSpeed}\n`)
+            Communication.interpreter.queue(`T0 F${this.injectSpeed1}\n`)
+            Communication.interpreter.queue(`G0 E-${this.deltaE1} F${this.injectSpeed1}\n`)
             activated = true
         }
         
         if(gp.buttons[4].pressed) {
+            Communication.interpreter.queue(`T1 F${this.injectSpeed2}\n`)
+            Communication.interpreter.queue(`G0 E${this.deltaE2} F${this.injectSpeed2}\n`)
+            activated = true
         }
         if(gp.buttons[6].pressed) {
+            Communication.interpreter.queue(`T1 F${this.injectSpeed2}\n`)
+            Communication.interpreter.queue(`G0 E-${this.deltaE2} F${this.injectSpeed2}\n`)
+            activated = true
         }
 
         if(gp.buttons[9].pressed) {
